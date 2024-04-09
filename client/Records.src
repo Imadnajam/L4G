@@ -1,0 +1,5 @@
+READ([F:EMPLOYEE]Employee_Record)
+WHILE FOUND([F:EMPLOYEE])
+    DISPLAY Employee_Record
+    READ([F:EMPLOYEE]Employee_Record)
+ENDWHILE

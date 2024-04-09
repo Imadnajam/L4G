@@ -1,0 +1,7 @@
+READ([F:EMPLOYEE]Employee_Record)
+WHILE FOUND([F:EMPLOYEE])
+    IF Employee_Record.Department = "HR" THEN
+        DELETE([F:EMPLOYEE]Employee_Record)
+    ENDIF
+    READ([F:EMPLOYEE]Employee_Record)
+ENDWHILE

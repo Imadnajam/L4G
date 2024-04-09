@@ -1,0 +1,9 @@
+DEFINE VARIABLE TotalSalary INTEGER INIT 0
+
+READ([F:EMPLOYEE]Employee_Record)
+WHILE FOUND([F:EMPLOYEE])
+    TotalSalary := TotalSalary + Employee_Record.Salary
+    READ([F:EMPLOYEE]Employee_Record)
+ENDWHILE
+
+DISPLAY "Total Salary: " + TotalSalary

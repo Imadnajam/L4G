@@ -1,0 +1,6 @@
+READ([F:EMPLOYEE]Employee_Record)
+IF FOUND([F:EMPLOYEE]) THEN
+    DISPLAY "Employee found: " + Employee_Record.Name
+ELSE
+    CALL LogError("Employee not found.")
+ENDIF
