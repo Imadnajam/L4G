@@ -1,8 +1,0 @@
-READ([F:EMPLOYEE]Employee_Record)
-IF FOUND([F:EMPLOYEE]) THEN
-    IF Employee_Record.Age > 30 THEN
-        DISPLAY "Senior Employee: " + Employee_Record.Name
-    ELSE
-        DISPLAY "Junior Employee: " + Employee_Record.Name
-    ENDIF
-ENDIF

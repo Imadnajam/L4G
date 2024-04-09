@@ -1,6 +1,0 @@
-READ([F:EMPLOYEE]Employee_Record)
-IF Employee_Record.Salary > 50000 THEN
-    DISPLAY "High Salary Employee: " + Employee_Record.Name
-ELSE
-    DISPLAY "Normal Salary Employee: " + Employee_Record.Name
-ENDIF
