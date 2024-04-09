@@ -1,0 +1,10 @@
+DEFINE VARIABLE TodayDate DATE
+TodayDate := TODAY()
+
+READ([F:EMPLOYEE]Employee_Record)
+WHILE FOUND([F:EMPLOYEE])
+    IF Employee_Record.BirthDate < TodayDate THEN
+        DISPLAY "Birthday of " + Employee_Record.Name + " today!"
+    ENDIF
+    READ([F:EMPLOYEE]Employee_Record)
+ENDWHILE

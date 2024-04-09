@@ -1,0 +1,10 @@
+DEFINE RECORD NewEmployee_Record
+    Id INTEGER
+    Name STRING
+    Age INTEGER
+END RECORD
+
+NewEmployee_Record.Id := 1001
+NewEmployee_Record.Name := "John"
+NewEmployee_Record.Age := 35
+CREATE([F:EMPLOYEE]NewEmployee_Record)

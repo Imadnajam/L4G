@@ -1,0 +1,14 @@
+DEFINE SUBPROGRAM CalculateBonus(Employee_Record)
+    IF Employee_Record.Salary > 50000 THEN
+        Employee_Record.Bonus := Employee_Record.Salary * 0.1
+    ELSE
+        Employee_Record.Bonus := Employee_Record.Salary * 0.05
+    ENDIF
+END SUBPROGRAM
+
+READ([F:EMPLOYEE]Employee_Record)
+WHILE FOUND([F:EMPLOYEE])
+    CALL CalculateBonus(Employee_Record)
+    UPDATE([F:EMPLOYEE]Employee_Record)
+    READ([F:EMPLOYEE]Employee_Record)
+ENDWHILE
