@@ -1,0 +1,2102 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+#**
+#* Documentation de la procédure GET_STOCK_EPI
+#* <table>
+#* <tr><td><b>Société</b></td><td><b><u><font color="#046380">MICROFIRST</font></u></b></td>
+#* <tr><td><b>Auteur</b></td><td>JBS</td>
+#* <tr><td><b>Date de création</b></td><td>23 mars 2015</td>
+#* <tr><td><b>Nom de la requête</b></td><td>WSEPALIA</td>
+#* <tr><td><b>Nom de la publication</b></td><td>GET_STO_EPI</td>
+#* <tr><td valign="top"><b>Description de la procédure</b></td><td>
+#* Cette méthode permet la récupération du stock EPALIS pour un client et un site
+#* </td></table>
+#* @public
+#* @param WFCY (<font color="#7F0055"><b>Char</b></font>) Code du site
+#* @param WBPCORD (<font color="#7F0055"><b>Char</b></font>) Code du client
+#* @param WITMREF (<font color="#7F0055"><b>Char</b></font>) Tableau des articles
+#* @param WLIBART (<font color="#7F0055"><b>Char</b></font>) Tableau des désignations articles
+#* @param WQTEOK (<font color="#7F0055"><b>Decimal</b></font>) Tableau des quantités OK
+#* @param WQTEKC (<font color="#7F0055"><b>Decimal</b></font>) Tableau des quantités à réparer
+#* @param WQTEATRANSF (<font color="#7F0055"><b>Decimal</b></font>) Tableau des quantités à transformer
+#* @since <font color="green">Version 6</font>
+#*!
+Subprog GET_STOCK_EPI(WFCY,WBPCORD,WITMREF,WLIBART,WQTEOK,WQTEKC,WQTEATRANSF)
+  Variable Char WFCY
+  Variable Char WBPCORD
+  Variable Char WITMREF()(0..499)
+  Variable Char WLIBART()(0..499)
+  Variable Decimal WQTEOK(0..499)
+  Variable Decimal WQTEKC(0..499)
+  Variable Decimal WQTEATRANSF(0..499)
+
+If clalev([F:ZSTE])=0 : Local File ZSTOEPI [ZSTE] : Endif
+Local Integer WLIG : WLIG = 0
+For [F:ZSTE]ZSTE0 Where [F:ZSTE]STOFCY=WFCY and [F:ZSTE]BPCORD=WBPCORD and [F:ZSTE]A_AFFICHER=2
+  WITMREF(WLIG) = [F:ZSTE]ZART_FINAL
+  WLIBART(WLIG) = [F:ZSTE]LIBELLE_PAL
+  WQTEOK(WLIG) = [F:ZSTE]ZQTEOK
+  WQTEKC(WLIG) = [F:ZSTE]ZQTEKC
+  WQTEATRANSF(WLIG) = [F:ZSTE]ZQTEATRANSF
+  WLIG += 1
+Next
+End
+
+#**
+#* Documentation de la procédure GET_DEPOT_CAHRG
+#* <table>
+#* <tr><td><b>Société</b></td><td><b><u><font color="#046380">MICROFIRST</font></u></b></td>
+#* <tr><td><b>Auteur</b></td><td>JBS</td>
+#* <tr><td><b>Date de création</b></td><td>9 avr. 2015</td>
+#* <tr><td><b>Nom de la requête</b></td><td>WSEPALIA</td>
+#* <tr><td><b>Nom de la publication</b></td><td>publication</td>
+#* <tr><td valign="top"><b>Description de la procédure</b></td><td>
+#* Ce Web service permet de récupérer la liste des codes chargeur déclarés du client EPALIS passé en paramètre
+#* </td></table>
+#* @public
+#* @param WBPCEPI (<font color="#7F0055"><b>Char</b></font>) Code client EPALIS
+#* @param WCODCHARG (<font color="#7F0055"><b>Char</b></font>) Tableau des codes chargeurs dépot
+#* @param WRSLCHARG (<font color="#7F0055"><b>Char</b></font>) Tableau des Raisons sociales
+#* @param WRSCCHARG (<font color="#7F0055"><b>Char</b></font>) Tableau des intitulés courts
+#* @since <font color="green">Version 6.5</font>
+#*!
+Subprog GET_DEPOT_CAHRG(WBPCEPI,WCODCHARG,WRSLCHARG,WRSCCHARG)
+  Variable Char WBPCEPI
+  Variable Char WCODCHARG()(0..499)
+  Variable Char WRSLCHARG()(0..499)
+  Variable Char WRSCCHARG()(0..499)
+
+If clalev([F:ZDCE])=0 : Local File ZDEPCHARGEPI [ZDCE] : Endif
+Local Integer WLIG : WLIG = 0
+For [F:ZDCE]ZDCE1 Where [F:ZDCE]CODCHARG=WBPCEPI
+  WCODCHARG(WLIG) = [F:ZDCE]CODDEPCHARG
+  WRSLCHARG(WLIG) = [F:ZDCE]BPCNAM
+  WRSCCHARG(WLIG) = [F:ZDCE]BPCSHO
+  WLIG += 1
+Next
+End
+
+#**
+#* Documentation de la procédure GET_ADR_DEPOT
+#* <table>
+#* <tr><td><b>Société</b></td><td><b><u><font color="#046380">MICROFIRST</font></u></b></td>
+#* <tr><td><b>Auteur</b></td><td>JBS</td>
+#* <tr><td><b>Date de création</b></td><td>9 avr. 2015</td>
+#* <tr><td><b>Nom de la requête</b></td><td>WSEPALIA</td>
+#* <tr><td><b>Nom de la publication</b></td><td>publication</td>
+#* <tr><td valign="top"><b>Description de la procédure</b></td><td>
+#* Ce Web service permet de récupérer la liste des codes adresses de livraison en fonction d'un code dépot chargeur
+#* </td></table>
+#* @public
+#* @param WBPCEPI (<font color="#7F0055"><b>Char</b></font>) Code client EPALIS
+#* @param WCODADR (<font color="#7F0055"><b>Char</b></font>) Tableau des codes adresse de livraison
+#* @param WNOMADR (<font color="#7F0055"><b>Char</b></font>) Tableau des nom de l'adresse
+#* @since <font color="green">Version 6.5</font>
+#*!
+Subprog GET_ADR_DEPOT(WBPCEPI,WCODADR,WNOMADR)
+  Variable Char WBPCEPI
+  Variable Char WCODADR()(0..499)
+  Variable Char WNOMADR()(0..499)
+
+If clalev([F:BPD])=0 : Local File BPDLVCUST [BPD] : Endif
+If clalev([F:BPA])=0 : Local File BPADDRESS [BPA] : Endif
+Local Integer WLIG : WLIG = 0
+For [F:BPD]BPD0 Where [F:BPD]BPCNUM=WBPCEPI and [F:BPD]ENAFLG=2 and [F:BPD]ZEPIADR=2
+  WCODADR(WLIG) = [F:BPD]BPAADD
+  Read [F:BPA]BPA0=1;WBPCEPI;[F:BPD]BPAADD
+  If(fstat=0)Then
+    WNOMADR(WLIG) = [F:BPA]BPADES
+  Endif
+  WLIG += 1
+Next
+End
+
+#**
+#* Documentation de la procédure ENTREE_DIVERSE
+#* <table>
+#* <tr><td><b>Société</b></td><td><b><u><font color="#046380">MICROFIRST</font></u></b></td>
+#* <tr><td><b>Auteur</b></td><td>JBS</td>
+#* <tr><td><b>Date de création</b></td><td>19 juin 2015</td>
+#* <tr><td valign="top"><b>Description de la procédure</b></td><td>
+#* Cette méthode permet la création d'une livraison depuis le logiciel EPALIS
+#* La variable INFO contient du texte représentant le déroulement du traitement
+#* La variable RESULT contient 1 si tout est OK sinon elle vaut 1
+#* </td></table>
+#* @public
+#* @param INFO (<font color="#7F0055"><b>Char</b></font>) Information de retour
+#* @param RESULT (<font color="#7F0055"><b>Integer</b></font>) Variable résultat du sous-programme
+#* @since <font color="green">Version 5</font>
+#*!
+Subprog ENTREE_DIVERSE(INFO,RESULT)
+  Variable Char INFO
+  Variable Integer RESULT
+  RESULT = 1
+  INFO = "Traitement terminé avec succès"
+  #Nous allons travailler par Import/Export.
+  #Nous disposons du modèle d'import : ZEPALIS
+  #Nous disposons également de la variable globale GZREPLIV qui contient le répertoire de création des fichiers d'import
+
+  #Ouverture du fichier Trace
+  Local Char TIT(30) :[L]TIT ="Entrée diverse EPALIS"
+  If !GSERVEUR : Call OUVRE_TRACE(TIT) From LECFIC : Endif
+  If dim(GZECREPSOH)<=0
+    RESULT = 0
+    INFO = "[2] - Paramètre Chemin import pour création de la livraison inexistant. Vérifiez."
+    End
+  Elsif GZECREPSOH=""
+    RESULT = 0
+    INFO = "[3] - Paramètre Chemin import pour création de la livraison non renseigné. Vérifiez."
+    End
+  Endif
+  If dim(GZECMODIMP)<=0
+    RESULT = 0
+    INFO = "[4] - Paramètre Modèle import pour création de la livraison inexistant. Vérifiez."
+    End
+  Elsif GZECMODIMP=""
+    RESULT = 0
+    INFO = "[5] - Paramètre Modèle import pour création de la livraison non renseigné. Vérifiez."
+    End
+  Endif
+
+  Local Char ZNOMFIC(250), WMESS(250)
+  Local Integer WERR
+
+  If clalev([F:AOE])=0 : Local File AOBJEXT : Endif
+
+  Read [F:AOE]AOE0="ZEPALIS"
+  If fstat
+    RESULT = 0
+    INFO = "[6] - Modèle import pour création du règlement inexistant. Vérifiez."
+    End
+  Endif
+
+  # Définition complète du nom du fichier
+  ZNOMFIC=GZREPLIV
+  If right$(GZREPLIV,len(GZREPLIV))<>"\"
+      ZNOMFIC += "\"
+  Endif
+
+  #Ouverture des fichiers
+  Call ECR_TRACE("Ouverture du fichier des commandes\",0) From GESECRAN
+  If clalev([F:ZIE])=0 : Local File ZEPALIS [F:ZIE] : Endif
+  If clalev([F:ZIE3])=0 : Local File ZEPALIS [F:ZIE3] : Endif
+  If clalev([F:BPC])=0 : Local File BPCUSTOMER [F:BPC] : Endif
+
+  #Les articles de tri sont attachés à un tiers payeur, il faudra faire autant de livraison que de tiers payeur
+  Local Char ZBPCNUM(20)(299)
+  Local Char ZLBPCNUM(250)
+  Local Integer ZIND : ZIND = 0
+  Local Integer ZARTTRIOK : ZARTTRIOK = 0
+#    For [F:SOP2]SOP0 Where [F:SOP2]SOHNUM=NUMCDE
+  For P=0 To [M:Z2AE1]NBLIG-1
+    Local Integer WLIGAFACT : WLIGAFACT = [M:Z2AE1]ZPRESTFACT(P)
+    Local Integer WARTPRESTOK : WARTPRESTOK = 0
+    #L'article est de type TRI
+    ZARTTRIOK = 1
+    #Avant toute chose, on va regarder si cet article de tri possède des articles de prestation
+    For [F:ZIE]ZIE0 Where [F:ZIE]CODE_CHARGEU=[M:Z2AE0]ZBPCORD and [F:ZIE]ART_TRI=[M:Z2AE1]ZITMREF(P) and [F:ZIE]TYPE_PREST=1
+& and (instr(1,";"+[F:ZIE]ZSITE+";",";"+[M:Z2AE0]ZFCY+";")>0 or ([F:ZIE]ZSITE="" and instr(1,";"+[F:ZIE]ZOTHERSITE+";",";"+[M:Z2AE0]ZFCY+";")=0))
+& and (instr(1,";"+[F:ZIE]ZPAYS+";",";"+[M:Z2AE1]ZPAYSCOLL+";")>0 or ([F:ZIE]ZPAYS="" and instr(1,";"+[F:ZIE]ZOTHERPAYS+";",";"+[M:Z2AE1]ZPAYSCOLL+";")=0))
+      WARTPRESTOK = 1
+    Next
+    If(WARTPRESTOK=1 and WLIGAFACT=2)Then
+      #On va lire le code payeur de cette article
+      Read[F:ZIE]ZIE1=[M:Z2AE0]ZBPCORD;[M:Z2AE1]ZITMREF(P)
+      If(fstat=0)Then
+        If(instr(0,ZLBPCNUM,";" + [F:ZIE]CODE_PAYEUR + ";")=0)Then
+          ZBPCNUM(ZIND) = [F:ZIE]CODE_PAYEUR
+          If(ZLBPCNUM="")Then
+            ZLBPCNUM = ";"
+          Endif
+          ZLBPCNUM = ZLBPCNUM + [F:ZIE]CODE_PAYEUR + ";"
+          ZIND = ZIND + 1
+        Endif
+      Endif
+    Endif
+  Next
+  If(ZIND<>0)Then
+    #On va parcourir le tableau des code payeur
+    Local Char WFICHIER(250)
+    For I=0 To ZIND-1
+      WFICHIER = ZNOMFIC + "ZLIV_CEPI_" + ZBPCNUM(I) + ".TXT"
+      Call ECR_TRACE("Création du fichier d'import livraison pour le client " + ZBPCNUM(I),0) From GESECRAN
+      # Création du fichier
+      Onerrgo PBCREATFICTXT From Z2WSEPALIS
+      Openo WFICHIER,0
+      Onerrgo
+      If WERR>0
+        Case WERR
+          When 20
+            RESULT = 0
+            INFO = "[7] - Répertoire inexistant. Arrêt du traitement."
+          When 27
+            RESULT = 0
+            INFO = "[8] - Accès impossible (permission refusée) au répertoire. Arrêt du traitement."
+          When 44
+            RESULT = 0
+            INFO = "[9] - Problème de place disque sur le répertoire. Arrêt du traitement."
+          When Default
+            RESULT = 0
+            INFO = "[10] - Problème système rencontré lors de la création du fichier ("+errmes$(WERR)+"). Arrêt du traitement."
+        Endcase
+        End
+      Endif
+      adxirs = chr$(13)+chr$(10)
+      adxifs = ";"
+      # Entête de la livraison
+      # E, No livraison, Site vente, Site expédition, Client commande, Devise, Date expédition, Code chauffeur, No commande EPALIS, No export EPALIS
+      #      Wrseq "E","",[F:SOH2]SALFCY,[F:SOH2]STOFCY,[F:SOH2]BPCORD,[F:SOH2]CUR,date$,ZBPCNUM(I),NUMCDE,num$(I+1)
+      #      Wrseq "E","",[F:SOH2]SALFCY,[F:SOH2]STOFCY,ZBPCNUM(I),[F:SOH2]CUR,date$,"EPALI",NUMCDE,num$(I+1),[F:SOH2]CCE(0),[F:SOH2]CCE(1)
+      #      Wrseq "E","",[F:SOH2]SALFCY,[F:SOH2]STOFCY,ZBPCNUM(I),[F:SOH2]CUR,[F:SOH2]ZDATTRI,"EPALI",NUMCDE,num$(I+1),[F:SOH2]CCE(0),[F:SOH2]CCE(1)
+      Local Char WSITE(30) : WSITE = [M:Z2AE0]ZFCY
+      If clalev([F:ZBPC])=0 : Local File BPCUSTOMER [F:ZBPC] : Endif
+      #Lecture de l'enregistrement
+      Read [F:ZBPC]BPC0=[M:Z2AE0]ZBPCORD
+      If(fstat=0)Then
+        If([F:ZBPC]ZFACTURATION=2)Then
+          WSITE = "E"    #Facturation gmobale
+        Endif
+      Endif
+      Local Mask SOH0
+      Local Char WSECTION(30)
+      [M:SOH0]SALFCY=[M:Z2AE0]ZFCY
+      Call INISEC([L]WSECTION,"SOH","AX1") From SUBCDE
+      Local Char WAXEANA(30) : WAXEANA = "GD"
+      #On va lire l'axe analytique EPALIS métier du client
+      Read [F:BPC]BPC0=[M:Z2AE0]ZBPCORD
+      If(fstat=0)Then
+        WAXEANA = [F:BPC]ZAXEMETEPI
+      Endif
+      #----------MODIFICATION JBS DU 14/11/2017----------
+      Local Date WDATEFFET : WDATEFFET = func Z2WSEPALISB.SPE_GET_DATEFFET([M:Z2AE1]ZDATACT,1)
+#      Wrseq "E","",WSITE,WSITE,ZBPCNUM(I),"EUR",[M:Z2AE1]ZDATACT,"00001",[M:Z2AE0]ZCOMPTEUR,num$(I+1),WSECTION,WAXEANA
+      #<---------MODIFICATION JBS DU 17/05/2018----------
+      #Il faut maintenant passer dans le modèle d'import le champ DLVDAT
+      Wrseq "E","",WSITE,WSITE,ZBPCNUM(I),"EUR",WDATEFFET,WDATEFFET,"00001",[M:Z2AE0]ZCOMPTEUR,num$(I+1),WSECTION,WAXEANA,[M:Z2AE1]ZDATACT
+      #Wrseq "E","",WSITE,WSITE,ZBPCNUM(I),"EUR",WDATEFFET,"00001",[M:Z2AE0]ZCOMPTEUR,num$(I+1),WSECTION,WAXEANA,[M:Z2AE1]ZDATACT
+      #------------------------------------------------->
+      #--------------------------------------------------
+#        For [F:SOP2]SOP0 Where [F:SOP2]SOHNUM=NUMCDE
+      For J=0 To [M:Z2AE1]NBLIG-1
+        #On regarde si la prestation est facturable
+        If([M:Z2AE1]ZPRESTFACT(J)=2)Then
+          #On va lire le code payeur de cette article
+          Read[F:ZIE]ZIE1=[M:Z2AE0]ZBPCORD;[M:Z2AE1]ZITMREF(J)
+          If(fstat=0)Then
+            If([F:ZIE]CODE_PAYEUR=ZBPCNUM(I))Then
+              # Ligne de la livraison
+              # L, Code article, Quantité livrée, Prix brut, Valeur1 remise/frais, Valeur2 remise/frais, Valeur3 remise/frais,Code art tri, qualité article
+              If([M:Z2AE1]ZTYPPAL(J)=1)Then #La palette est de type bonne
+                For [F:ZIE3]ZIE2 Where [F:ZIE3]CODE_CHARGEU=[M:Z2AE0]ZBPCORD and [F:ZIE3]ART_TRI=[M:Z2AE1]ZITMREF(J) and [F:ZIE3]TYPE_PAL=1 and [F:ZIE3]TYPE_PREST=1
+                  Local Decimal WPRIX : WPRIX = [F:ZIE3]PRIX
+                  If(([F:ZIE3]ZCODCLTCHARG="" or instr(1,";"+[F:ZIE3]ZCODCLTCHARG+";",";"+[M:Z2AE0]ZBPCORD+";"))
+& and (([F:ZIE3]ZSITE="" and instr(1,";"+[F:ZIE3]ZOTHERSITE+";",";"+[M:Z2AE0]ZFCY+";")=0) or instr(1,";"+[F:ZIE3]ZSITE+";",";"+[M:Z2AE0]ZFCY+";")>0)
+& and (([F:ZIE3]ZPAYS="" and instr(1,";"+[F:ZIE3]ZOTHERPAYS+";",";"+[M:Z2AE1]ZPAYSCOLL+";")=0) or instr(1,";"+[F:ZIE3]ZPAYS+";",";"+[M:Z2AE1]ZPAYSCOLL+";")>0)
+&)Then
+                    If([F:ZIE3]TYPE_PRIX=2)Then
+                      WPRIX = WPRIX/[M:Z2AE1]ZQTY(J)
+                    Endif
+                    Wrseq "L",[F:ZIE3]ART_PREST,[M:Z2AE1]ZQTY(J),WPRIX,0,0,0,[M:Z2AE1]ZITMREF(J),1,WSECTION,WAXEANA
+                  Endif
+                Next
+              Elsif([M:Z2AE1]ZTYPPAL(J)=2)Then #La palette est de type à réparer
+                For [F:ZIE3]ZIE2 Where [F:ZIE3]CODE_CHARGEU=[M:Z2AE0]ZBPCORD and [F:ZIE3]ART_TRI=[M:Z2AE1]ZITMREF(J) and [F:ZIE3]TYPE_PAL=2 and [F:ZIE3]TYPE_PREST=1
+                  Local Decimal WPRIX : WPRIX = [F:ZIE3]PRIX
+                  If(([F:ZIE3]ZCODCLTCHARG="" or instr(1,";"+[F:ZIE3]ZCODCLTCHARG+";",";"+[M:Z2AE0]ZBPCORD+";"))
+& and (([F:ZIE3]ZSITE="" and instr(1,";"+[F:ZIE3]ZOTHERSITE+";",";"+[M:Z2AE0]ZFCY+";")=0) or instr(1,";"+[F:ZIE3]ZSITE+";",";"+[M:Z2AE0]ZFCY+";")>0)
+& and (([F:ZIE3]ZPAYS="" and instr(1,";"+[F:ZIE3]ZOTHERPAYS+";",";"+[M:Z2AE1]ZPAYSCOLL+";")=0) or instr(1,";"+[F:ZIE3]ZPAYS+";",";"+[M:Z2AE1]ZPAYSCOLL+";")>0)
+&)Then
+                    If([F:ZIE3]TYPE_PRIX=2)Then
+                      WPRIX = WPRIX/[M:Z2AE1]ZQTY(J)
+                    Endif
+                    Wrseq "L",[F:ZIE3]ART_PREST,[M:Z2AE1]ZQTY(J),WPRIX,0,0,0,[M:Z2AE1]ZITMREF(J),2,WSECTION,WAXEANA
+                  Endif
+                Next
+              Elsif([M:Z2AE1]ZTYPPAL(J)=3)Then #La palette est de type HS
+                For [F:ZIE3]ZIE2 Where [F:ZIE3]CODE_CHARGEU=[M:Z2AE0]ZBPCORD and [F:ZIE3]ART_TRI=[M:Z2AE1]ZITMREF(J) and [F:ZIE3]TYPE_PAL=3 and [F:ZIE3]TYPE_PREST=1
+                  Local Decimal WPRIX : WPRIX = [F:ZIE3]PRIX
+                  If(([F:ZIE3]ZCODCLTCHARG="" or instr(1,";"+[F:ZIE3]ZCODCLTCHARG+";",";"+[M:Z2AE0]ZBPCORD+";"))
+& and (([F:ZIE3]ZSITE="" and instr(1,";"+[F:ZIE3]ZOTHERSITE+";",";"+[M:Z2AE0]ZFCY+";")=0) or instr(1,";"+[F:ZIE3]ZSITE+";",";"+[M:Z2AE0]ZFCY+";")>0)
+& and (([F:ZIE3]ZPAYS="" and instr(1,";"+[F:ZIE3]ZOTHERPAYS+";",";"+[M:Z2AE1]ZPAYSCOLL+";")=0) or instr(1,";"+[F:ZIE3]ZPAYS+";",";"+[M:Z2AE1]ZPAYSCOLL+";")>0)
+&)Then
+                    If([F:ZIE3]TYPE_PRIX=2)Then
+                      WPRIX = WPRIX/[M:Z2AE1]ZQTY(J)
+                    Endif
+                    Wrseq "L",[F:ZIE3]ART_PREST,[M:Z2AE1]ZQTY(J),WPRIX,0,0,0,[M:Z2AE1]ZITMREF(J),3,WSECTION,WAXEANA
+                  Endif
+                Next
+              Endif
+            Endif
+          Endif
+        Endif
+      Next
+      # Fermeture du fichier
+      Openo
+      # Import du fichier
+      #Call ECR_TRACE("Début de l'importation du fichier : |" + WFICHIER + "|",0) from GESECRAN
+      Gosub OUVRE From GIMPOBJ
+      [M:IMP2]MODIMP="ZEPALIS"
+      [M:IMP2]TYPEXP=2
+      [M:IMP2]NOMIMP=WFICHIER
+      GSERVEUR=1
+      Gosub EXEC From GIMPOBJ
+      GSERVEUR=0
+      #Call ECR_TRACE("Fin de l'importation du fichier",0) from GESECRAN
+      # On va maintenant rechercher la livraison pour savoir si tout c'est bien passé
+      If clalev([F:SDH2])=0 : Local File SDELIVERY [F:SDH2] : Endif
+      Filter [F:SDH2] Where [F:SDH2]ZSOHNUMEPI=[M:Z2AE0]ZCOMPTEUR and [F:SDH2]ZNUMEPI=(I+1)
+        Read [F:SDH2]SDH0 First
+        If fstat
+          INFO = "[13] - Erreur de création de la livraison depuis la commande."
+        Else
+          INFO = "Livraison numéro "+[F:SDH2]SDHNUM+" correctement créé."
+          Call ECR_TRACE("La livraison " + [F:SDH2]SDHNUM + " a été correctement crée.",0) From GESECRAN
+        Endif
+      Filter [F:SDH2]
+    Next
+  Else
+    If(ZARTTRIOK=1)Then
+      Call ECR_TRACE("Pas de création de livraison EPALIS car aucun article de type PRESTATION",0) From GESECRAN
+    Else
+      #Il n'y a rien a traiter
+      RESULT = 0
+      INFO = "[12] - Rien a traiter aucun article de tri ou pas d'article de type prestation dans cette commande."
+    Endif
+  Endif
+    #----------------------------------------------------------------------------------------------------------
+    #----------------------------------------------------------------------------------------------------------
+    #----------------------------------------------------------------------------------------------------------
+    #--------------ALIMENTATION D'UNE PRECOMMANDE POUR LES ARTICLES PRESTATION DE TYPE PRESTATION--------------
+    #----------------------------------------------------------------------------------------------------------
+    #----------------------------------------------------------------------------------------------------------
+    #----------------------------------------------------------------------------------------------------------
+    #On vient de faire les différent BL de prestation
+    #Nous allons maintenant alimenter une précommande de vente pour matérialiser le stock physique.
+    #Ce traitement ne se fait que si l'axe métier défini sur l'onglet EPALIS du client est différent de GD
+    Local Char WCLIENT(30) : WCLIENT = [M:Z2AE0]ZBPCORD
+    Local Char WAXEANA(30) : WAXEANA = "GD"
+    #On va lire l'axe analytique EPALIS métier du client
+    Read [F:BPC]BPC0=WCLIENT
+    If(fstat=0)Then
+      WAXEANA = [F:BPC]ZAXEMETEPI
+    Endif
+    #Modification effectuée par JBS le 01/03/2017 Pb entrée diverse quand axe analytique GD
+    #If(WAXEANA<>"GD")Then
+    If(WAXEANA<>"TOTOTOTOTOTO")Then
+      Local Integer WPREST : WPREST = 0
+      Local Char WBPCORD(30)
+      Local Char WSITE(30)
+      WBPCORD = [M:Z2AE0]ZBPCORD
+      WSITE = [M:Z2AE0]ZFCY
+      For P=0 To [M:Z2AE1]NBLIG-1
+        For [F:ZIE3]ZIE2 Where [F:ZIE3]CODE_CHARGEU=WBPCORD and [F:ZIE3]ART_TRI=[M:Z2AE1]ZITMREF(P) and [F:ZIE3]TYPE_PREST=1
+& and (instr(1,";"+[F:ZIE3]ZSITE+";",";"+[M:Z2AE0]ZFCY+";")>0 or ([F:ZIE3]ZSITE="" and instr(1,";"+[F:ZIE3]ZOTHERSITE+";",";"+[M:Z2AE0]ZFCY+";")=0))
+& and (instr(1,";"+[F:ZIE3]ZPAYS+";",";"+[M:Z2AE1]ZPAYSCOLL+";")>0 or ([F:ZIE3]ZPAYS="" and instr(1,";"+[F:ZIE3]ZOTHERPAYS+";",";"+[M:Z2AE1]ZPAYSCOLL+";")=0))
+          WPREST = 1
+        Next
+      Next
+      If(WPREST=1)Then
+        Call ECR_TRACE("La commande EPALIS contient des articles prestation de type prestation",0) From GESECRAN
+        If clalev([F:BPC])=0 : Local File BPCUSTOMER [BPC]: Endif
+        If clalev([F:BPR])=0 : Local File BPARTNER [BPR]  : Endif
+        If clalev([F:BPD])=0 : Local File BPDLVCUST [BPD] : Endif
+        If clalev([F:TCU])=0 : Local File TABCUR [TCU]    : Endif
+        If clalev([F:FCY])=0 : Local File FACILITY [FCY]  : Endif
+        If clalev([F:ZPD])=0 : Local File ZPSORDERD [ZPD] : Endif
+        If clalev([F:ITM])=0 : Local File ITMMASTER [ITM] : Endif
+        If clalev([F:ZSE])=0 : Local File ZPSEPALIS [ZSE] : Endif
+        #On est dans le cas ou on a des articles de prestation de type prestation
+        #On va maintenant regarder s'il existe déjà une précommande de vente pour ce client
+        #ce site et de type EPALIS et que cette precommande est ouverte
+        Local Integer WPCENTETE : WPCENTETE = 0
+        Local Integer WENTETEOK : WENTETEOK = 0
+        Local Char WYPSNUM(15)
+        If clalev([F:ZPS])=0 : Local File ZPSORDER [F:ZPS] : Endif
+        For [F:ZPS]ZPS0 Where [F:ZPS]BPCORD=WBPCORD and [F:ZPS]STOFCY=WSITE and [F:ZPS]ZFLGEPALIS=2 and [F:ZPS]ZPSDAT<=date$ and [F:ZPS]ZDATVAL=[0/0/0] and [F:ZPS]ZFLGSOLDE<>2 and [F:ZPS]ZFLGSOLMAN
+& <>2
+          WPCENTETE = 1
+          WYPSNUM = [F:ZPS]ZPSNUM
+          Call ECR_TRACE("Une précommande ouverte pour le chargeur " + WBPCORD + " existe déja (" + WYPSNUM + ")",0) From GESECRAN
+        Next
+        If(WPCENTETE=0)Then
+          #Création de l'entête de la précommande
+          Call ECR_TRACE("Aucune précommande ouverte n'existe pour ce chargeur",0) From GESECRAN
+          Local Integer WSTAT
+          Call NUMERO("ZEPP",WSITE,date$,"",WYPSNUM,WSTAT) From SUBANM
+          If GOK<0 : Return : Endif
+          If WSTAT=0
+            Raz [F:ZPS]
+            [F:ZPS]ZPSNUM = WYPSNUM
+            Read [F:BPC]BPC0=WBPCORD
+            If fstat=0
+              [F:ZPS]BPCORD = WBPCORD
+              [F:ZPS]BPCNAM = [F:BPC]BPCNAM
+              [F:ZPS]BPCINV = [F:BPC]BPCINV
+              [F:ZPS]BPCPYR = [F:BPC]BPCPYR
+              [F:ZPS]CHGTYP = [F:BPC]CHGTYP
+              [F:ZPS]VACBPR = [F:BPC]VACBPR
+              [F:ZPS]PTE    = [F:BPC]PTE
+            Endif
+            # Récup infos depuis BPDLVCUST
+            Filter [F:BPD] Where [F:BPD]BPCNUM=WBPCORD
+              Read [F:BPD]BPD0 First
+              If fstat=0
+                [F:ZPS]BPAADD = [F:BPD]BPAADD
+                [F:ZPS]BPTNUM = [F:BPD]BPTNUM
+                [F:ZPS]MDL    = [F:BPD]MDL
+              Endif
+            Filter [F:BPD]
+            # Récup infos depuis BPARTNER
+            Read [F:BPR]BPR0=WBPCORD
+            If fstat=0
+              [F:ZPS]CUR = [F:BPR]CUR
+              # On se place dans TABCUR pour le calcul du prix total ligne
+              Read [F:TCU]TCU0=[F:BPR]CUR
+              If fstat
+                Raz [F:TCU]
+              Endif
+              [F:ZPS]LAN = [F:BPR]LAN
+            Endif
+            [F:ZPS]ZCUSORDREF = ""
+            [F:ZPS]ZPSDAT = date$
+            [F:ZPS]DEMDLVDAT = date$
+            [F:ZPS]CREUSR = GUSER
+            [F:ZPS]CREDAT = date$
+            [F:ZPS]UPDUSR = GUSER
+            [F:ZPS]UPDDAT = date$
+            [F:ZPS]STOFCY = WSITE
+            Read [F:FCY]FCY0=WSITE
+            If fstat=0
+              [F:ZPS]ZFCYAREA = [F:FCY]ZFCYAREA
+            Endif
+            [F:ZPS]ZPCNAT = 1
+            [F:ZPS]ZFLGSOLDE = 1
+            [F:ZPS]ZFLGVALIDE = 1
+            [F:ZPS]ZFLGSOLMAN = 1
+            [F:ZPS]ZFLGEPALIS = 2
+            Local Mask SOH0
+            Local Char WSECTION(30)
+            [M:SOH0]SALFCY=[M:Z2AE0]ZFCY
+            Call INISEC([L]WSECTION,"SOH","AX1") From SUBCDE
+            [F:ZPS]ZAXE1 = WSECTION
+            Local Char WAXEANA(30) : WAXEANA = "GD"
+            #On va lire l'axe analytique EPALIS métier du client
+            Read [F:BPC]BPC0=WCLIENT
+            If(fstat=0)Then
+              WAXEANA = [F:BPC]ZAXEMETEPI
+            Endif
+            [F:ZPS]ZAXE1=WSECTION
+            [F:ZPS]ZAXE2=WAXEANA
+            Write [F:ZPS]
+            If(fstat=0)Then
+              WENTETEOK = 1
+              Call ECR_TRACE("Une précommande ouverte vient d'être créée pour ce chargeur (" + WYPSNUM + ")",0) From GESECRAN
+            Endif
+          Else
+            GERR=1
+            GMESSAGE=mess(60,199,1)
+            GOK=0
+            Return
+          Endif
+        Endif
+        #On va maintenant créer les lignes de la précommande
+        If(WPCENTETE=1 or WENTETEOK=1)Then
+          #On dispose de la variable WYPSNUM contenant le N° de la précommande
+          #On va récupérer le dernier N° de ligne de la précommande
+          Local Integer WNUMLIG : WNUMLIG = 0
+          For [F:ZPD]ZPD0 Where [F:ZPD]ZPSNUM=WYPSNUM
+            If([F:ZPD]ZPDLIN>WNUMLIG)Then
+              WNUMLIG = [F:ZPD]ZPDLIN
+            Endif
+          Next
+          WNUMLIG = WNUMLIG + 1000
+          Call ECR_TRACE("Alimentation des lignes de la précommande",0) From GESECRAN
+          For K=0 To [M:Z2AE1]NBLIG-1
+            #On regarde si l'article de type tri a des articles de prestation dont le type est égal à prestation
+            For [F:ZIE3]ZIE2 Where [F:ZIE3]CODE_CHARGEU=WBPCORD and [F:ZIE3]ART_TRI=[M:Z2AE1]ZITMREF(K) and [F:ZIE3]TYPE_PREST=1 and [F:ZIE3]TYPE_PAL=[M:Z2AE1]ZTYPPAL(K)
+              If(([F:ZIE3]ZCODCLTCHARG="" or instr(1,";"+[F:ZIE3]ZCODCLTCHARG+";",";"+[M:Z2AE0]ZBPCORD+";"))
+& and (([F:ZIE3]ZSITE="" and instr(1,";"+[F:ZIE3]ZOTHERSITE+";",";"+[M:Z2AE0]ZFCY+";")=0) or instr(1,";"+[F:ZIE3]ZSITE+";",";"+[M:Z2AE0]ZFCY+";")>0)
+& and (([F:ZIE3]ZPAYS="" and instr(1,";"+[F:ZIE3]ZOTHERPAYS+";",";"+[M:Z2AE1]ZPAYSCOLL+";")=0) or instr(1,";"+[F:ZIE3]ZPAYS+";",";"+[M:Z2AE1]ZPAYSCOLL+";")>0)
+&)Then
+                WPREST = 1
+                Read [F:ZPD]ZPD2=WYPSNUM;[F:ZIE3]ART_PREST
+                If(fstat=0)Then
+                  #La ligne existe, on va donc mettre à jour la quantité
+                  Local Decimal WQTE : WQTE = 0
+                  If([F:ZIE3]TYPE_PAL=1)Then
+                    WQTE = [M:Z2AE1]ZQTY(K)
+                    [F:ZPD]QTYOK = [F:ZPD]QTYOK + WQTE
+# MODIFICATION du 19/03/2015, on alimente la quantité sur la ligne de précommande que pour les palettes bonnes
+#                  Elsif([F:ZIE3]TYPE_PAL=2)Then
+#                    WQTE = [F:SOQ2]ZQTYAREP
+#                    [F:ZPD]QTYKC = [F:ZPD]QTYKC + WQTE
+#                  Elsif([F:ZIE3]TYPE_PAL=3)Then
+#                    WQTE = [F:SOQ2]ZQTYHS
+                  Endif
+                  #On ne met à jour la qté que pour les article dont le type est différent de Transformation
+                  If([F:ZIE3]TYPE_PREST<>3 and [F:ZIE3]TYPE_PREST<>6)Then
+                    [F:ZPD]QTY = [F:ZPD]QTY + WQTE
+                  Endif
+                  [F:ZPD]GROPRI = 0
+                  [F:ZPD]NETPRI = 0
+                  [F:ZPD]AMTNOTLIN = 0
+#                [F:ZPD]ZARNUM = [F:ZIE3]ZARNUM
+                  Rewrite [F:ZPD]
+                  If([F:ZIE3]TYPE_PREST<>3 and [F:ZIE3]TYPE_PREST<>6)Then
+                    Call ECR_TRACE("Une ligne pour l'article " + [F:ZIE3]ART_PREST + " existe déjà. Ajout de la quantité : " + num$(WQTE),0) From GESECRAN
+                  Else
+                    Call ECR_TRACE("Une ligne pour l'article " + [F:ZIE3]ART_PREST + " existe déjà. L'article est de type transformation, on n'ajoute pas de quantité.",0) From GESECRAN
+                  Endif
+                Else
+                  #La ligne n'existe pas, on va la crééer
+                  Raz [F:ZPD]
+                  [F:ZPD]ZPSNUM = WYPSNUM
+                  [F:ZPD]ZPDLIN = WNUMLIG
+                  WNUMLIG = WNUMLIG + 1000
+                  [F:ZPD]ITMREF = [F:ZIE3]ART_PREST
+                  Read [F:ITM]ITM0=[F:ZIE3]ART_PREST
+                  If(fstat=0)Then
+                    [F:ZPD]ITMDES1 = [F:ITM]ITMDES1
+                    [F:ZPD]VACITM = [F:ITM]VACITM
+                    [F:ZPD]SAU = [F:ITM]SAU
+                  Endif
+                  Local Decimal WQTE : WQTE = 0
+                  If([F:ZIE3]TYPE_PAL=1)Then
+                    WQTE = [M:Z2AE1]ZQTY(K)
+                    [F:ZPD]QTYOK = WQTE
+# MODIFICATION du 19/03/2015, on alimente la quantité sur la ligne de précommande que pour les palettes bonnes
+#                  Elsif([F:ZIE3]TYPE_PAL=2)Then
+#                    WQTE = [F:SOQ2]ZQTYAREP
+#                    [F:ZPD]QTYKC = WQTE
+#                  Elsif([F:ZIE3]TYPE_PAL=3)Then
+#                    WQTE = [F:SOQ2]ZQTYHS
+                  Endif
+                  #On ne met à jour la qté que pour les articles dont le type est différent de Transformation
+                  If([F:ZIE3]TYPE_PREST<>3 and [F:ZIE3]TYPE_PREST<>6)Then
+                    [F:ZPD]QTY = WQTE
+                  Else
+                    [F:ZPD]QTY = 0
+                  Endif
+                  [F:ZPD]QTYCDE = 0
+                  [F:ZPD]GROPRI = 0
+                  [F:ZPD]NETPRI = 0
+                  [F:ZPD]AMTNOTLIN = 0
+  #                [F:ZPD]ZARNUM = [F:ZIE3]ZARNUM
+                  Write [F:ZPD]
+                  If([F:ZIE3]TYPE_PREST<>3 and [F:ZIE3]TYPE_PREST<>6)Then
+                    Call ECR_TRACE("Création d'une ligne pour l'article " + [F:ZIE3]ART_PREST + " avec une quantité de : " + num$(WQTE),0) From GESECRAN
+                  Else
+                    Call ECR_TRACE("Création d'une ligne pour l'article " + [F:ZIE3]ART_PREST + " avec une quantité de 0 car c'est un article de type Transformation.",0) From GESECRAN
+                  Endif
+                Endif
+                #On va maintenant alimenter la table ZPSEPALIS pour le tableau des commandes EPALIS dans la précommande de vente
+                Raz [F:ZSE]
+                [F:ZSE]ZDATE = [M:Z2AE1]ZDATACT
+                [F:ZSE]ZSOHNUM = [M:Z2AE0]ZCOMPTEUR
+                [F:ZSE]ZNUMLIG = K
+                If([F:ZIE3]TYPE_PAL=1)Then
+                  [F:ZSE]ZQTY = [M:Z2AE1]ZQTY(K)
+                Elsif([F:ZIE3]TYPE_PAL=2)Then
+                  [F:ZSE]ZQTY = [M:Z2AE1]ZQTY(K)
+                Elsif([F:ZIE3]TYPE_PAL=3)Then
+                  [F:ZSE]ZQTY = [M:Z2AE1]ZQTY(K)
+                Endif
+                [F:ZSE]ZTYPPAL = [F:ZIE3]TYPE_PAL
+                [F:ZSE]ZARTTRI = [F:ZIE3]ART_TRI
+                [F:ZSE]ZARTPREST = [F:ZIE3]ART_PREST
+                [F:ZSE]ZPSNUM = WYPSNUM
+                [F:ZSE]ZPSLIG = [F:ZPD]ZPDLIN
+                [F:ZSE]ZART = [F:ZIE3]ZART
+                If(([F:ZIE3]ART_TRI<>[F:ZIE3]ZART)and([F:ZIE3]TYPE_PREST=3 or [F:ZIE3]TYPE_PREST=6))Then
+                  #On est dans le cas ou c'est une prestation de transformation
+                  If([F:ZIE3]TYPE_PAL=1)Then
+                    [F:ZSE]ZQTEATRANSF = [M:Z2AE1]ZQTY(K)
+                  Elsif([F:ZIE3]TYPE_PAL=2)Then
+                    [F:ZSE]ZQTEATRANSF = [M:Z2AE1]ZQTY(K)
+                  Endif
+                Else
+                  If([F:ZIE3]TYPE_PAL=1)Then
+                    [F:ZSE]ZQTEOK = [M:Z2AE1]ZQTY(K)
+                  Elsif([F:ZIE3]TYPE_PAL=2)Then
+                    [F:ZSE]ZQTEKC = [M:Z2AE1]ZQTY(K)
+                  Endif
+                Endif
+                [F:ZSE]ZDATEACT = date$
+                [F:ZSE]ZSAVDATACT = date$
+                [F:ZSE]ZFACTRELOC = 1
+                [F:ZSE]ZTYPPREST = [F:ZIE3]TYPE_PREST
+                #---Le 09/11/2016 - Ajout suite à la mise en place du champ ZSITECOLL dans ZPSEPALIS---
+                [F:ZSE]ZSITECOLL = [M:Z2AE0]ZFCY
+                #--------------------------------------------------------------------------------------
+                #---Le 17/11/2016 - Ajout suite à la mise en place du champ ZPAYSCOLL dans ZPSEPALIS---
+                [F:ZSE]ZPAYSCOLL = [M:Z2AE1]ZPAYSCOLL
+                #--------------------------------------------------------------------------------------
+                #---Le 20/02/2017 - Ajout suite à la mise en place du champ ZNONSTOCK dans ZARTTRI ----
+                #A ce stade si [F:ZIE3]TYPE_PAL=1 (Bonne) et [F:ZIE3]TYPE_PREST=1 (collecte - directe) et [F:ZIE3]ZARTSTOCKE=1 (non)
+                #TODO
+                If([F:ZIE3]TYPE_PAL=1 and [F:ZIE3]TYPE_PREST=1 and [F:ZIE3]ZARTSTOCKE=1)Then
+                  [F:ZSE]ZQTYLIV=[F:ZSE]ZQTEOK
+                  [F:ZSE]ZSDHNUM="Art non reloc"
+                  [F:ZSE]ZSDDLIN=1000
+                Endif
+                #--------------------------------------------------------------------------------------
+                Local Integer WSTAT
+                Local Char WSEQ(15)
+                Call NUMERO("ZPSE","",date$,"",WSEQ,WSTAT) From SUBANM
+                If WSTAT=0
+                  [F:ZSE]ZSEQ = WSEQ
+                Endif
+                #On ecrit la ligne que si [F:ZSE]ZQTY<>0
+                If([F:ZSE]ZQTY)Then
+                  Write [F:ZSE]
+                  Call SET_HISTO_STOCK(WSEQ,[M:Z2AE0]ZCOMPTEUR,"C")
+                  Call ECR_TRACE("      --> Alimentation de la table d'historisation des quantités ajoutées à la précommande",0) From GESECRAN
+                Endif
+              Endif
+            Next
+          Next
+        Endif
+      Endif
+    Endif
+
+
+
+
+  #--------------------------------------------------------------------------------------------------------------------
+  #--------------------------------------------------------------------------------------------------------------------
+  #--------------------------------------------------------------------------------------------------------------------
+  #--On va maintenant Alimenter une précommande de vente ouverte avec les articles prestations de type relocalisation--
+  #--------------------------------------------------------------------------------------------------------------------
+  #--------------------------------------------------------------------------------------------------------------------
+  #--------------------------------------------------------------------------------------------------------------------
+  Local Integer WPREST : WPREST = 0
+  Local Char WBPCORD(30)
+  Local Char WSITE(30)
+  WBPCORD = [M:Z2AE0]ZBPCORD
+  WSITE = [M:Z2AE0]ZFCY
+#    For [F:SOP2]SOP0 Where [F:SOP2]SOHNUM=NUMCDE
+  For M=0 To [M:Z2AE1]NBLIG-1
+    For [F:ZIE3]ZIE2 Where [F:ZIE3]CODE_CHARGEU=WBPCORD and [F:ZIE3]ART_TRI=[M:Z2AE1]ZITMREF(M) and [F:ZIE3]TYPE_PREST<>1
+      WPREST = 1
+    Next
+  Next
+  #On va forcer la variable WPREST à 1 pour systématiquement alimenter les lignes de stock
+  WPREST = 1
+  If(WPREST=1)Then
+    Call ECR_TRACE("La commande EPALIS contient des articles prestation de type relocalisation",0) From GESECRAN
+    If clalev([F:BPC])=0 : Local File BPCUSTOMER [BPC]: Endif
+    If clalev([F:BPR])=0 : Local File BPARTNER [BPR]  : Endif
+    If clalev([F:BPD])=0 : Local File BPDLVCUST [BPD] : Endif
+    If clalev([F:TCU])=0 : Local File TABCUR [TCU]    : Endif
+    If clalev([F:FCY])=0 : Local File FACILITY [FCY]  : Endif
+    If clalev([F:ZPD])=0 : Local File ZPSORDERD [ZPD] : Endif
+    If clalev([F:ITM])=0 : Local File ITMMASTER [ITM] : Endif
+    If clalev([F:ZSE])=0 : Local File ZPSEPALIS [ZSE] : Endif
+    #On est dans le cas ou on a des articles de prestation de type relocalisation
+    #On va maintenant regarder s'il existe déjà une précommande de vente pour ce client
+    #ce site et de type EPALIS et que cette precommande est ouverte
+    Local Integer WPCENTETE : WPCENTETE = 0
+    Local Integer WENTETEOK : WENTETEOK = 0
+    Local Char WYPSNUM(15)
+    If clalev([F:ZPS])=0 : Local File ZPSORDER [F:ZPS] : Endif
+    For [F:ZPS]ZPS0 Where [F:ZPS]BPCORD=WBPCORD and [F:ZPS]STOFCY=WSITE and [F:ZPS]ZFLGEPALIS=2 and [F:ZPS]ZPSDAT<=date$ and [F:ZPS]ZDATVAL=[0/0/0] and [F:ZPS]ZFLGSOLDE<>2 and [F:ZPS]ZFLGSOLMAN<>2
+      WPCENTETE = 1
+      WYPSNUM = [F:ZPS]ZPSNUM
+      Call ECR_TRACE("Une précommande ouverte pour le chargeur " + WBPCORD + " existe déja (" + WYPSNUM + ")",0) From GESECRAN
+    Next
+    If(WPCENTETE=0)Then
+      #Création de l'entête de la précommande
+      Call ECR_TRACE("Aucune précommande ouverte n'existe pour ce chargeur",0) From GESECRAN
+      Local Integer WSTAT
+      Call NUMERO("ZEPP",WSITE,date$,"",WYPSNUM,WSTAT) From SUBANM
+      If GOK<0 : Return : Endif
+      If WSTAT=0
+        Raz [F:ZPS]
+        [F:ZPS]ZPSNUM = WYPSNUM
+        Read [F:BPC]BPC0=WBPCORD
+        If fstat=0
+          [F:ZPS]BPCORD = WBPCORD
+          [F:ZPS]BPCNAM = [F:BPC]BPCNAM
+          [F:ZPS]BPCINV = [F:BPC]BPCINV
+          [F:ZPS]BPCPYR = [F:BPC]BPCPYR
+          [F:ZPS]CHGTYP = [F:BPC]CHGTYP
+          [F:ZPS]VACBPR = [F:BPC]VACBPR
+          [F:ZPS]PTE    = [F:BPC]PTE
+        Endif
+        # Récup infos depuis BPDLVCUST
+        Filter [F:BPD] Where [F:BPD]BPCNUM=WBPCORD
+          Read [F:BPD]BPD0 First
+          If fstat=0
+            [F:ZPS]BPAADD = [F:BPD]BPAADD
+            [F:ZPS]BPTNUM = [F:BPD]BPTNUM
+            [F:ZPS]MDL    = [F:BPD]MDL
+          Endif
+        Filter [F:BPD]
+        # Récup infos depuis BPARTNER
+        Read [F:BPR]BPR0=WBPCORD
+        If fstat=0
+          [F:ZPS]CUR = [F:BPR]CUR
+          # On se place dans TABCUR pour le calcul du prix total ligne
+          Read [F:TCU]TCU0=[F:BPR]CUR
+          If fstat
+            Raz [F:TCU]
+          Endif
+          [F:ZPS]LAN = [F:BPR]LAN
+        Endif
+        [F:ZPS]ZCUSORDREF = ""
+        [F:ZPS]ZPSDAT = date$
+        [F:ZPS]DEMDLVDAT = date$
+        [F:ZPS]CREUSR = GUSER
+        [F:ZPS]CREDAT = date$
+        [F:ZPS]UPDUSR = GUSER
+        [F:ZPS]UPDDAT = date$
+        [F:ZPS]STOFCY = WSITE
+        Read [F:FCY]FCY0=WSITE
+        If fstat=0
+          [F:ZPS]ZFCYAREA = [F:FCY]ZFCYAREA
+        Endif
+        [F:ZPS]ZPCNAT = 1
+        [F:ZPS]ZFLGSOLDE = 1
+        [F:ZPS]ZFLGVALIDE = 1
+        [F:ZPS]ZFLGSOLMAN = 1
+        [F:ZPS]ZFLGEPALIS = 2
+        Local Mask SOH0
+        Local Char WSECTION(30)
+        [M:SOH0]SALFCY=[M:Z2AE0]ZFCY
+        Call INISEC([L]WSECTION,"SOH","AX1") From SUBCDE
+        [F:ZPS]ZAXE1 = WSECTION
+        Local Char WAXEANA(30) : WAXEANA = "GD"
+        #On va lire l'axe analytique EPALIS métier du client
+        Read [F:BPC]BPC0=WBPCORD
+        If(fstat=0)Then
+          WAXEANA = [F:BPC]ZAXEMETEPI
+        Endif
+        [F:ZPS]ZAXE1=WSECTION
+        [F:ZPS]ZAXE2=WAXEANA
+        Write [F:ZPS]
+        If(fstat=0)Then
+          WENTETEOK = 1
+          Call ECR_TRACE("Une précommande ouverte vient d'être créée pour ce chargeur (" + WYPSNUM + ")",0) From GESECRAN
+        Endif
+      Else
+        GERR=1
+        GMESSAGE=mess(60,199,1)
+        GOK=0
+        Return
+      Endif
+    Endif
+    #On va maintenant créer les lignes de la précommande
+    If(WPCENTETE=1 or WENTETEOK=1)Then
+      #On dispose de la variable WYPSNUM contenant le N° de la précommande
+      #On va récupérer le dernier N° de ligne de la précommande
+      Local Integer WNUMLIG : WNUMLIG = 0
+      For [F:ZPD]ZPD0 Where [F:ZPD]ZPSNUM=WYPSNUM
+        If([F:ZPD]ZPDLIN>WNUMLIG)Then
+          WNUMLIG = [F:ZPD]ZPDLIN
+        Endif
+      Next
+      WNUMLIG = WNUMLIG + 1000
+      Call ECR_TRACE("Alimentation des lignes de la précommande",0) From GESECRAN
+      #On va parcourir maintenant les lignes de la commandes
+#        For [F:SOQ2]SOQ0 Where [F:SOQ2]SOHNUM=NUMCDE
+      For N=0 To [M:Z2AE1]NBLIG-1
+        #On regarde si l'article de type tri a des articles de prestation dont le type est différent de prestation (Relocalisation ou transformation)
+        For [F:ZIE3]ZIE2 Where [F:ZIE3]CODE_CHARGEU=WBPCORD and [F:ZIE3]ART_TRI=[M:Z2AE1]ZITMREF(N) and [F:ZIE3]TYPE_PREST<>1 and [F:ZIE3]TYPE_PAL=[M:Z2AE1]ZTYPPAL(N)
+#        For [F:ZIE3]ZIE2 Where [F:ZIE3]CODE_CHARGEU=WBPCORD and [F:ZIE3]ART_TRI=[M:Z2AE1]ZITMREF(N) and [F:ZIE3]TYPE_PAL=[M:Z2AE1]ZTYPPAL(N)
+          If(([F:ZIE3]ZCODCLTCHARG="" or instr(1,";"+[F:ZIE3]ZCODCLTCHARG+";",";"+[M:Z2AE0]ZBPCORD+";"))
+& and (([F:ZIE3]ZSITE="" and instr(1,";"+[F:ZIE3]ZOTHERSITE+";",";"+[M:Z2AE0]ZFCY+";")=0) or instr(1,";"+[F:ZIE3]ZSITE+";",";"+[M:Z2AE0]ZFCY+";")>0)
+& and (([F:ZIE3]ZPAYS="" and instr(1,";"+[F:ZIE3]ZOTHERPAYS+";",";"+[M:Z2AE1]ZPAYSCOLL+";")=0) or instr(1,";"+[F:ZIE3]ZPAYS+";",";"+[M:Z2AE1]ZPAYSCOLL+";")>0)
+&)Then
+            WPREST = 1
+#              Read [F:ZPD]ZPD1=WYPSNUM;[F:ZIE3]ART_PREST;[F:ZIE3]ZARNUM
+            Read [F:ZPD]ZPD2=WYPSNUM;[F:ZIE3]ART_PREST
+            If(fstat=0)Then
+              #La ligne existe, on va donc mettre à jour la quantité
+              Local Decimal WQTE : WQTE = 0
+              If([F:ZIE3]TYPE_PAL=1)Then
+                WQTE = [M:Z2AE1]ZQTY(N)
+                [F:ZPD]QTYOK = [F:ZPD]QTYOK + WQTE
+# MODIFICATION du 19/03/2015, on alimente la quantité sur la ligne de précommande que pour les palettes bonnes
+#                  Elsif([F:ZIE3]TYPE_PAL=2)Then
+#                    WQTE = [F:SOQ2]ZQTYAREP
+#                    [F:ZPD]QTYKC = [F:ZPD]QTYKC + WQTE
+#                  Elsif([F:ZIE3]TYPE_PAL=3)Then
+#                    WQTE = [F:SOQ2]ZQTYHS
+              Endif
+              #On ne met à jour la qté que pour les article dont le type est différent de Transformation
+              If([F:ZIE3]TYPE_PREST<>3 and [F:ZIE3]TYPE_PREST<>6)Then
+                [F:ZPD]QTY = [F:ZPD]QTY + WQTE
+              Endif
+              [F:ZPD]GROPRI = 0
+              [F:ZPD]NETPRI = 0
+              [F:ZPD]AMTNOTLIN = 0
+#                [F:ZPD]ZARNUM = [F:ZIE3]ZARNUM
+              Rewrite [F:ZPD]
+              If([F:ZIE3]TYPE_PREST<>3 and [F:ZIE3]TYPE_PREST<>6)Then
+                Call ECR_TRACE("Une ligne pour l'article " + [F:ZIE3]ART_PREST + " existe déjà. Ajout de la quantité : " + num$(WQTE),0) From GESECRAN
+              Else
+                Call ECR_TRACE("Une ligne pour l'article " + [F:ZIE3]ART_PREST + " existe déjà. L'article est de type transformation, on n'ajoute pas de quantité.",0) From GESECRAN
+              Endif
+            Else
+              #La ligne n'existe pas, on va la crééer
+              Raz [F:ZPD]
+              [F:ZPD]ZPSNUM = WYPSNUM
+              [F:ZPD]ZPDLIN = WNUMLIG
+              WNUMLIG = WNUMLIG + 1000
+              [F:ZPD]ITMREF = [F:ZIE3]ART_PREST
+              Read [F:ITM]ITM0=[F:ZIE3]ART_PREST
+              If(fstat=0)Then
+                [F:ZPD]ITMDES1 = [F:ITM]ITMDES1
+                [F:ZPD]VACITM = [F:ITM]VACITM
+                [F:ZPD]SAU = [F:ITM]SAU
+              Endif
+              Local Decimal WQTE : WQTE = 0
+              If([F:ZIE3]TYPE_PAL=1)Then
+                WQTE = [M:Z2AE1]ZQTY(N)
+                [F:ZPD]QTYOK = WQTE
+# MODIFICATION du 19/03/2015, on alimente la quantité sur la ligne de précommande que pour les palettes bonnes
+#                  Elsif([F:ZIE3]TYPE_PAL=2)Then
+#                    WQTE = [F:SOQ2]ZQTYAREP
+#                    [F:ZPD]QTYKC = WQTE
+#                  Elsif([F:ZIE3]TYPE_PAL=3)Then
+#                    WQTE = [F:SOQ2]ZQTYHS
+              Endif
+              #On ne met à jour la qté que pour les articles dont le type est différent de Transformation
+              If([F:ZIE3]TYPE_PREST<>3 and [F:ZIE3]TYPE_PREST<>6)Then
+                [F:ZPD]QTY = WQTE
+              Else
+                [F:ZPD]QTY = 0
+              Endif
+              [F:ZPD]QTYCDE = 0
+              [F:ZPD]GROPRI = 0
+              [F:ZPD]NETPRI = 0
+              [F:ZPD]AMTNOTLIN = 0
+#                [F:ZPD]ZARNUM = [F:ZIE3]ZARNUM
+              Write [F:ZPD]
+              If([F:ZIE3]TYPE_PREST<>3 and [F:ZIE3]TYPE_PREST<>6)Then
+                Call ECR_TRACE("Création d'une ligne pour l'article " + [F:ZIE3]ART_PREST + " avec une quantité de : " + num$(WQTE),0) From GESECRAN
+              Else
+                Call ECR_TRACE("Création d'une ligne pour l'article " + [F:ZIE3]ART_PREST + " avec une quantité de 0 car c'est un article de type Transformation.",0) From GESECRAN
+              Endif
+            Endif
+            #On va maintenant alimenter la table ZPSEPALIS pour le tableau des commandes EPALIS dans la précommande de vente
+            Raz [F:ZSE]
+            [F:ZSE]ZDATE = [M:Z2AE1]ZDATACT
+            [F:ZSE]ZSOHNUM = [M:Z2AE0]ZCOMPTEUR
+            [F:ZSE]ZNUMLIG = N
+            If([F:ZIE3]TYPE_PAL=1)Then
+              [F:ZSE]ZQTY = [M:Z2AE1]ZQTY(N)
+            Elsif([F:ZIE3]TYPE_PAL=2)Then
+              [F:ZSE]ZQTY = [M:Z2AE1]ZQTY(N)
+            Elsif([F:ZIE3]TYPE_PAL=3)Then
+              [F:ZSE]ZQTY = [M:Z2AE1]ZQTY(N)
+            Endif
+            [F:ZSE]ZTYPPAL = [F:ZIE3]TYPE_PAL
+            [F:ZSE]ZARTTRI = [F:ZIE3]ART_TRI
+            [F:ZSE]ZARTPREST = [F:ZIE3]ART_PREST
+            [F:ZSE]ZPSNUM = WYPSNUM
+            [F:ZSE]ZPSLIG = [F:ZPD]ZPDLIN
+            [F:ZSE]ZART = [F:ZIE3]ZART
+            If(([F:ZIE3]ART_TRI<>[F:ZIE3]ZART)and([F:ZIE3]TYPE_PREST=3 or [F:ZIE3]TYPE_PREST=6))Then
+              #On est dans le cas ou c'est une prestation de transformation
+              If([F:ZIE3]TYPE_PAL=1)Then
+                [F:ZSE]ZQTEATRANSF = [M:Z2AE1]ZQTY(N)
+              Elsif([F:ZIE3]TYPE_PAL=2)Then
+                [F:ZSE]ZQTEATRANSF = [M:Z2AE1]ZQTY(N)
+              Endif
+            Else
+              If([F:ZIE3]TYPE_PAL=1)Then
+                [F:ZSE]ZQTEOK = [M:Z2AE1]ZQTY(N)
+              Elsif([F:ZIE3]TYPE_PAL=2)Then
+                [F:ZSE]ZQTEKC = [M:Z2AE1]ZQTY(N)
+              Endif
+            Endif
+            [F:ZSE]ZDATEACT = date$
+            [F:ZSE]ZSAVDATACT = date$
+            #------CORRECTION JBS DU 27/02/2018-----
+            #Dans le cas où l'entrée diverse est facturable, elle l'est pour
+            #les articles de prestation dont le type est différent de "Achat - directe"
+            #C'est à dire ZTYPPREST<>5
+            If([F:ZIE3]TYPE_PREST<>5)Then
+              [F:ZSE]ZFACTRELOC = [M:Z2AE1]ZPRESTFACT(N)
+            Else
+              [F:ZSE]ZFACTRELOC = 1
+            Endif
+            #---------------------------------------
+            [F:ZSE]ZTYPPREST = [F:ZIE3]TYPE_PREST
+            #---Le 09/11/2016 - Ajout suite à la mise en place du champ ZSITECOLL dans ZPSEPALIS---
+            [F:ZSE]ZSITECOLL = [M:Z2AE0]ZFCY
+            #--------------------------------------------------------------------------------------
+            #---Le 17/11/2016 - Ajout suite à la mise en place du champ ZPAYSCOLL dans ZPSEPALIS---
+            [F:ZSE]ZPAYSCOLL = [M:Z2AE1]ZPAYSCOLL
+            #--------------------------------------------------------------------------------------
+            #---Le 20/02/2017 - Ajout suite à la mise en place du champ ZNONSTOCK dans ZARTTRI ----
+            #A ce stade si [F:ZIE3]TYPE_PAL=1 (Bonne) et [F:ZIE3]TYPE_PREST=1 (collecte - directe) et [F:ZIE3]ZARTSTOCKE=1 (non)
+            #TODO
+            If([F:ZIE3]TYPE_PAL=1 and [F:ZIE3]TYPE_PREST=1 and [F:ZIE3]ZARTSTOCKE=1)Then
+              [F:ZSE]ZQTYLIV=[F:ZSE]ZQTEOK
+              [F:ZSE]ZSDHNUM="Art non reloc"
+              [F:ZSE]ZSDDLIN=1000
+            Endif
+            #--------------------------------------------------------------------------------------
+            Local Integer WSTAT
+            Local Char WSEQ(15)
+            Call NUMERO("ZPSE","",date$,"",WSEQ,WSTAT) From SUBANM
+            If WSTAT=0
+              [F:ZSE]ZSEQ = WSEQ
+            Endif
+            #On ecrit la ligne que si [F:ZSE]ZQTY<>0
+            If([F:ZSE]ZQTY)Then
+              Write [F:ZSE]
+              Call SET_HISTO_STOCK(WSEQ,[M:Z2AE0]ZCOMPTEUR,"C")
+              Call ECR_TRACE("      --> Alimentation de la table d'historisation des quantités ajoutées à la précommande",0) From GESECRAN
+            Endif
+          Endif
+        Next
+      Next
+    Endif
+  Endif
+
+
+
+
+
+
+  If !GSERVEUR :Call FERME_TRACE From LECFIC : Endif
+  TRA=1
+  If(GWEBSERV=0)Then
+    Call LEC_TRACE From LECFIC
+  Endif
+End
+
+#**
+#* Documentation de la procédure SYNC_COLL
+#* <table>
+#* <tr><td><b>Société</b></td><td><b><u><font color="#046380">MICROFIRST</font></u></b></td>
+#* <tr><td><b>Auteur</b></td><td>JBS</td>
+#* <tr><td><b>Date de création</b></td><td>31 août 2015</td>
+#* <tr><td><b>Nom de la requête</b></td><td>WSEPALIA</td>
+#* <tr><td><b>Nom de la publication</b></td><td>SYNC_COLL</td>
+#* <tr><td valign="top"><b>Description de la procédure</b></td><td>
+#* Cette méthode permet la récupération des lignes de collecte EPALI non créées par le site ou modifiées directement dans Sage X3
+#* </td></table>
+#* @public
+#* @param WNUMCHARG (<font color="#7F0055"><b>Char</b></font>) Code client du chargeur
+#* @param WDAT (<font color="#7F0055"><b>Date</b></font>) Date de création ou de modification de la collecte
+#* @param WCODECHARG (<font color="#7F0055"><b>Char</b></font>)  Code chargeur
+#* @param WFCY (<font color="#7F0055"><b>Char</b></font>) Code site EPALIA
+#* @param WSOHNUM (<font color="#7F0055"><b>Char</b></font>) N° de la commande
+#* @param WSOPLIN (<font color="#7F0055"><b>Char</b></font>) N° de la ligne de commande
+#* @param WTYPLIG (<font color="#7F0055"><b>Char</b></font>) Type de ligne (Collecte, pré-tri ou Tri)
+#* @param WITMREF (<font color="#7F0055"><b>Char</b></font>) Code article Sage X3
+#* @param WQTETOT (<font color="#7F0055"><b>Char</b></font>) Qté totale
+#* @param WQTEOK (<font color="#7F0055"><b>Char</b></font>) Qté Ok
+#* @param WQTEKC (<font color="#7F0055"><b>Char</b></font>) Qté KC
+#* @param WQTEHS (<font color="#7F0055"><b>Char</b></font>) Qté HS
+#* @param WCODECLT (<font color="#7F0055"><b>Char</b></font>) Code client final
+#* @param WDATTRI (<font color="#7F0055"><b>Char</b></font>) Date de tri
+#* @param WDATENL (<font color="#7F0055"><b>Char</b></font>) Date d'enlèvement
+#* @param WREF (<font color="#7F0055"><b>Char</b></font>) Référence de la commande Sage X3
+#* @param WCHAUF (<font color="#7F0055"><b>Char</b></font>) Chauffeur
+#* @since <font color="green">Version 6</font>
+#*!
+Subprog SYNC_COLL(WNUMCHARG,WTYPE,WCODECHARG,WFCY,WSOHNUM,WSOPLIN,WTYPLIG,WITMREF,WQTETOT
+&,WQTEOK,WQTEKC,WQTEHS,WCODECLT,WDATTRI,WDATENL,WREF,WCHAUF)
+
+  Value Char WNUMCHARG
+  Value Integer WTYPE
+  Variable Char WCODECHARG()(0..4999)
+  Variable Char WFCY()(0..4999)
+  Variable Char WSOHNUM()(0..4999)
+  Variable Decimal WSOPLIN(0..4999)
+  Variable Integer WTYPLIG(0..4999)
+  Variable Char WITMREF()(0..4999)
+  Variable Decimal WQTETOT(0..4999)
+  Variable Decimal WQTEOK(0..4999)
+  Variable Decimal WQTEKC(0..4999)
+  Variable Decimal WQTEHS(0..4999)
+  Variable Char WCODECLT()(0..4999)
+  Variable Date WDATTRI(0..4999)
+  Variable Date WDATENL(0..4999)
+  Variable Char WREF()(0..4999)
+  Variable Char WCHAUF()(0..4999)
+
+If clalev([F:ZSCE])=0 : Local File ZSYNCCOLL [ZSCE] : Endif
+If clalev([F:SOP])=0 : Local File SORDERP [SOP] : Endif
+Local Integer WLIG : WLIG = 0
+For [F:ZSCE]ZSCE0 Where [F:ZSCE]WCODECHARG=WNUMCHARG and [F:ZSCE]WTYPLIG=WTYPE #and ([F:ZSCE]WDATCRE=WDAT or [F:ZSCE]WDATMOD=WDAT)
+  WCODECHARG(WLIG) = [F:ZSCE]WCODECHARG
+  WFCY(WLIG)     = [F:ZSCE]WFCY
+  WSOHNUM(WLIG)  = [F:ZSCE]WSOHNUM
+  WSOPLIN(WLIG)  = [F:ZSCE]WSOPLIN
+  WTYPLIG(WLIG)  = [F:ZSCE]WTYPLIG
+  WITMREF(WLIG)  = [F:ZSCE]WITMREF
+  WQTETOT(WLIG)  = [F:ZSCE]WQTETOT
+  WQTEOK(WLIG)   = [F:ZSCE]WQTEOK
+  WQTEKC(WLIG)   = [F:ZSCE]WQTEKC
+  WQTEHS(WLIG)   = [F:ZSCE]WQTEHS
+  WCODECLT(WLIG) = [F:ZSCE]WCODECLT
+  WDATTRI(WLIG)  = [F:ZSCE]WDATTRI
+  WDATENL(WLIG)  = [F:ZSCE]WDATENL
+  WREF(WLIG)     = [F:ZSCE]WREF
+  WCHAUF(WLIG)   = [F:ZSCE]WCHAUF
+  #On va maintenant modifier ces enregistremens pour qu'ils ne soient pas resynchronisés la prochaine fois.
+  #Pour cela on va modifier la valeur du champ ZCREEPI de la table SORDERP pour la passer à 2
+  Read [F:SOP]SOP0=[F:ZSCE]WSOHNUM;[F:ZSCE]WSOPLIN;[F:ZSCE]WSOPSEQ
+  If(fstat=0)Then
+    [F:SOP]ZCREEPI = 2
+    Rewrite [F:SOP]
+  Endif
+  WLIG += 1
+Next
+End
+
+
+#**
+#* Documentation de la procédure GET_CLT_SYNCEPI
+#* <table>
+#* <tr><td><b>Société</b></td><td><b><u><font color="#046380">MICROFIRST</font></u></b></td>
+#* <tr><td><b>Auteur</b></td><td>JBS</td>
+#* <tr><td><b>Date de création</b></td><td>22 oct. 2015</td>
+#* <tr><td><b>Nom de la requête</b></td><td>WSEPALIA</td>
+#* <tr><td><b>Nom de la publication</b></td><td>publication</td>
+#* <tr><td valign="top"><b>Description de la procédure</b></td><td>
+#* Ce Web service permet de récupérer la liste des clients EPALIS qu'il faut synchroniser avec le site EPALIS
+#* </td></table>
+#* @public
+#* @param WBPCNUMEPI (<font color="#7F0055"><b>Char</b></font>) Tableau des codes clients EPALIS à synchroniser
+#* @param WBPCNAMEPI (<font color="#7F0055"><b>Char</b></font>) Tableau des RS clients EPALIS à synchroniser
+#* @since <font color="green">Version 6.5</font>
+#*!
+Subprog GET_CLT_SYNCEPI(WBPCNUMEPI,WBPCNAMEPI)
+  Variable Char WBPCNUMEPI()(0..499)
+  Variable Char WBPCNAMEPI()(0..499)
+
+If clalev([F:BPC])=0 : Local File BPCUSTOMER [BPC] : Endif
+Local Integer WLIG : WLIG = 0
+For [F:BPC]BPC0 Where [F:BPC]ZSYNCEPI=2
+  WBPCNUMEPI(WLIG) = [F:BPC]BPCNUM
+  WBPCNAMEPI(WLIG) = [F:BPC]BPCNAM
+  WLIG += 1
+Next
+End
+
+Subprog SET_HISTO_STOCK(WSEQ,WCOMPTEUR,WTYPE)
+  Variable Char WSEQ
+  Variable Char WCOMPTEUR
+  Value Char WTYPE
+
+  If clalev([F:ZSE2])=0 : Local File ZPSEPALIS [ZSE2] : Endif
+  If clalev([F:ZTE2])=0 : Local File ZTEMPEPI [ZTE2] : Endif
+  If clalev([F:ZHA])=0 : Local File ZHISTOACTEPI [ZHA] : Endif
+  Raz [F:ZHA]
+  Read[F:ZSE2]ZSE3=WSEQ
+  If(fstat=0)Then
+    Local Integer WACT
+    If(WCOMPTEUR<>"")Then
+      Read[F:ZTE2]ZTE1=WCOMPTEUR
+      If(fstat=0)Then
+        WACT = [F:ZTE2]ZACT
+      Endif
+    Endif
+    [F:ZHA]ZSEQ        = WSEQ
+    [F:ZHA]ZCOMPTEUR   = WCOMPTEUR
+    [F:ZHA]ZUSR        = GUSER
+    [F:ZHA]ZQTEOK      = [F:ZSE2]ZQTEOK
+    [F:ZHA]ZQTEKC      = [F:ZSE2]ZQTEKC
+    [F:ZHA]ZQTEATRANSF = [F:ZSE2]ZQTEATRANSF
+    [F:ZHA]ZQTYLIV     = [F:ZSE2]ZQTYLIV
+    [F:ZHA]ZFACTRELOC  = [F:ZSE2]ZFACTRELOC
+    [F:ZHA]ZDATE       = date$
+    [F:ZHA]ZHEURE      = format$("D:hhmmss",date$)
+    [F:ZHA]ZTYPE       = WTYPE
+    [F:ZHA]ZACT        = WACT
+  Write [F:ZHA]
+  Endif
+End
+
+#**
+#* Documentation de la procédure SET_SOLDE_CDE
+#* <table>
+#* <tr><td><b>Société</b></td><td><b><u><font color="#046380">MICROFIRST</font></u></b></td>
+#* <tr><td><b>Auteur</b></td><td>JBS</td>
+#* <tr><td><b>Date de création</b></td><td>27 janvier 2016</td>
+#* <tr><td><b>Nom de la requête</b></td><td>WSTEPALIA</td>
+#* <tr><td><b>Nom de la publication</b></td><td>SOLD_CDE</td>
+#* <tr><td valign="top"><b>Description de la procédure</b></td><td>
+#* Cette méthode permet de solder une commande EPALIS
+#* La variable INFO contient du texte représentant le déroulement du traitement
+#* La variable RESULT contient 1 si tout est OK sinon elle vaut 1
+#* </td></table>
+#* @public
+#* @param NUMCDE (<font color="#7F0055"><b>Char</b></font>) N) de la commande
+#* @param INFO (<font color="#7F0055"><b>Char</b></font>) Information de retour
+#* @param RESULT (<font color="#7F0055"><b>Integer</b></font>) Variable résultat du sous-programme
+#* @since <font color="green">Version 5</font>
+#*!
+Subprog SET_SOLDE_CDE(NUMCDE,INFO,RESULT)
+  Value Char NUMCDE
+  Variable Char INFO
+  Variable Integer RESULT
+  RESULT = 1
+  INFO = "Traitement terminé avec succès"
+  #Pour pouvoir solder une commande, il faut que la commande soit une commande EPALIs et que celle-ci ne soit pas déjà soldée.
+  If clalev([F:SOH2])=0 : Local File SORDER  [F:SOH2] : Endif
+  If clalev([F:SOP2])=0 : Local File SORDERP [F:SOP2] : Endif
+  If clalev([F:SOQ2])=0 : Local File SORDERQ [F:SOQ2] : Endif
+  Read[F:SOH2]SOH0=NUMCDE
+  If(fstat=0)Then
+    If([F:SOH2]ORDSTA<>2 and [F:SOH2]ZTRS="EPI")Then
+      Local Integer WERR : WERR = 0
+      Trbegin [F:SOH2],[F:SOP2],[F:SOQ2]
+      #On va maintenant solder la commande
+      Local Integer WNBLIG : WNBLIG = 0
+      For [F:SOP2]SOP0 Where [F:SOP2]SOHNUM=NUMCDE
+        [F:SOP2]SOQSTA = 3
+        [F:SOP2]UPDDAT = date$
+        [F:SOP2]UPDUSR = GUSER
+        WNBLIG = WNBLIG + 1
+        Rewrite [F:SOP2]
+        If(fstat<>0)Then
+          WERR = 1
+        Endif
+      Next
+      For [F:SOQ2]SOQ0 Where [F:SOQ2]SOHNUM=NUMCDE
+        [F:SOQ2]SOQSTA = 3
+        [F:SOQ2]UPDDAT = date$
+        [F:SOQ2]UPDUSR = GUSER
+        [F:SOQ2]CCLDAT = date$
+        [F:SOQ2]CCLREN = "ERR"
+        Rewrite [F:SOQ2]
+        If(fstat<>0)Then
+          WERR = 1
+        Endif
+      Next
+      [F:SOH2]ORDSTA = 2
+      [F:SOH2]UPDDAT = date$
+      [F:SOH2]UPDUSR = GUSER
+      [F:SOH2]DLRNOT = 0
+      [F:SOH2]DLRATI = 0
+      [F:SOH2]CLELINNBR = WNBLIG
+      [F:SOH2]CCLDAT = date$
+      [F:SOH2]CCLREN = "ERR"
+      [F:SOH2]ZCODEPI = ""
+      Rewrite [F:SOH2]
+      If(fstat<>0)Then
+        WERR = 1
+      Endif
+      If(WERR=0)Then
+        Commit
+        RESULT = 1
+        INFO = "Traitement terminé avec succès"
+      Else
+        Rollback
+        RESULT = 0
+        INFO = "ERREUR. Pb lors de la modification de la cde."
+      Endif
+    Else
+      RESULT = 0
+      INFO = "ERREUR. Cde déjà soldée ou non EPALIS."
+    Endif
+  Endif
+End
+
+#**
+#* Documentation de la procédure SYNC_CLT_CHARG_X32EPI
+#* <table>
+#* <tr><td><b>Société</b></td><td><b><u><font color="#046380">MICROFIRST</font></u></b></td>
+#* <tr><td><b>Auteur</b></td><td>JBS</td>
+#* <tr><td><b>Date de création</b></td><td>05 février 2016</td>
+#* <tr><td><b>Nom de la requête</b></td><td>WSEPALIA</td>
+#* <tr><td><b>Nom de la publication</b></td><td>CLT_X32EPI</td>
+#* <tr><td valign="top"><b>Description de la procédure</b></td><td>
+#* Cette méthode permet la récupération des informations des clients chargeurs
+#* </td></table>
+#* @public
+#* @param WCODECHARG (<font color="#7F0055"><b>Char</b></font>)  Code chargeur
+#* @param WDAT (<font color="#7F0055"><b>Date</b></font>) Date de création ou de modification de la fiche
+#* @param WZCODCLT (<font color="#7F0055"><b>Char</b></font>)  Code du client chargeur
+#* @param WZNOMCLT (<font color="#7F0055"><b>Char</b></font>) Nom du client chargeur
+#* @param WZADRESSE1 (<font color="#7F0055"><b>Char</b></font>) Adresse 1
+#* @param WZADRESSE2 (<font color="#7F0055"><b>Char</b></font>) Adresse 2
+#* @param WZADRESSE3 (<font color="#7F0055"><b>Char</b></font>) Adresse 3
+#* @param WZPOSCOD (<font color="#7F0055"><b>Char</b></font>) Code postal
+#* @param WZCITY (<font color="#7F0055"><b>Char</b></font>) Ville
+#* @param WZTEL (<font color="#7F0055"><b>Char</b></font>) Téléphone
+#* @param WZMOB (<font color="#7F0055"><b>Char</b></font>) Téléphone mobile
+#* @param WZMAIL (<font color="#7F0055"><b>Char</b></font>) Email
+#* @param WZASST (<font color="#7F0055"><b>Char</b></font>) Assistante
+#* @param WZREPDS (<font color="#7F0055"><b>Char</b></font>) Représentant
+#* @param WZFAX (<font color="#7F0055"><b>Char</b></font>) Fax
+#* @param WZCODCLTREG (<font color="#7F0055"><b>Char</b></font>) Code de regroupement
+#* @param WZTYPCL (<font color="#7F0055"><b>Integer</b></font>) Type de client
+#* @param WZINVCOLL (<font color="#7F0055"><b>Integer</b></font>) Invisible en collecte
+#* @param WZSITCOLLMAN (<font color="#7F0055"><b>Integer</b></font>) Site collecte manuel
+#* @since <font color="green">Version 6</font>
+#*!
+Subprog SYNC_CLT_CHARG_X32EPI(WCODECHARG,WZCODCLT,WZNOMCLT,WZADRESSE1,WZADRESSE2,WZADRESSE3,WZPOSCOD,WZCITY,WZTEL,WZMOB,WZMAIL,WZASST,WZREPDS,WZFAX,WZCODCLTREG,WZTYPCL,WZINVCOLL
+&,WZSECT,WZGROUPE,WZRGTCODCOM,WZRGTNOMCOM,WZRGTCODFIN,WZRGTNOMFIN,WZCTCPAL,WZTELCTCPAL,WZMAILCTCPAL,WZHMATMIN,WZHMATMAX,WZMLUNDI,WZMMARDI,WZMMERCREDI,WZMJEUDI,WZMVENDREDI,WZHAMMIN
+&,WZHAMMAX,WZAMLUNDI,WZAMMARDI,WZAMMERCREDI,WZAMJEUDI,WZAMVENDREDI,WZSITCOLL,WZSEUIL,WZDELAICOL,WZDELAITRI,WZNIVDECONS
+&,WZSITCOLLMAN)
+  Value Char WCODECHARG
+  Variable Char WZCODCLT()(0..1999)
+  Variable Char WZNOMCLT()(0..1999)
+  Variable Char WZADRESSE1()(0..1999)
+  Variable Char WZADRESSE2()(0..1999)
+  Variable Char WZADRESSE3()(0..1999)
+  Variable Char WZPOSCOD()(0..1999)
+  Variable Char WZCITY()(0..1999)
+  Variable Char WZTEL()(0..1999)
+  Variable Char WZMOB()(0..1999)
+  Variable Char WZMAIL()(0..1999)
+  Variable Char WZASST()(0..1999)
+  Variable Char WZREPDS()(0..1999)
+  Variable Char WZFAX()(0..1999)
+  Variable Char WZCODCLTREG()(0..1999)
+  Variable Integer WZTYPCL(0..1999)
+  Variable Integer WZINVCOLL(0..1999)
+  #--------------------------------------------
+  Variable Char WZSECT()(0..1999)
+  Variable Char WZGROUPE()(0..1999)
+  Variable Char WZRGTCODCOM()(0..1999)
+  Variable Char WZRGTNOMCOM()(0..1999)
+  Variable Char WZRGTCODFIN()(0..1999)
+  Variable Char WZRGTNOMFIN()(0..1999)
+  Variable Char WZCTCPAL()(0..1999)
+  Variable Char WZTELCTCPAL()(0..1999)
+  Variable Char WZMAILCTCPAL()(0..1999)
+  Variable Integer WZHMATMIN(0..1999)
+  Variable Integer WZHMATMAX(0..1999)
+  Variable Integer WZMLUNDI(0..1999)
+  Variable Integer WZMMARDI(0..1999)
+  Variable Integer WZMMERCREDI(0..1999)
+  Variable Integer WZMJEUDI(0..1999)
+  Variable Integer WZMVENDREDI(0..1999)
+  Variable Integer WZHAMMIN(0..1999)
+  Variable Integer WZHAMMAX(0..1999)
+  Variable Integer WZAMLUNDI(0..1999)
+  Variable Integer WZAMMARDI(0..1999)
+  Variable Integer WZAMMERCREDI(0..1999)
+  Variable Integer WZAMJEUDI(0..1999)
+  Variable Integer WZAMVENDREDI(0..1999)
+  Variable Char WZSITCOLL()(0..1999)
+  Variable Integer WZSEUIL(0..1999)
+  Variable Integer WZDELAICOL(0..1999)
+  Variable Integer WZDELAITRI(0..1999)
+  Variable Integer WZNIVDECONS(0..1999)
+  Variable Integer WZSITCOLLMAN(0..1999)
+
+If clalev([F:ZAI])=0 : Local File ZADREPI [ZAI] : Endif
+Local Integer WLIG : WLIG = 0
+For [F:ZAI]ZAI0 Where [F:ZAI]BPCNUM=WCODECHARG and [F:ZAI]ZASYNCHRO=2 and [F:ZAI]ZINVCOLL<>2
+  WZCODCLT(WLIG)     = [F:ZAI]ZCODCLT
+  WZNOMCLT(WLIG)     = [F:ZAI]ZNOMCLT
+  WZADRESSE1(WLIG)   = [F:ZAI]ZADRESSE(0)
+  WZADRESSE2(WLIG)   = [F:ZAI]ZADRESSE(1)
+  WZADRESSE3(WLIG)   = [F:ZAI]ZADRESSE(2)
+  WZPOSCOD(WLIG)     = [F:ZAI]ZPOSCOD
+  WZCITY(WLIG)       = [F:ZAI]ZCITY
+  WZTEL(WLIG)        = [F:ZAI]ZTEL
+  WZMOB(WLIG)        = [F:ZAI]ZMOB
+  WZMAIL(WLIG)       = [F:ZAI]ZMAIL
+  WZASST(WLIG)       = [F:ZAI]ZASST
+  WZREPDS(WLIG)      = [F:ZAI]ZREPDS
+  WZFAX(WLIG)        = [F:ZAI]ZFAX
+  #--------MODIFICATION JBS du 18/10/2017 à la demande de SLB---------
+  #WZCODCLTREG(WLIG)  = [F:ZAI]ZCODCLTREG
+  WZCODCLTREG(WLIG)  = [F:ZAI]ZSTATCLT
+  #-------------------------------------------------------------------
+  WZTYPCL(WLIG)      = [F:ZAI]ZTYPCL
+  WZINVCOLL(WLIG)    = [F:ZAI]ZINVCOLL
+  #--------------------------------------------------------
+  WZSECT(WLIG)       = [F:ZAI]ZSECT
+  WZGROUPE(WLIG)     = [F:ZAI]ZGROUPE
+  WZRGTCODCOM(WLIG)  = [F:ZAI]ZRGTCODCOM
+  WZRGTNOMCOM(WLIG)  = [F:ZAI]ZRGTNOMCOM
+  WZRGTCODFIN(WLIG)  = [F:ZAI]ZRGTCODFIN
+  WZRGTNOMFIN(WLIG)  = [F:ZAI]ZRGTNOMFIN
+  WZCTCPAL(WLIG)     = [F:ZAI]ZCTCPAL
+  WZTELCTCPAL(WLIG)  = [F:ZAI]ZTELCTCPAL
+  WZMAILCTCPAL(WLIG) = [F:ZAI]ZMAILCTCPAL
+  WZHMATMIN(WLIG)    = [F:ZAI]ZHMATMIN
+  WZHMATMAX(WLIG)    = [F:ZAI]ZHMATMAX
+  WZMLUNDI(WLIG)     = [F:ZAI]ZMLUNDI
+  WZMMARDI(WLIG)     = [F:ZAI]ZMMARDI
+  WZMMERCREDI(WLIG)  = [F:ZAI]ZMMERCREDI
+  WZMJEUDI(WLIG)     = [F:ZAI]ZMJEUDI
+  WZMVENDREDI(WLIG)  = [F:ZAI]ZMVENDREDI
+  WZHAMMIN(WLIG)     = [F:ZAI]ZHAMMIN
+  WZHAMMAX(WLIG)     = [F:ZAI]ZHAMMAX
+  WZAMLUNDI(WLIG)    = [F:ZAI]ZAMLUNDI
+  WZAMMARDI(WLIG)    = [F:ZAI]ZAMMARDI
+  WZAMMERCREDI(WLIG) = [F:ZAI]ZAMMERCREDI
+  WZAMJEUDI(WLIG)    = [F:ZAI]ZAMJEUDI
+  WZAMVENDREDI(WLIG) = [F:ZAI]ZAMVENDREDI
+  WZSITCOLL(WLIG)    = [F:ZAI]ZSITCOLL
+  WZSEUIL(WLIG)      = [F:ZAI]ZSEUIL
+  WZDELAICOL(WLIG)   = [F:ZAI]ZDELAICOL
+  WZDELAITRI(WLIG)   = [F:ZAI]ZDELAITRI
+  WZNIVDECONS(WLIG)  = [F:ZAI]ZNIVDECONS
+  WZSITCOLLMAN(WLIG) = [F:ZAI]ZSITCOLLMAN
+  WLIG += 1
+  [F:ZAI]ZASYNCHRO=1
+  Rewrite [F:ZAI]
+  If(WLIG>1999)Then
+    Break
+  Endif
+Next
+End
+
+#**
+#* Documentation de la procédure SYNC_CLT_CHARG_EPI2X3
+#* <table>
+#* <tr><td><b>Société</b></td><td><b><u><font color="#046380">MICROFIRST</font></u></b></td>
+#* <tr><td><b>Auteur</b></td><td>JBS</td>
+#* <tr><td><b>Date de création</b></td><td>05 février 2016</td>
+#* <tr><td><b>Nom de la requête</b></td><td>WSEPALIA</td>
+#* <tr><td><b>Nom de la publication</b></td><td>CLT_EPI2X3</td>
+#* <tr><td valign="top"><b>Description de la procédure</b></td><td>
+#* Cette méthode permet au site EPALIS de créer ou mettre à jour un client chargeur.
+#* </td></table>
+#* @public
+#* @param WCODECHARG Code chargeur (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZCODCLT Code du client chargeur (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZNOMCLT Nom du client chargeur (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZADRESSE1 Adresse 1 (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZADRESSE2 Adresse 2 (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZADRESSE3 Adresse 3 (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZPOSCOD Code postal (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZCITY Ville (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZTEL Téléphone (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZMOB Téléphone mobile (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZMAIL Email (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZASST Assistante (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZREPDS Représentant (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZFAX Fax (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZCODCLTREG Code de regroupement (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZTYPCL Type de client (<font color="#7F0055"><b>Integer</b></font>)
+#* @param WZINVCOLL Invisible en collecte (<font color="#7F0055"><b>Integer</b></font>)
+#* @param WZSECT Secteur (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZGROUPE Groupe (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZRGTCODCOM Regroupement code commercial (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZRGTNOMCOM Regroupement nom commercial (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZRGTCODFIN Regroupement code financier (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZRGTNOMFIN Regroupement nom financier (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZCTCPAL Contact palette (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZTELCTCPAL Téléphone contact palette (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZMAILCTCPAL Mail contact palette (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZHMATMIN Heure matin début (<font color="#7F0055"><b>Integer</b></font>)
+#* @param WZHMATMAX Heure matin fin (<font color="#7F0055"><b>Integer</b></font>)
+#* @param WZMLUNDI Lundi matin (<font color="#7F0055"><b>Integer</b></font>)
+#* @param WZMMARDI Mardi matin (<font color="#7F0055"><b>Integer</b></font>)
+#* @param WZMMERCREDI Mercredi matin (<font color="#7F0055"><b>Integer</b></font>)
+#* @param WZMJEUDI Jeudi matin (<font color="#7F0055"><b>Integer</b></font>)
+#* @param WZMVENDREDI Vendredi matin (<font color="#7F0055"><b>Integer</b></font>)
+#* @param WZHAMMIN Samedi matin (<font color="#7F0055"><b>Integer</b></font>)
+#* @param WZHAMMAX Heure après-midi début (<font color="#7F0055"><b>Integer</b></font>)
+#* @param WZAMLUNDI Heure après-midi fin (<font color="#7F0055"><b>Integer</b></font>)
+#* @param WZAMMARDI Lundi après-midi (<font color="#7F0055"><b>Integer</b></font>)
+#* @param WZAMMERCREDI Mardi après-midi (<font color="#7F0055"><b>Integer</b></font>)
+#* @param WZAMJEUDI Mercredi après-midi (<font color="#7F0055"><b>Integer</b></font>)
+#* @param WZAMVENDREDI Vendredi après-midi (<font color="#7F0055"><b>Integer</b></font>)
+#* @param WZSITCOLL Site de collecte (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZSEUIL Seuil (<font color="#7F0055"><b>Integer</b></font>)
+#* @param WZDELAICOL Délai de collecte (<font color="#7F0055"><b>Integer</b></font>)
+#* @param WZDELAITRI Délai de tri (<font color="#7F0055"><b>Integer</b></font>)
+#* @param WZNIVDECONS Niveau de déconsignation (<font color="#7F0055"><b>Integer</b></font>)
+#* @param WZSITCOLLMAN Site collecte manuel (<font color="#7F0055"><b>Integer</b></font>)
+#* @param WZDEPOTCLT Code dépôt EPALIS (<font color="#7F0055"><b>Char</b></font>)
+#* @param WZREGION Région (<font color="#7F0055"><b>Char</b></font>)
+#* @param WINFO Information (<font color="#7F0055"><b>Char</b></font>)
+#* @param WRESULT Résultat 1 : tout s'est bien passé, 0 : un problème est survenu (<font color="#7F0055"><b>Char</b></font>)
+#* @since <font color="green">Version 6</font>
+#*!
+Subprog SYNC_CLT_CHARG_EPI2X3(WCODECHARG,WZCODCLT,WZNOMCLT,WZADRESSE1,WZADRESSE2,WZADRESSE3,WZPOSCOD,WZCITY,WZTEL,WZMOB,WZMAIL,WZASST,WZREPDS,WZFAX,WZCODCLTREG,WZTYPCL,WZINVCOLL
+&,WZSECT,WZGROUPE,WZRGTCODCOM,WZRGTNOMCOM,WZRGTCODFIN,WZRGTNOMFIN,WZCTCPAL,WZTELCTCPAL,WZMAILCTCPAL,WZHMATMIN,WZHMATMAX,WZMLUNDI,WZMMARDI,WZMMERCREDI,WZMJEUDI,WZMVENDREDI,WZHAMMIN
+&,WZHAMMAX,WZAMLUNDI,WZAMMARDI,WZAMMERCREDI,WZAMJEUDI,WZAMVENDREDI,WZSITCOLL,WZSEUIL,WZDELAICOL,WZDELAITRI,WZNIVDECONS,WZSITCOLLMAN,WZDEPOTCLT,WZREGION
+&,WINFO,WRESULT)
+  Value Char WCODECHARG
+  Value Char WZCODCLT
+  Value Char WZNOMCLT
+  Value Char WZADRESSE1
+  Value Char WZADRESSE2
+  Value Char WZADRESSE3
+  Value Char WZPOSCOD
+  Value Char WZCITY
+  Value Char WZTEL
+  Value Char WZMOB
+  Value Char WZMAIL
+  Value Char WZASST
+  Value Char WZREPDS
+  Value Char WZFAX
+  Value Char WZCODCLTREG
+  Value Integer WZTYPCL
+  Value Integer WZINVCOLL
+  #--------------------------------------------
+  Value Char WZSECT
+  Value Char WZGROUPE
+  Value Char WZRGTCODCOM
+  Value Char WZRGTNOMCOM
+  Value Char WZRGTCODFIN
+  Value Char WZRGTNOMFIN
+  Value Char WZCTCPAL
+  Value Char WZTELCTCPAL
+  Value Char WZMAILCTCPAL
+  Value Integer WZHMATMIN
+  Value Integer WZHMATMAX
+  Value Integer WZMLUNDI
+  Value Integer WZMMARDI
+  Value Integer WZMMERCREDI
+  Value Integer WZMJEUDI
+  Value Integer WZMVENDREDI
+  Value Integer WZHAMMIN
+  Value Integer WZHAMMAX
+  Value Integer WZAMLUNDI
+  Value Integer WZAMMARDI
+  Value Integer WZAMMERCREDI
+  Value Integer WZAMJEUDI
+  Value Integer WZAMVENDREDI
+  Value Char WZSITCOLL
+  Value Integer WZSEUIL
+  Value Integer WZDELAICOL
+  Value Integer WZDELAITRI
+  Value Integer WZNIVDECONS
+  Value Integer WZSITCOLLMAN
+  Value Char WZDEPOTCLT
+  Value Char WZREGION
+  Variable Char WINFO()
+  Variable Integer WRESULT
+
+  If clalev([F:ZAI])=0 : Local File ZADREPI [ZAI] : Endif
+  Read[F:ZAI]ZAI0=WCODECHARG;WZCODCLT
+  If(fstat=5)Then
+    Raz [F:ZAI]
+  Endif
+  If(WCODECHARG<>"")  : [F:ZAI]BPCNUM      = WCODECHARG  : Endif
+  If(WZCODCLT<>"")    : [F:ZAI]ZCODCLT     = WZCODCLT    : Endif
+  If(WZNOMCLT<>"")    : [F:ZAI]ZNOMCLT     = WZNOMCLT    : Endif
+  If(WZADRESSE1<>"")  : [F:ZAI]ZADRESSE(0) = WZADRESSE1  : Endif
+  If(WZADRESSE2<>"")  : [F:ZAI]ZADRESSE(1) = WZADRESSE2  : Endif
+  If(WZADRESSE3<>"")  : [F:ZAI]ZADRESSE(2) = WZADRESSE3  : Endif
+  If(WZPOSCOD<>"")    : [F:ZAI]ZPOSCOD     = WZPOSCOD    : Endif
+  If(WZCITY<>"")      : [F:ZAI]ZCITY       = WZCITY      : Endif
+  If(WZTEL<>"")       : [F:ZAI]ZTEL        = WZTEL       : Endif
+  If(WZMOB<>"")       : [F:ZAI]ZMOB        = WZMOB       : Endif
+  If(WZMAIL<>"")      : [F:ZAI]ZMAIL       = WZMAIL      : Endif
+  If(WZASST<>"")      : [F:ZAI]ZASST       = WZASST      : Endif
+  If(WZREPDS<>"")     : [F:ZAI]ZREPDS      = WZREPDS     : Endif
+  If(WZFAX<>"")       : [F:ZAI]ZFAX        = WZFAX       : Endif
+  #--------MODIFICATION JBS du 18/10/2017 à la demande de SLB---------
+  #If(WZCODCLTREG<>"") : [F:ZAI]ZCODCLTREG  = WZCODCLTREG : Endif
+  If(WZCODCLTREG<>"") : [F:ZAI]ZSTATCLT    = WZCODCLTREG : Endif
+  #-------------------------------------------------------------------
+#  If(WZCODCLTREG<>"") : [F:ZAI]ZCODCLTREG  = WZCODCLTREG : Endif
+  If(WZTYPCL<>0)      : [F:ZAI]ZTYPCL      = WZTYPCL     : Endif
+  If(WZINVCOLL<>0)    : [F:ZAI]ZINVCOLL    = WZINVCOLL   : Endif
+  If(WZSECT<>"")      : [F:ZAI]ZSECT       = WZSECT      : Endif
+  If(WZGROUPE<>"")    : [F:ZAI]ZGROUPE     = WZGROUPE    : Endif
+  If(WZRGTCODCOM<>"") : [F:ZAI]ZRGTCODCOM  = WZRGTCODCOM : Endif
+  If(WZRGTNOMCOM<>"") : [F:ZAI]ZRGTNOMCOM  = WZRGTNOMCOM : Endif
+  If(WZRGTCODFIN<>"") : [F:ZAI]ZRGTCODFIN  = WZRGTCODFIN : Endif
+  If(WZRGTNOMFIN<>"") : [F:ZAI]ZRGTNOMFIN  = WZRGTNOMFIN : Endif
+  If(WZCTCPAL<>"")    : [F:ZAI]ZCTCPAL     = WZCTCPAL    : Endif
+  If(WZTELCTCPAL<>"") : [F:ZAI]ZTELCTCPAL  = WZTELCTCPAL : Endif
+  If(WZMAILCTCPAL<>""): [F:ZAI]ZMAILCTCPAL = WZMAILCTCPAL: Endif
+  If(WZHMATMIN<>0)    : [F:ZAI]ZHMATMIN    = WZHMATMIN   : Endif
+  If(WZHMATMAX<>0)    : [F:ZAI]ZHMATMAX    = WZHMATMAX   : Endif
+  If(WZMLUNDI<>0)     : [F:ZAI]ZMLUNDI     = WZMLUNDI    : Endif
+  If(WZMMARDI<>0)     : [F:ZAI]ZMMARDI     = WZMMARDI    : Endif
+  If(WZMMERCREDI<>0)  : [F:ZAI]ZMMERCREDI  = WZMMERCREDI : Endif
+  If(WZMJEUDI<>0)     : [F:ZAI]ZMJEUDI     = WZMJEUDI    : Endif
+  If(WZMVENDREDI<>0)  : [F:ZAI]ZMVENDREDI  = WZMVENDREDI : Endif
+  If(WZHAMMIN<>0)     : [F:ZAI]ZHAMMIN     = WZHAMMIN    : Endif
+  If(WZHAMMAX<>0)     : [F:ZAI]ZHAMMAX     = WZHAMMAX    : Endif
+  If(WZAMLUNDI<>0)    : [F:ZAI]ZAMLUNDI    = WZAMLUNDI   : Endif
+  If(WZAMMARDI<>0)    : [F:ZAI]ZAMMARDI    = WZAMMARDI   : Endif
+  If(WZAMMERCREDI<>0) : [F:ZAI]ZAMMERCREDI = WZAMMERCREDI: Endif
+  If(WZAMJEUDI<>0)    : [F:ZAI]ZAMJEUDI    = WZAMJEUDI   : Endif
+  If(WZAMVENDREDI<>0) : [F:ZAI]ZAMVENDREDI = WZAMVENDREDI: Endif
+  If(WZSITCOLL<>"")   : [F:ZAI]ZSITCOLL    = WZSITCOLL   : Endif
+  If(WZSEUIL<>0)      : [F:ZAI]ZSEUIL      = WZSEUIL     : Endif
+  If(WZDELAICOL<>0)   : [F:ZAI]ZDELAICOL   = WZDELAICOL  : Endif
+  If(WZDELAITRI<>0)   : [F:ZAI]ZDELAITRI   = WZDELAITRI  : Endif
+  If(WZNIVDECONS<>0)  : [F:ZAI]ZNIVDECONS  = WZNIVDECONS : Endif
+  If(WZSITCOLLMAN<>0) : [F:ZAI]ZSITCOLLMAN = WZSITCOLLMAN: Endif
+  #------------AJOUT JBS du 07/11/2017 à la demande de SLB------------
+  If(WZDEPOTCLT<>"")  : [F:ZAI]ZDEPOTCLT   = WZDEPOTCLT  : Endif
+  If(WZREGION<>"")    : [F:ZAI]ZREGION     = WZREGION    : Endif
+  #-------------------------------------------------------------------
+  If(fstat=0)Then
+    [F:ZAI]UPDDAT = date$
+    Rewrite[F:ZAI]
+    If(fstat=0)Then
+      WINFO   = "Mise à jour réussie."
+      WRESULT = 1
+    Else
+      WINFO   = "[1] - Un problème est survenu lors de la mise à jour."
+      WRESULT = 0
+    Endif
+  Elsif(fstat=5)Then
+    [F:ZAI]CREDAT = date$
+    If([F:ZAI]ZCODCLTREG="")Then
+      [F:ZAI]ZCODCLTREG=[F:ZAI]ZCODCLT
+    Endif
+    Write[F:ZAI]
+    If(fstat=0)Then
+      WINFO   = "Création réussie."
+      WRESULT = 1
+    Else
+      WINFO   = "[2] - Un problème est survenu lors de la création."
+      WRESULT = 0
+    Endif
+  Else
+    WINFO   = "[3] - Un problème est survenu"
+    WRESULT = 0
+  Endif
+End
+
+#**
+#* Documentation de la fonction GET_ART_OK
+#* <table>
+#* <tr><td><b>Société</b></td><td><b><u><font color="#046380">MICROFIRST</font></u></b></td>
+#* <tr><td><b>Auteur</b></td><td>JBS</td>
+#* <tr><td><b>Date de création</b></td><td>22 juin 2016</td>
+#* <tr><td valign="top"><b>Description de la fonction</b></td><td>
+#* Permet de savoir si l'article doit être ajouter au BL
+#* </td></table>
+#* @public
+#* @param WARTPREST (<font color="#7F0055"><b>Char</b></font>) Code article de prestation
+#* @param WARTTRI (<font color="#7F0055"><b>Char</b></font>) Code article de tri
+#* @param WBPCORD (<font color="#7F0055"><b>Char</b></font>) Code du client
+#* @param WFCY (<font color="#7F0055"><b>Char</b></font>) Code site expédition
+#* @param WCHAUFFEUR (<font color="#7F0055"><b>Char</b></font>) Chauffeur
+#* @param WTYPPAL (<font color="#7F0055"><b>Integer</b></font>) Type de palette
+#* @return
+#*Variable de retour : RESULT (<font color="#7F0055"><b>Integer</b></font>)
+#* <br>Explication        : 0 -> L'article ne doit pas être ajouter au BL, 1-> L'article peut être ajouté au BL
+#* @since <font color="green">Version 6.5</font>
+#*!
+Funprog GET_ART_OK(WBPCORD,WFCY,WARTTRI,WARTPREST,WCHAUFFEUR,WTYPPAL)
+  Value Char WARTTRI
+  Value Char WARTPREST
+  Value Char WBPCORD
+  Value Char WFCY
+  Value Char WCHAUFFEUR
+  Value Integer WTYPPAL
+  Local Integer RESULT : RESULT = 1
+  If clalev([F:ZCE])=0 : Local File ZCHEPI [F:ZCE]  : Endif
+  #On va dans un premier récupérer le type du transporteur
+  Local Integer WTRSPINT : WTRSPINT = 1
+  Read[F:ZCE]ZCE0=WBPCORD;WCHAUFFEUR
+  If(fstat=0)Then
+    WTRSPINT = [F:ZCE]ZTRPINT
+  Endif
+  #On va maintenant récupérer les informations de l'article de prestation
+  If clalev([F:ZIE5])=0 : Local File ZEPALIS [F:ZIE5]  : Endif
+  For [F:ZIE5]ZIE5 Where [F:ZIE5]CODE_CHARGEU=WBPCORD and [F:ZIE5]ART_TRI=WARTTRI and [F:ZIE5]ART_PREST=WARTPREST and [F:ZIE5]TYPE_PAL=WTYPPAL
+    If([F:ZIE5]ZTYPARTEPI=3 and [F:ZIE5]TSTTRSP=2 and WTRSPINT<>2)Then
+      #Si le type de l'article de prestation vaut : LIVRAISON
+      #Que le test transport est à oui
+      #et que le chaiffeur n'est pas de type interne, alors on ne doit pas afficher l'article de prestation sur le BL
+      RESULT = 0
+    Endif
+  Next
+End RESULT
+
+Subprog RECH_TARIF_VENTE(WCLIENT,WADRLIVR,WDATE,WSITE,WARTICLE,WUNITE,WMDL,WQUANTITE,WPRIX)
+Value Char WCLIENT()
+Value Char WADRLIVR()
+Value Date WDATE
+Value Char WSITE()
+Value Char WARTICLE()
+Value Char WUNITE()
+Value Char WMDL()
+Value Decimal WQUANTITE
+Variable Decimal WPRIX
+
+If clalev([F:SPK])=0 : Local File SPRICLINK   [F:SPK]: Endif
+If clalev([F:ITS])=0 : Local File ITMSALES  [F:ITS]: Endif
+If clalev([F:ITU])=0 : Local File ITMBPC  [F:ITU]: Endif
+If clalev([F:ITF])=0 : Local File ITMFACILIT  [F:ITF]: Endif
+
+
+Read [F:BPR]BPR0=WCLIENT
+If fstat
+    Raz [F:BPR]
+Endif
+Read [F:BPC]BPC0=WCLIENT
+If fstat
+    Raz [F:BPC]
+Endif
+Read [F:BPD]BPD0=WCLIENT;WADRLIVR
+If fstat
+    Raz [F:BPD]
+Endif
+
+If clalev([M:SOH0])=0 : Local Mask SOH0 [SOH0] : Raz [M:SOH0] : Endif
+If clalev([M:SOH1])=0 : Local Mask SOH1 [SOH1] : Raz [M:SOH1] : Endif
+If clalev([M:SOH2])=0 : Local Mask SOH2 [SOH2] : Raz [M:SOH2] : Endif
+If clalev([M:SOH3])=0 : Local Mask SOH3 [SOH3] : Raz [M:SOH3] : Endif
+If clalev([M:SOH4])=0 : Local Mask SOH4 [SOH4] : Raz [M:SOH4] : Endif
+Default Mask [SOH4]
+Default Mask [SOH3]
+Default Mask [SOH2]
+Default Mask [SOH1]
+Default Mask [SOH0]
+
+Gosub SIM_SPC_GLOB From TRTPRICE
+Call TARIFCHGT(5) From TRTPRICE
+Call COLREM("C",1,"") From TRTPRICE
+
+Global Integer MGEFFAC
+Global Char GPNTITMREF(15)
+Local Char VAT(3)(0..2)
+GPNTITMREF=""
+MGEFFAC=1
+
+[M:SOH0]BPCORD=WCLIENT
+[M:SOH0]ORDDAT=WDATE
+[M:SOH0]CUR=[F:BPR]CUR
+[M:SOH0]SALFCY=WSITE
+[M:SOH1]PRITYP=1
+[M:SOH1]BPAADD=WADRLIVR
+[M:SOH2]DEMDLVDAT=WDATE
+[M:SOH2]MDL = WMDL
+[M:SOH4]DDEMDLVDAT(0)=WDATE
+[M:SOH4]ITMREF(0)=WARTICLE
+[M:SOH4]DSTOFCY(0)=WSITE
+[M:SOH4]DBPAADD=WADRLIVR
+Call ALITAXEV([F:BPC]VACBPR,[F:ITM]VACITM,VAT) From TRTX3
+[M:SOH4]VAT1(0)=VAT(0)
+[M:SOH4]VAT2(0)=VAT(1)
+[M:SOH4]VAT3(0)=VAT(2)
+[M:SOH4]SAU(0)=WUNITE
+[M:SOH4]QTY(0)=WQUANTITE
+Default Mask [M:SOH4]
+Default Mask [M:SOH3]
+Default Mask [M:SOH2]
+Default Mask [M:SOH1]
+Default Mask [M:SOH0]
+nolign=1
+Call RECH_TARIF(1,[M:SOH4]ITMREF(0),0,[M:SOH4]QTY(0),"SOH",[M:SOH4]GROPRI(0)) From TRTVENTAR
+Call CLCNETPRI([M:SOH4]QTY(0),[M:SOH0]CUR,0) From TRTVENPRI
+WPRIX = [M:SOH4]GROPRI
+End
+
+#**
+#* Documentation de la procédure SET_ART_LIV
+#* <table>
+#* <tr><td><b>Société</b></td><td><b><u><font color="#046380">MICROFIRST</font></u></b></td>
+#* <tr><td><b>Auteur</b></td><td>JBS</td>
+#* <tr><td><b>Date de création</b></td><td>24 août 2016</td>
+#* <tr><td><b>Nom de la requête</b></td><td>SET_ART_LIV</td>
+#* <tr><td><b>Nom de la publication</b></td><td>WSEPALIA</td>
+#* <tr><td valign="top"><b>Description de la procédure</b></td><td>
+#* Cette procédure permet d'alimenter la table ZEPIARTLIV qui contient les articles livrés par chargeur et client chargeur
+#* </td></table>
+#* @public
+#* @param WCODCHARG (<font color="#7F0055"><b>Char</b></font>) Code du chargeur
+#* @param WCLTCHARG (<font color="#7F0055"><b>Char</b></font>) Code du client chargeur
+#* @param WCODART (<font color="#7F0055"><b>Char</b></font>) Code de l'article livré
+#* @param RESULT (<font color="#7F0055"><b>Integer</b></font>) Variable résultat du sous-programme
+#* @since <font color="green">Version version</font>
+#*!
+Subprog SET_ART_LIV(WCODCHARG,WCLTCHARG,WCODART,RESULT)
+  Value Char WCODCHARG
+  Value Char WCLTCHARG
+  Value Char WCODART
+  Variable Integer RESULT
+  # Ouverture des tables
+  If clalev([F:ZAL])=0 : Local File ZEPIARTLIV   [F:ZAL]: Endif
+  Raz [F:ZAL]
+  [F:ZAL]ZCODCHARG = WCODCHARG
+  [F:ZAL]ZCLTCHARG = WCLTCHARG
+  [F:ZAL]ZCODART   = WCODART
+  Write [F:ZAL]
+  If(fstat=0)Then
+    RESULT = 1
+  Else
+    RESULT = 0
+  Endif
+End
+
+#**
+#* Documentation de la procédure DEL_ART_LIV
+#* <table>
+#* <tr><td><b>Société</b></td><td><b><u><font color="#046380">MICROFIRST</font></u></b></td>
+#* <tr><td><b>Auteur</b></td><td>JBS</td>
+#* <tr><td><b>Date de création</b></td><td>24 août 2016</td>
+#* <tr><td><b>Nom de la requête</b></td><td>DEL_ART_LIV</td>
+#* <tr><td><b>Nom de la publication</b></td><td>WSEPALIA</td>
+#* <tr><td valign="top"><b>Description de la procédure</b></td><td>
+#* Cette procédure permet de supprimer les enregistrements de la table ZEPIARTLIV qui appartiennent
+#* au chargeur et au client chargeur passés en paramètre. S'il n'y a pas de code client chargeur
+#* toutes les lignes du chargeur seront supprimées.
+#* </td></table>
+#* @public
+#* @param WCODCHARG (<font color="#7F0055"><b>Char</b></font>) Code du chargeur
+#* @param WCLTCHARG (<font color="#7F0055"><b>Char</b></font>) Code du client chargeur
+#* @param RESULT (<font color="#7F0055"><b>Integer</b></font>) Variable résultat du sous-programme
+#* @since <font color="green">Version version</font>
+#*!
+Subprog DEL_ART_LIV(WCODCHARG,WCLTCHARG,RESULT)
+  Value Char WCODCHARG
+  Value Char WCLTCHARG
+  Variable Integer RESULT
+  # Ouverture des tables
+  If clalev([F:ZAL])=0 : Local File ZEPIARTLIV   [F:ZAL]: Endif
+  If(WCODCHARG<>"")Then
+    If(WCLTCHARG<>"")Then
+      Delete [F:ZAL] Where [F:ZAL]ZCODCHARG=WCODCHARG and [F:ZAL]ZCLTCHARG=WCLTCHARG
+    Else
+      Delete [F:ZAL] Where [F:ZAL]ZCODCHARG=WCODCHARG
+    Endif
+    If(fstat=0)Then
+      RESULT = 1
+    Else
+      RESULT = 0
+    Endif
+  Else
+    RESULT = 0
+  Endif
+End
+
+Subprog GET_CH_EPI(WCODECHARG,WCODCHAUF,WNOMCHAUF)
+  Value Char WCODECHARG
+  Variable Char WCODCHAUF()(0..4999)
+  Variable Char WNOMCHAUF()(0..4999)
+
+  If clalev([F:ZCE])=0 : Local File ZCHEPI [ZCE] : Endif
+  Local Integer WLIG : WLIG = 0
+  For [F:ZCE]ZCE0 Where [F:ZCE]ZBPCNUM=WCODECHARG
+    WCODCHAUF(WLIG)   = [F:ZCE]ZCHFNAM
+    WNOMCHAUF(WLIG)   = [F:ZCE]ZCHNAM2
+    WLIG += 1
+  Next
+End
+
+Funprog SET_COLL_ARESYC(WSOHNUM,WTYPE)
+  Value Char WSOHNUM
+  Value Integer WTYPE
+
+  Local Integer RESULT : RESULT = 0
+  If clalev([F:SOP])=0 : Local File SORDERP [SOP] : Endif
+  Trbegin [F:SOP]
+  For [F:SOP]SOP0 Where [F:SOP]SOHNUM=WSOHNUM and [F:SOP]ZTYPART=WTYPE
+    [F:SOP]ZCREEPI=1
+    Rewrite[F:SOP]
+    If(fstat<>0)Then
+      RESULT = 1
+      Break
+    Endif
+  Next
+  If(RESULT=0)Then
+    Commit
+  Else
+    Rollback
+  Endif
+End RESULT
+
+Funprog SET_NUM_EPI(WSOHNUM,WCODEPI,WDATESEUIL,WTYPCOLL)
+  Value Char WSOHNUM
+  Value Char WCODEPI
+  Value Date WDATESEUIL
+  Value Char WTYPCOLL
+  Local Integer RESULT : RESULT = 1 #Modification effectuée
+  If clalev([F:SOH2])=0 : Local File SORDER [F:SOH2]  : Endif
+  Read[F:SOH2]SOH0=WSOHNUM
+  If(fstat=0)Then
+    [F:SOH2]ZCODEPI = WCODEPI
+    [F:SOH2]ZDATESEUIL = WDATESEUIL
+    [F:SOH2]ZTYPCOLL = WTYPCOLL
+    Rewrite [F:SOH2]
+    If(fstat<>0)Then
+      RESULT = 3 #problème d'écriture au niveau de la collecte
+    Endif
+  Else
+    RESULT = 2 # problème de lecture de la collecte
+  Endif
+End RESULT
+
+Subprog GET_CLTCHG_EXIST(WCHARGEUR,WCLTCHARG,RESULT)
+  Value Char WCHARGEUR
+  Value Char WCLTCHARG
+  Variable Integer RESULT
+  Local Integer RESULT : RESULT = 0 #Fiche a créer
+  If clalev([F:ZAI])=0 : Local File ZADREPI [F:ZAI]  : Endif
+  Read[F:ZAI]ZAI0=WCHARGEUR;WCLTCHARG
+  If(fstat=0)Then
+    RESULT = 1 # Fiche à modifier
+  Endif
+End
+
+Funprog SPE_GET_DATEFFET(WDATE,WTYPE)
+  Value Date WDATE
+  Value Integer WTYPE # 1 : Date limite de Vente, 2 : Date limite Achat
+  Local Date RESULT
+  If clalev([F:PER])=0 : Local File PERIOD [F:PER]  : Endif
+  #On va commencer par récupérer                                                                                                                                                                        
+#                                                                                                                                                                                                        
+#                                                                                                                                                                                                        
+#                                                                                                                                                         la date limite de la période de la date WDATE
+  Local Date WDATLIM
+  For[F:PER]PER0 Where [F:PER]CPY="EPA" and [F:PER]LEDTYP=1 and WDATE>=[F:PER]PERSTR and WDATE<=[F:PER]PEREND
+    If(WTYPE=1)Then
+      WDATLIM = [F:PER]ZDLVENTE
+    Else
+      WDATLIM = [F:PER]ZDLACHAT
+    Endif
+  Next
+  #<-----MODIFICATION JBS DU 01/02/2019 A LA DEMANDE DE SLB-----
+  #If(WDATLIM=[0/0/0])Then
+  #  RESULT = WDATE
+  #Else
+    If(WDATLIM<date$)Then
+      RESULT = date$
+    Else
+      RESULT = WDATE
+    Endif
+  #Endif
+  #------------------------------------------------------------>
+End RESULT
+
+Funprog SEP_FACT_PREST_RECEP(WSOHNUM)
+  Value Char WSOHNUM
+  Local Char RESUL(20)
+  #Cette fonction regarde dans la collecte qui est passée en paramètre s'il y a des article de réception (Pre-tri)
+  #si oui, pour chaque article, on va aller voir dans le paramétrage du chargeur et uniquement le paramétrage du chargeur
+  #si l'article de réception fait parti des article de tri, si oui, alors on va faire un BL de prestation des articles de prestations
+  #associés à l'article de tri qui est l'artilce de réception
+
+  #Ouverture des tables
+  If clalev([F:SOH2])=0 : Local File SORDER  [F:SOH2] : Endif
+  If clalev([F:SOP2])=0 : Local File SORDERP [F:SOP2] : Endif
+  If clalev([F:SOQ2])=0 : Local File SORDERQ [F:SOQ2] : Endif
+  If clalev([F:ZPR])=0  : Local File ZPRESTRECEP [F:ZPR]  : Endif
+
+  Local Integer WFICOPEN : WFICOPEN = 0
+  Local Char WBPCNUM(15) : WBPCNUM = ""
+  Local Date WDATEFFET
+  Local Integer WNUMEXPORT : WNUMEXPORT = 0
+  Local Char WTABSDHNUM(20)(1..30)
+  Local Char WTABSOHNUM(20)(1..30)
+  Local Integer WTABNUMEXP(1..30)
+  Local Decimal WPRIX
+  # Définition complète du nom du fichier
+  Local Char ZNOMFIC(250) : ZNOMFIC=GZREPLIV
+  If right$(GZREPLIV,len(GZREPLIV))<>"\"
+      ZNOMFIC += "\"
+  Endif
+  Local Char WFICHIER(250)
+
+  RESULT=""
+  #On ouvre la collecte
+  Read[F:SOH2]SOH0=WSOHNUM
+  If(fstat=0)Then
+    #On commence par parcourir les lignes de type réception de la collecte
+    For [F:ZPR]ZPR0 Where [F:ZPR]SOHNUM=WSOHNUM
+      If(WFICOPEN=0)Then
+        #On ouvre le fichier en écriture
+        WFICHIER = ZNOMFIC + "ZLIV_PREST_RECEPI_" + WSOHNUM + "_" + mid$(date$,7,2) + mid$(date$,5,2) + mid$(date$,3,2) + ".TXT"
+        Openo WFICHIER,0 Using [FIC1]
+        adxifs = ";"
+        adxirs = chr$(13) + chr$(10)
+        adxium = 50
+        WFICOPEN = 1
+      Endif
+      If([F:ZPR]CODE_PAYEUR<>WBPCNUM)Then
+        #On écrit une ent^te dans le fichier
+        WDATEFFET = func SPE_GET_DATEFFET([F:ZPR]ZDATTRI,1)
+        If(WDATEFFET=[0/0/0])Then
+          WDATEFFET = [F:ZPR]ZDATTRI
+        Endif
+        WNUMEXPORT += 1
+        WTABSDHNUM(WNUMEXPORT) = ""
+        WTABSOHNUM(WNUMEXPORT) = WSOHNUM
+        WTABNUMEXP(WNUMEXPORT) = WNUMEXPORT
+        #<-----MODIF JBS DU 27/07/2018 (Jour de vacances :))-----
+        #On ne créé plus le BL sur le chargeur, mais sur le champ ZCLTTRIU de la fiche du client chargeur se trouvant dans ZTYPCOLL
+        #Wrseq "E","",[F:ZPR]SALFCY,[F:ZPR]STOFCY,[F:ZPR]CODE_PAYEUR,[F:ZPR]CUR,WDATEFFET,WDATEFFET,"00001",WSOHNUM,WNUMEXPORT,[F:ZPR]CCE0,[F:ZPR]CCE1,[F:ZPR]ZDATTRI Using [FIC1]
+        Wrseq "E","",[F:ZPR]SALFCY,[F:ZPR]STOFCY,[F:ZPR]ZCLTTRIU,[F:ZPR]CUR,WDATEFFET,WDATEFFET,"00001",WSOHNUM,WNUMEXPORT,[F:ZPR]CCE0,[F:ZPR]CCE1,[F:ZPR]ZDATTRI Using [FIC1]
+        #------------------------------------------------------->
+        WBPCNUM = [F:ZPR]CODE_PAYEUR
+      Endif
+      #On écrit une ligne
+      WPRIX = func SPEZEPI.SPE_GET_PRIX_A_DATE([F:ZPR]COD_MOD_PRES,[F:ZPR]ART_PREST,1,[F:ZPR]SITE,[F:ZPR]PAYS,"",WDATEFFET)
+      If(WPRIX=0)Then
+        WPRIX = [F:ZPR]PRIX
+      Endif
+      Wrseq "L",[F:ZPR]ART_PREST,[F:ZPR]QTY,WPRIX,0,0,0,"",0,[F:ZPR]CCE0,[F:ZPR]CCE1 Using [FIC1]
+    Next
+  Endif
+  If(WFICOPEN<>0)Then
+    #On ferme le fichier
+    Openo Using [FIC1]
+    #On va maintenant importer le fichier pour créer les livraisons
+
+    Local Char TIT(30) :[L]TIT ="Facturation prestation EPALIS"
+    If !GSERVEUR : Call OUVRE_TRACE(TIT) From LECFIC : Endif
+    Call ECR_TRACE("----------------------------------",0) From GESECRAN
+    Call ECR_TRACE("- CREATION DE BONS LDE LIVRAISON -",0) From GESECRAN
+    Call ECR_TRACE("----------------------------------",0) From GESECRAN
+    Call ECR_TRACE(" ",0) From GESECRAN
+    If clalev([F:SDH2])=0 : Local File SDELIVERY [F:SDH2] : Endif
+    # Import du fichier
+    Gosub OUVRE From GIMPOBJ
+    [M:IMP2]MODIMP="ZEPALIS"
+    [M:IMP2]TYPEXP=2
+    [M:IMP2]NOMIMP=WFICHIER
+    GSERVEUR=1
+    Gosub EXEC From GIMPOBJ
+    GSERVEUR=0
+
+    # On va maintenant rechercher la livraison pour savoir si tout c'est bien passé
+    For I=1 To WNUMEXPORT
+      Filter [F:SDH2] Where [F:SDH2]ZSOHNUMEPI=WTABSOHNUM(I) and [F:SDH2]ZNUMEPI=WTABNUMEXP(I)
+      Read [F:SDH2]SDH0 First
+      If fstat
+        #Il y a eu une rreur
+        #Infbox "Erreur"
+      Else
+        #L'import s'est déroulé correctement
+        If(I=1)Then
+          RESULT = [F:SDH2]SDHNUM
+        Endif
+      Endif
+      Filter [F:SDH2]
+    Next
+    If !GSERVEUR :Call FERME_TRACE From LECFIC : Endif
+    TRA=1
+    If(GWEBSERV=0)Then
+      Call LEC_TRACE From LECFIC
+    Endif
+  Endif
+End RESULT
+
+Subprog SET_RESOLDE_CDE_MOTIF(NUMCDE,INFO,RESULT)
+  Value Char NUMCDE
+  Variable Char INFO
+  Variable Integer RESULT
+  RESULT = 1
+  INFO = "Traitement terminé avec succès"
+  #Pour pouvoir solder une commande, il faut que la commande soit une commande EPALIs et que celle-ci ne soit pas déjà soldée.
+  If clalev([F:SOH2])=0 : Local File SORDER  [F:SOH2] : Endif
+  If clalev([F:SOP2])=0 : Local File SORDERP [F:SOP2] : Endif
+  If clalev([F:SOQ2])=0 : Local File SORDERQ [F:SOQ2] : Endif
+  Read[F:SOH2]SOH0=NUMCDE
+  If(fstat=0)Then
+    If([F:SOH2]ORDSTA<>2 and [F:SOH2]ZTRS="EPI")Then
+      Local Integer WERR : WERR = 0
+      Trbegin [F:SOH2],[F:SOP2],[F:SOQ2]
+      #On va maintenant solder la commande
+      Local Integer WNBLIG : WNBLIG = 0
+      For [F:SOP2]SOP0 Where [F:SOP2]SOHNUM=NUMCDE
+        [F:SOP2]SOQSTA = 3
+        [F:SOP2]UPDDAT = date$
+        [F:SOP2]UPDUSR = GUSER
+        WNBLIG = WNBLIG + 1
+        Rewrite [F:SOP2]
+        If(fstat<>0)Then
+          WERR = 1
+        Endif
+      Next
+      For [F:SOQ2]SOQ0 Where [F:SOQ2]SOHNUM=NUMCDE
+        [F:SOQ2]SOQSTA = 3
+        [F:SOQ2]UPDDAT = date$
+        [F:SOQ2]UPDUSR = GUSER
+        Rewrite [F:SOQ2]
+        If(fstat<>0)Then
+          WERR = 1
+        Endif
+      Next
+      [F:SOH2]ORDSTA = 2
+      [F:SOH2]UPDDAT = date$
+      [F:SOH2]UPDUSR = GUSER
+      [F:SOH2]DLRNOT = 0
+      [F:SOH2]DLRATI = 0
+      [F:SOH2]CLELINNBR = WNBLIG
+      #On va repositionner le champ Solde avec motif à vrai
+      [F:SOH2]ZSOLDMOT=2
+      Rewrite [F:SOH2]
+      If(fstat<>0)Then
+        WERR = 1
+      Endif
+      If(WERR=0)Then
+        Commit
+        RESULT = 1
+        INFO = "Traitement terminé avec succès"
+      Else
+        Rollback
+        RESULT = 0
+        INFO = "ERREUR. Pb lors de la modification de la cde."
+      Endif
+    Else
+      RESULT = 0
+      INFO = "ERREUR. Cde déjà soldée ou non EPALIS."
+    Endif
+  Endif
+End
+
+Subprog SET_DESOLDE_CDE_MOTIF(NUMCDE,INFO,RESULT)
+  Value Char NUMCDE
+  Variable Char INFO
+  Variable Integer RESULT
+  RESULT = 1
+  INFO = "Traitement terminé avec succès"
+  If clalev([F:SOH2])=0 : Local File SORDER [F:SOH2] : Endif
+  If clalev([F:SOP2])=0 : Local File SORDERP [F:SOP2] : Endif
+  If clalev([F:SOQ2])=0 : Local File SORDERQ [F:SOQ2] : Endif
+  #Ce web service ne fonctionne que pour les collecte soldée avec motif
+  Read[F:SOH2]SOH0=NUMCDE
+  If(fstat=0)Then
+    If([F:SOH2]ORDSTA=2 and [F:SOH2]ZTRS="EPI" and [F:SOH2]ZSOLDMOT=2)Then
+      Local Integer WERR : WERR = 0
+      Trbegin [F:SOH2],[F:SOP2],[F:SOQ2]
+      #On va maintenant solder la commande
+      Local Integer WNBLIG : WNBLIG = 0
+      For [F:SOP2]SOP0 Where [F:SOP2]SOHNUM=NUMCDE
+        [F:SOP2]SOQSTA = 1
+        [F:SOP2]UPDDAT = date$
+        [F:SOP2]UPDUSR = GUSER
+        WNBLIG = WNBLIG + 1
+        Rewrite [F:SOP2]
+        If(fstat<>0)Then
+          WERR = 1
+        Endif
+      Next
+      For [F:SOQ2]SOQ0 Where [F:SOQ2]SOHNUM=NUMCDE
+        [F:SOQ2]SOQSTA = 1
+        [F:SOQ2]UPDDAT = date$
+        [F:SOQ2]UPDUSR = GUSER
+        Rewrite [F:SOQ2]
+        If(fstat<>0)Then
+          WERR = 1
+        Endif
+      Next
+      [F:SOH2]ORDSTA = 1
+      [F:SOH2]UPDDAT = date$
+      [F:SOH2]UPDUSR = GUSER
+      [F:SOH2]CLELINNBR = 1
+      #On va repositionner le champ Solde avec motif à faux pour ne pas que cela déclenche une action au moment de la sauvegarde
+      #S'il devait y avoir une action elle aurait déjà été effectuée
+      [F:SOH2]ZSOLDMOT=1
+      Rewrite [F:SOH2]
+      If(fstat<>0)Then
+        WERR = 1
+      Endif
+      If(WERR=0)Then
+        Commit
+        RESULT = 1
+        INFO = "Traitement terminé avec succès"
+      Else
+        Rollback
+        RESULT = 0
+        INFO = "ERREUR. Pb lors de la modification de la cde."
+      Endif
+    Else
+      RESULT = fstat
+      INFO = "ERREUR. Impossible de récupérer la collecte EPALIS."
+    Endif
+  Endif
+
+End
+

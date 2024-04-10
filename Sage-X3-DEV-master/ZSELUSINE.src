@@ -1,0 +1,58 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### ZSELUSINE
+##################################################### créé le 07/10/2019
+##################################################### modifié le 07/10/2019
+
+###################################################################################### ACTION
+$ACTION
+#Infbox ACTION
+Case ACTION
+  When "SEL_LISTE" : Gosub SEL_LISTE
+Endcase
+Return
+
+###################################################################################### SEL_LISTE
+$SEL_LISTE
+Local Shortint I
+Local Integer WNUMLIG
+Local Char WCHARGTRAIT(250)
+Local Char TEXTE(250)(1..200,1..5)    #- The dimension is 9, TEXTE needs to be declared
+                                          #- in order To initialize dimension
+#- Titre de la fenêtre (ATTENTION, on ne peut pas dépasser 5 colonnes !!!)
+TIT(0) = "Selection d'une usine"
+#- Titre des colonnes
+TIT(1) = "Code usine"
+TIT(2) = "Usine"
+TIT(3) = "Adresse"
+TIT(4) = "Code chargeur"
+TIT(5) = "Chargeur"
+
+I=1
+NBTEX=0    #- Nombre de ligne
+If clalev([F:ZLU])=0 : Local File ZLISTUSINE [ZLU] : Endif
+For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+  #Si le chargeur n'a pas encore été traité, on récupère les usines de ce chargeur
+  If(instr(1,";" + WCHARGTRAIT + ";",";" + [M:ZCMC2]YZCODCHARG(WNUMLIG) + ";")=0)Then
+    #Le chargeur n'a pas encore été traité
+    For[F:ZLU]ZLU0 Where [F:ZLU]CODCHG=[M:ZCMC2]YZCODCHARG(WNUMLIG)
+      NBTEX = I
+      TEX(I)     = [F:ZLU]CODUSINE    # - Valeur retournée lors de la sélection
+      TEXTE(I,1) = [F:ZLU]CODUSINE    # - Valeur de la ligne pour la colonne 1
+      TEXTE(I,2) = [F:ZLU]NOMUSINE    # - Valeur de la ligne pour la colonne 2
+      TEXTE(I,3) = [F:ZLU]ADR1 + " " + [F:ZLU]POSCOD + " " + [F:ZLU]CITY + " " + [F:ZLU]PAYS  # - Valeur de la ligne pour la colonne 3
+      TEXTE(I,4) = [F:ZLU]CODCHG      # - Valeur de la ligne pour la colonne 4
+      TEXTE(I,5) = [F:ZLU]NOMCHG      # - Valeur de la ligne pour la colonne 5
+      I = I+1
+    Next
+    If(WCHARGTRAIT="")Then
+      WCHARGTRAIT = [M:ZCMC2]YZCODCHARG(WNUMLIG)
+    Else
+      WCHARGTRAIT += ";" + [M:ZCMC2]YZCODCHARG(WNUMLIG)
+    Endif
+  Endif
+Next
+If(NBTEX=0)Then
+  GERR = 1
+  GMESSAGE = "Pas d'enregistrement disponible."
+Endif
+Return

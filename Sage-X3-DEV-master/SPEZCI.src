@@ -1,0 +1,125 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+# Gestion du masque ZCHINC (Spécifique)
+
+######################################################################################
+## Etiquette ajoutée par le superviseur (écran ZCHINC) 03/12/2019 15:44:03 (JBS)
+######################################################################################
+$ACTION
+#Infbox ACTION
+Case ACTION
+  When "OUVRE"       : Gosub OUVRE
+  When "DEBUT"       : Gosub DEBUT
+  When "OK"          : Gosub OK
+  When "BOUTON"      : Gosub BOUTON
+Endcase
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           LABELS                                                  #
+#---------------------------------------------------------------------------------------------------#
+$OUVRE
+If clalev([F:TCY])=0  : Local File TABCOUNTRY [TCY]     : Endif
+If clalev([F:AXX])=0  : Local File ATEXTRA    [AXX]     : Endif
+If clalev([F:ZDPO])=0 : Local File ZDEPOT     [F:ZDPO]  : Endif
+Return
+
+$DEBUT
+[M:ZCI]=[M:ZCMC1]
+If([M:ZCI]IPAYSISO<>"")Then
+  Call AM_IPAYSISO([M:ZCI]IPAYSISO)
+Endif
+Affzo[M:ZCI]
+Return
+
+$OK
+[M:ZCMC1]=[M:ZCI]
+If([M:ZCI]IPOSCOD<>"")Then
+  [M:ZCMC1]ZCHANTIER=2
+  [M:ZCMC1]ZADRESSE(0) = [M:ZCMC1]IADRESSE(0)
+  [M:ZCMC1]ZADRESSE(1) = [M:ZCMC1]IADRESSE(1)
+  [M:ZCMC1]ZADRESSE(2) = [M:ZCMC1]IADRESSE(2)
+  [M:ZCMC1]ZCITY       = [M:ZCMC1]ICITY
+  [M:ZCMC1]ZPOSCOD     = [M:ZCMC1]IPOSCOD
+  [M:ZCMC1]ZPAYSISO    = [M:ZCMC1]IPAYSISO
+  [M:ZCMC1]ZPAYS       = [M:ZCMC1]IPAYS
+  [M:ZCMC1]ZTEL        = [M:ZCMC1]ITEL
+  [M:ZCMC1]ZMOB        = [M:ZCMC1]IMOB
+  [M:ZCMC1]ZFAX        = [M:ZCMC1]IFAX
+  [M:ZCMC1]ZMAIL       = [M:ZCMC1]IMAIL
+  If([M:ZCMC1]ZCHANTIER=2)Then
+    Chgfmt [M:ZCMC1]INOMCHT With "K:100X"
+    Chgfmt [M:ZCMC1]IREFCHT With "K:50X"
+  Else
+    Chgfmt [M:ZCMC1]INOMCHT With "-K:100X"
+    Chgfmt [M:ZCMC1]IREFCHT With "-K:50X"
+  Endif
+  Affzo [M:ZCMC1]5
+Endif
+Affzo[M:ZCMC1]
+mkstat=4
+Return
+
+$BOUTON
+If(BOUT="E")Then
+  #L'utilisateur veut supprimer les informations d'adresse
+  [M:ZCMC1]IADRESSE(0) = ""
+  [M:ZCMC1]IADRESSE(1) = ""
+  [M:ZCMC1]IADRESSE(2) = ""
+  [M:ZCMC1]ICITY       = ""
+  [M:ZCMC1]IPOSCOD     = ""
+  [M:ZCMC1]IPAYSISO    = ""
+  [M:ZCMC1]IPAYS       = ""
+  [M:ZCMC1]ITEL        = ""
+  [M:ZCMC1]IMOB        = ""
+  [M:ZCMC1]IFAX        = ""
+  [M:ZCMC1]IMAIL       = ""
+  [M:ZCMC1]INOMCHT     = ""
+  [M:ZCMC1]IREFCHT     = ""
+  #On met à jour les informations du dépôt
+  If([M:ZCMC1]ZCHANUM<>"")Then
+    [M:ZCMC1]ZCHANTIER=2
+    Chgfmt [M:ZCMC1]INOMCHT With "K:100X"
+    Chgfmt [M:ZCMC1]IREFCHT With "K:50X"
+  Else
+    [M:ZCMC1]ZCHANTIER=1
+    Chgfmt [M:ZCMC1]INOMCHT With "-K:100X"
+    Chgfmt [M:ZCMC1]IREFCHT With "-K:50X"
+  Endif
+  If([M:ZCMC1]ZCHANTIER=2 and [M:ZCMC1]ZCHANUM<>"")Then
+    Call SPE_SET_INFO_CHANTIER([M:ZCMC1]ZCHANUM) From SPEZCMC
+    Read[F:ZDPO]ZDPO0=[M:ZCMC0]ZDEPNUM
+    If(fstat=0)Then
+      [M:ZCMC0]ZDEPNAM = [F:ZDPO]ZDEPNAM
+      [M:ZCMC1] = [F:ZDPO]
+      Affzo [M:ZCMC1]5
+    Endif
+  Else
+    Call SPE_SET_INFO_DEPOT([M:ZCMC0]ZDEPNUM) From SPEZCMC
+  Endif
+  Affzo [M:ZCMC1]5
+  mkstat=4
+  FIN = 1
+Endif
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           SUBPROGS                                                #
+#---------------------------------------------------------------------------------------------------#
+Subprog AM_IPAYSISO(VALEUR)
+Variable Char    VALEUR()
+#Dans le cas où l'utilisateur a choisit un pays, on se positionne sur la fiche du pays
+If(VALEUR<>"")Then
+  Read[F:TCY]TCY0=VALEUR
+  If(fstat<>0)Then
+    [M:ZCI]IPAYS = ""
+  Else
+    Read[F:AXX]AXX0="TABCOUNTRY";"CRYDES";"FRA";VALEUR;""
+    If(fstat=0)Then
+      [M:ZCI]IPAYS = toupper([F:AXX]TEXTE)
+    Else
+      [M:ZCI]IPAYS = ""
+    Endif
+  Endif
+  Affzo [M:ZCI]IPAYS
+Endif
+End

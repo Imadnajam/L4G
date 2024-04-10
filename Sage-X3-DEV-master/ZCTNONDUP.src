@@ -1,0 +1,18 @@
+#<AdxTL>@(#)9.0.0.0 $Revision$
+#################################################### ZCTNONDUP
+#################################################### 11/03/2014
+
+Subprog CONTROLE(PVALEUR)
+Variable Char PVALEUR()
+
+#----- Modification du 22/11/2019 -----
+#Suite mail de SLB du 22/11/2019 à 13:40
+#Donner l'autorisation de la duplication sur les commandes d'achat transaction CFG
+If GIMPORT or GWEBSERV : End : Endif
+#If PVALEUR="" and GUSER<>"ADMIN"
+If(PVALEUR="" and not(GUSER="ADMIN" or (GFLAG="CFG" and GFONCTION="GESPOH")))Then
+#--------------------------------------
+    GMESSAGE="Duplication non autorisée."
+    mkstat=2
+Endif
+End

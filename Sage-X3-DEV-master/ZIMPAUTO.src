@@ -1,0 +1,475 @@
+#<AdxTL>@(#)1.0.0.0 $Revision$
+################################################### ZIMPAUTO
+################################################### 29/06/2015
+
+Gosub OUVRE_FIC
+
+GZIAEXEMAN = 1
+
+If nbrecord([F:ZIA])=0 : End : Endif
+
+Call EFFACE(filpath("FIL","ZIMPAUTO","stop"),WZIAERR) From ORDSYS
+Openo filpath("FIL","ZIMPAUTO","run")
+Openo
+
+While filinfo(filpath("FIL","ZIMPAUTO","stop"),7)<0
+    Gosub LIRE_MODELES
+Wend
+Call EFFACE(filpath("FIL","ZIMPAUTO","run"),WZIAERR) From ORDSYS
+Call EFFACE(filpath("FIL","ZIMPAUTO","stop"),WZIAERR) From ORDSYS
+
+If dim([V]GZIAERRIMP) : Kill [V]GZIAERRIMP : Endif
+If dim([V]GZIATRTMOD) : Kill [V]GZIATRTMOD: Endif
+If dim([V]GZIAIMPFIC) : Kill [V]GZIAIMPFIC : Endif
+If dim([V]GZIAEXEMAN) : Kill [V]GZIAEXEMAN : Endif
+End
+
+################################################### OUVRE_FIC
+
+$OUVRE_FIC
+If clalev([F:ZIA])=0 : Local File ZIAIMPORT : Endif
+If clalev([F:AOE])=0 : Local File AOBJEXT : Endif
+If clalev([F:ZIR])=0 : Local File ZIARESULT Order By ZIRDAT Desc; ZIRHOU Desc : Endif
+
+Global Integer GZIAERRIMP : # Workflow : Type d'erreur
+Global Integer GZIATRTMOD : # Traité le modèle d'import (traitement début)
+Global Integer GZIAIMPFIC : # Importer le fichier
+Global Integer GZIAEXEMAN : # Exécution manuelle
+Global Char GZIAFICHIER(255) : # Nom du fichier à traiter
+Global Char GZIAREPERT(255) : # Nom du répertoire de travail
+
+Local Char WZIAREPTRT(250), WZIAREPERR(250), WZIAREPFIC(250), WZIAFICTST(250), WZIAMESS(250), WZIAFICHIER(250), WZIAFICTRA(250)
+Local Char WZIALISFIC(250)(0..199), WZIADATE(8), WZIALIGNE(250), WZIAJEXEC(8), WZIAHEXEC(4), WZIAHPROCEXEC(4)
+Local Integer WZIAERR, WZIANUMFIC, WZIABATCH, WZIAIMPSTA, WZIASTA, WZIAHPROC, WZIAMPROC, WZIANBAVE
+
+Return
+
+################################################### LIRE_MODELES
+
+$LIRE_MODELES
+If GZIAEXEMAN=3
+    Read [F:ZIA]ZIA0 = [M:ZIA]ZIAMODELE(WNOL)
+    Gosub TRAITE_LIGNE
+Else
+    For [F:ZIA]ZIA0
+        If GZIAEXEMAN=1
+            Gosub TRAITE_MODELE
+            If filinfo(filpath("FIL","ZIMPAUTO","stop"),7)>=0
+                Break
+            Endif
+            Sleep GZIANBSATT
+        Else
+            Gosub TRAITE_LIGNE
+        Endif
+    Next
+Endif
+Return
+
+################################################### TRAITE_MODELE
+
+$TRAITE_MODELE
+Raz WZIAHPROCEXEC, WZIAHPROC, WZIAMPROC
+WZIAJEXEC=format$("D:YYYYMMDD",date$)
+WZIAHEXEC=format$("D:hhmm",date$)
+If [F:ZIA]ZIAPERIOD<>0
+    If [F:ZIA]ZIAHEUEXE(0)<>""
+        If [F:ZIA]ZIADEREXE="" or left$([F:ZIA]ZIADEREXE,8)<WZIAJEXEC
+            If WZIAHEXEC>=[F:ZIA]ZIAHEUEXE(0)
+                Goto EXECUTION
+            Else
+                Return
+            Endif
+        Elsif [F:ZIA]ZIADEREXE<>"" and left$([F:ZIA]ZIADEREXE,8)=WZIAJEXEC
+            WZIAHPROC = val(seg$([F:ZIA]ZIADEREXE,9,10))*60+val(seg$([F:ZIA]ZIADEREXE,11,12))+[F:ZIA]ZIAPERIOD
+            If int(WZIAHPROC/60)<10
+                WZIAHPROCEXEC = "0"
+            Endif
+            WZIAHPROCEXEC += num$(int(WZIAHPROC/60))
+            WZIAMPROC = arr((((WZIAHPROC/60)-int(WZIAHPROC/60))*60),1)
+            If WZIAMPROC<10
+                WZIAHPROCEXEC += "0"+num$(WZIAMPROC)
+            Else
+                WZIAHPROCEXEC += num$(WZIAMPROC)
+            Endif
+            If WZIAHEXEC>=WZIAHPROCEXEC
+                Goto EXECUTION
+            Else
+                Return
+            Endif
+        Else
+            Return
+        Endif
+    Else
+        If [F:ZIA]ZIADEREXE="" or left$([F:ZIA]ZIADEREXE,8)<WZIAJEXEC
+            If int([F:ZIA]ZIAPERIOD/60)<10
+                WZIAHPROCEXEC = "0"
+            Endif
+            WZIAHPROCEXEC += num$(int([F:ZIA]ZIAPERIOD/60))
+            WZIAMPROC = arr((([F:ZIA]ZIAPERIOD/60)-int([F:ZIA]ZIAPERIOD/60))*60,1)
+            If WZIAMPROC<10
+                WZIAHPROCEXEC += "0"+num$(WZIAMPROC)
+            Else
+                WZIAHPROCEXEC += num$(WZIAMPROC)
+            Endif
+            If WZIAHEXEC>=WZIAHPROCEXEC
+                Goto EXECUTION
+            Else
+                Return
+            Endif
+        Elsif [F:ZIA]ZIADEREXE<>"" and left$([F:ZIA]ZIADEREXE,8)=WZIAJEXEC
+            WZIAHPROC = val(seg$([F:ZIA]ZIADEREXE,9,10))*60+val(seg$([F:ZIA]ZIADEREXE,11,12))+[F:ZIA]ZIAPERIOD
+            If int(WZIAHPROC/60)<10
+                WZIAHPROCEXEC = "0"
+            Endif
+            WZIAHPROCEXEC += num$(int(WZIAHPROC/60))
+            WZIAMPROC = arr((((WZIAHPROC/60)-int(WZIAHPROC/60))*60),1)
+            If WZIAMPROC<10
+                WZIAHPROCEXEC += "0"+num$(WZIAMPROC)
+            Else
+                WZIAHPROCEXEC += num$(WZIAMPROC)
+            Endif
+            If WZIAHEXEC>=WZIAHPROCEXEC
+                Goto EXECUTION
+            Else
+                Return
+            Endif
+        Else
+            Return
+        Endif
+    Endif
+Else
+    If [F:ZIA]ZIAHEUEXE(0)<>""
+        If [F:ZIA]ZIADEREXE="" or left$([F:ZIA]ZIADEREXE,8)<WZIAJEXEC
+            If WZIAHEXEC>=[F:ZIA]ZIAHEUEXE(0)
+                Goto EXECUTION
+            Else
+                Return
+            Endif
+        Elsif [F:ZIA]ZIADEREXE<>"" and left$([F:ZIA]ZIADEREXE,8)=WZIAJEXEC
+            If [F:ZIA]ZIAHEUEXE(1)<>"" and right$([F:ZIA]ZIADEREXE,9)>=[F:ZIA]ZIAHEUEXE(0) and right$([F:ZIA]ZIADEREXE,9)<[F:ZIA]ZIAHEUEXE(1) and WZIAHEXEC>=[F:ZIA]ZIAHEUEXE(1)
+                Goto EXECUTION
+            Elsif [F:ZIA]ZIAHEUEXE(2)<>"" and right$([F:ZIA]ZIADEREXE,9)>=[F:ZIA]ZIAHEUEXE(1) and right$([F:ZIA]ZIADEREXE,9)<[F:ZIA]ZIAHEUEXE(2) and WZIAHEXEC>=[F:ZIA]ZIAHEUEXE(2)
+                Goto EXECUTION
+            Elsif [F:ZIA]ZIAHEUEXE(3)<>"" and right$([F:ZIA]ZIADEREXE,9)>=[F:ZIA]ZIAHEUEXE(2) and right$([F:ZIA]ZIADEREXE,9)<[F:ZIA]ZIAHEUEXE(3) and WZIAHEXEC>=[F:ZIA]ZIAHEUEXE(3)
+                Goto EXECUTION
+            Elsif [F:ZIA]ZIAHEUEXE(4)<>"" and right$([F:ZIA]ZIADEREXE,9)>=[F:ZIA]ZIAHEUEXE(3) and right$([F:ZIA]ZIADEREXE,9)<[F:ZIA]ZIAHEUEXE(4) and WZIAHEXEC>=[F:ZIA]ZIAHEUEXE(4)
+                Goto EXECUTION
+            Elsif [F:ZIA]ZIAHEUEXE(5)<>"" and right$([F:ZIA]ZIADEREXE,9)>=[F:ZIA]ZIAHEUEXE(4) and right$([F:ZIA]ZIADEREXE,9)<[F:ZIA]ZIAHEUEXE(5) and WZIAHEXEC>=[F:ZIA]ZIAHEUEXE(5)
+                Goto EXECUTION
+            Elsif [F:ZIA]ZIAHEUEXE(6)<>"" and right$([F:ZIA]ZIADEREXE,9)>=[F:ZIA]ZIAHEUEXE(5) and right$([F:ZIA]ZIADEREXE,9)<[F:ZIA]ZIAHEUEXE(6) and WZIAHEXEC>=[F:ZIA]ZIAHEUEXE(6)
+                Goto EXECUTION
+            Elsif [F:ZIA]ZIAHEUEXE(7)<>"" and right$([F:ZIA]ZIADEREXE,9)>=[F:ZIA]ZIAHEUEXE(6) and right$([F:ZIA]ZIADEREXE,9)<[F:ZIA]ZIAHEUEXE(7) and WZIAHEXEC>=[F:ZIA]ZIAHEUEXE(7)
+                Goto EXECUTION
+            Elsif [F:ZIA]ZIAHEUEXE(8)<>"" and right$([F:ZIA]ZIADEREXE,9)>=[F:ZIA]ZIAHEUEXE(7) and right$([F:ZIA]ZIADEREXE,9)<[F:ZIA]ZIAHEUEXE(8) and WZIAHEXEC>=[F:ZIA]ZIAHEUEXE(8)
+                Goto EXECUTION
+            Elsif [F:ZIA]ZIAHEUEXE(9)<>"" and right$([F:ZIA]ZIADEREXE,9)>=[F:ZIA]ZIAHEUEXE(8) and right$([F:ZIA]ZIADEREXE,9)<[F:ZIA]ZIAHEUEXE(9) and WZIAHEXEC>=[F:ZIA]ZIAHEUEXE(9)
+                Goto EXECUTION
+            Else
+                Return
+            Endif
+        Else
+            Return
+        Endif
+    Else
+        Goto EXECUTION
+    Endif
+Endif
+
+################################################### EXECUTION
+
+$EXECUTION
+[F:ZIA]ZIADEREXE = WZIAJEXEC+WZIAHEXEC
+Rewrite [F:ZIA]
+Gosub TRAITE_LIGNE
+Return
+
+################################################### TRAITE_LIGNE
+
+$TRAITE_LIGNE
+Read [F:AOE]AOE0=[F:ZIA]ZIAMODELE
+If fstat
+    Call LIGNE_SUIVI([F:ZIA]ZIAMODELE,"","",1,"Modèle d'import inexistant.",0,0)
+    Return
+Endif
+
+WZIAREPFIC=[F:ZIA]ZIAREPERT
+If right$(WZIAREPFIC,len(WZIAREPFIC))<>"\"
+    WZIAREPFIC += "\"
+Endif
+WZIAREPTRT = WZIAREPFIC+"TRAITE\"
+WZIAREPERR = WZIAREPFIC+"ERREUR\"
+
+GZIAREPERT = WZIAREPFIC
+
+adxifs=""
+adxirs=chr$(13)+chr$(10)
+
+# Controle répertoire des fichiers à traiter
+WZIAERR=0
+WZIAFICTST = WZIAREPFIC+"TEST_"+GUSER+"_"+format$("D:YYYYMMDDhhmmss",date$)+".TEST"
+Onerrgo PBCREATFIC
+Openo WZIAFICTST,0 Using [ZTST]
+Onerrgo
+Openo Using [ZTST]
+If WZIAERR>0
+    Case WZIAERR
+     When 20
+        WZIAMESS = "Répertoire des fichiers à importer inexistant. Arrêt du traitement."
+     When 27
+        WZIAMESS = "Accès impossible (permission refusée) au répertoire des fichiers à importer. Arrêt du traitement."
+     When 44
+        WZIAMESS = "Problème de place disque sur le répertoire des fichiers à importer. Arrêt du traitement."
+     When Default
+        WZIAMESS = "Problème système rencontré lors de la vérification d'accès au répertoire des fichiers à importer ("+errmes$(WZIAERR)+"). Arrêt du traitement."
+    Endcase
+    Call LIGNE_SUIVI([F:ZIA]ZIAMODELE,"","",1,WZIAMESS,0,0)
+    Return
+Endif
+
+Call EFFACE(WZIAFICTST,WZIAERR) From ORDSYS
+
+# Controle répertoire des fichiers traités
+WZIAERR=0
+WZIAFICTST = WZIAREPTRT+"TEST_"+GUSER+"_"+format$("D:YYYYMMDDhhmmss",date$)+".TEST"
+Onerrgo PBCREATFIC
+Openo WZIAFICTST,0 Using [ZTST]
+Onerrgo
+Openo Using [ZTST]
+If WZIAERR>0
+    Case WZIAERR
+     When 20
+        WZIAMESS = "Répertoire des fichiers traités inexistant. Arrêt du traitement."
+     When 27
+        WZIAMESS = "Accès impossible (permission refusée) au répertoire des fichiers traités. Arrêt du traitement."
+     When 44
+        WZIAMESS = "Problème de place disque sur le répertoire des fichiers traités. Arrêt du traitement."
+     When Default
+        WZIAMESS = "Problème système rencontré lors de la vérification d'accès au répertoire des fichiers traités ("+errmes$(WZIAERR)+"). Arrêt du traitement."
+    Endcase
+    Call LIGNE_SUIVI([F:ZIA]ZIAMODELE,"","",1,WZIAMESS,0,0)
+    Return
+Endif
+Call EFFACE(WZIAFICTST,WZIAERR) From ORDSYS
+
+# Controle répertoire des fichiers en erreur
+WZIAERR=0
+WZIAFICTST = WZIAREPERR+"TEST_"+GUSER+"_"+format$("D:YYYYMMDDhhmmss",date$)+".TEST"
+Onerrgo PBCREATFIC
+Openo WZIAFICTST,0 Using [ZTST]
+Onerrgo
+Openo Using [ZTST]
+If WZIAERR>0
+    Case WZIAERR
+     When 20
+        WZIAMESS = "Répertoire des fichiers en erreur inexistant. Arrêt du traitement."
+     When 27
+        WZIAMESS = "Accès impossible (permission refusée) au répertoire des fichiers en erreur. Arrêt du traitement."
+     When 44
+        WZIAMESS = "Problème de place disque sur le répertoire des fichiers en erreur. Arrêt du traitement."
+     When Default
+        WZIAMESS = "Problème système rencontré lors de la vérification d'accès au répertoire des fichiers en erreur ("+errmes$(WZIAERR)+"). Arrêt du traitement."
+    Endcase
+    Call LIGNE_SUIVI([F:ZIA]ZIAMODELE,"","",1,WZIAMESS,0,0)
+    Return
+Endif
+Call EFFACE(WZIAFICTST,WZIAERR) From ORDSYS
+
+# Contrôle existence des traitements début/avant/après/fin
+If [F:ZIA]ZIATRTSTR<>""
+    Call EXISTE_ADX("","",[F:ZIA]ZIATRTSTR,WZIAERR) From ORDSYS
+    If !WZIAERR
+        Call LIGNE_SUIVI([F:ZIA]ZIAMODELE,"","",1,"Traitement début import non trouvé.",0,0)
+        Return
+    Endif
+Endif
+If [F:ZIA]ZIATRTBEF<>""
+    Call EXISTE_ADX("","",[F:ZIA]ZIATRTBEF,WZIAERR) From ORDSYS
+    If !WZIAERR
+        Call LIGNE_SUIVI([F:ZIA]ZIAMODELE,"","",1,"Traitement avant import non trouvé.",0,0)
+        Return
+    Endif
+Endif
+If [F:ZIA]ZIATRTAFT<>""
+    Call EXISTE_ADX("","",[F:ZIA]ZIATRTAFT,WZIAERR) From ORDSYS
+    If !WZIAERR
+        Call LIGNE_SUIVI([F:ZIA]ZIAMODELE,"","",1,"Traitement après import non trouvé.",0,0)
+        Return
+    Endif
+Endif
+If [F:ZIA]ZIATRTEND<>""
+    Call EXISTE_ADX("","",[F:ZIA]ZIATRTEND,WZIAERR) From ORDSYS
+    If !WZIAERR
+        Call LIGNE_SUIVI([F:ZIA]ZIAMODELE,"","",1,"Traitement fin import non trouvé.",0,0)
+        Return
+    Endif
+Endif
+
+# Suppression des fichiers traités si date fichier antérieure date du jour - GZIANBJCF
+Raz WZIALISFIC, WZIANUMFIC, WZIAFICHIER
+Openo WZIAREPTRT+"Liste_imp.bat",0 Using [XXX]
+Wrseq 'DIR /B "'+WZIAREPTRT+'*.*"' Using [XXX]
+Openo Using [XXX]
+Sleep 2
+System WZIALISFIC=WZIAREPTRT+"Liste_imp.bat"
+# Boucle des fichiers à traiter
+For WZIANUMFIC=0 To 199
+    WZIAFICHIER =  toupper(WZIALISFIC(WZIANUMFIC))
+    If vireblc(WZIAFICHIER,4)<>""
+        If filinfo(WZIAREPTRT+WZIAFICHIER,8)>0
+            WZIADATE = format$("D:YYYYMMDD",[01/01/1970]+(int(filinfo(WZIAREPTRT+WZIAFICHIER,8)/86400)))
+            If WZIADATE<format$("D:YYYYMMDD",date$-GZIANBJCF)
+                Call EFFACE(WZIAREPTRT+WZIAFICHIER,WZIAERR) From ORDSYS
+            Endif
+        Endif
+    Endif
+Next
+Call EFFACE(WZIAREPTRT+"Liste_imp.bat",WZIAERR) From ORDSYS
+
+# Traitement départ
+GZIATRTMOD=1
+If [F:ZIA]ZIATRTSTR<>""
+    Gosub DEBUT From =[F:ZIA]ZIATRTSTR
+Endif
+If !GZIATRTMOD
+    Return
+Endif
+
+# Création du fichier batch pour lire les fichiers présents
+Raz WZIALISFIC, WZIANUMFIC, WZIAFICHIER
+Openo WZIAREPFIC+"Liste_imp.bat",0 Using [XXX]
+Wrseq 'DIR /B "'+WZIAREPFIC+'*.'+toupper([F:ZIA]ZIAEXTENS)+'"' Using [XXX]
+Openo Using [XXX]
+Sleep 2
+System WZIALISFIC=WZIAREPFIC+"Liste_imp.bat"
+
+# Boucle des fichiers à traiter
+For WZIANUMFIC=0 To 199
+    Raz WZIAMESS, WZIAERR, WZIAIMPSTA, WZIASTA
+    WZIAFICHIER = toupper(WZIALISFIC(WZIANUMFIC))
+    If vireblc(WZIAFICHIER,4)<>""
+        If toupper(right$(WZIAFICHIER,len(WZIAFICHIER)-(len([F:ZIA]ZIAEXTENS)-1)))=toupper([F:ZIA]ZIAEXTENS)
+            # Traitement avant
+            GZIAFICHIER = WZIAFICHIER
+            GZIAIMPFIC = 1
+            If [F:ZIA]ZIATRTBEF<>""
+                Gosub AVANT From =[F:ZIA]ZIATRTBEF
+            Endif
+            WZIAREPFIC = GZIAREPERT
+            WZIAFICHIER = GZIAFICHIER
+            If GZIAIMPFIC
+                adxifs=""
+                adxirs=chr$(13)+chr$(10)
+                # Import du fichier
+                Call OUVRE_TRACE("Import automatisé - "+WZIAREPFIC+WZIAFICHIER) From LECFIC
+                Gosub OUVRE From GIMPOBJ
+                [M:IMP2]MODIMP=[F:ZIA]ZIAMODELE
+                [M:IMP2]NOMIMP=WZIAREPFIC+WZIAFICHIER
+                WZIABATCH=1
+                If GSERVEUR=0
+                    GSERVEUR = 1
+                Else
+                    WZIABATCH = 2
+                Endif
+                Gosub EXEC From GIMPOBJ
+                Call FERME_TRACE From LECFIC
+                If WZIABATCH=1
+                    GSERVEUR=0
+                Endif
+                WZIAERR=GERRTRACE
+            Endif
+            # Traitement après
+            If [F:ZIA]ZIATRTAFT<>""
+                Gosub APRES From =[F:ZIA]ZIATRTAFT
+            Endif
+            WZIAREPFIC = GZIAREPERT
+            WZIAFICHIER = GZIAFICHIER
+            adxifs=""
+            adxirs=chr$(13)+chr$(10)
+            # Déplacement du fichier d'origine...
+            If WZIAERR>0
+                # ... dans le répertoire d'erreur
+                Call MOVE(WZIAREPFIC+WZIAFICHIER,WZIAREPERR+WZIAFICHIER,WZIASTA) From ORDSYS
+                # Appel du workflow
+                GZIAERRIMP=2
+            Else
+                # ... dans le répertoire des fichiers traités
+                Call MOVE(WZIAREPFIC+WZIAFICHIER,WZIAREPTRT+WZIAFICHIER,WZIASTA) From ORDSYS
+                # Appel du workflow
+                GZIAERRIMP=1
+            Endif
+            If [F:ZIA]ZIAUSR1<>"" or [F:ZIA]ZIAUSR2<>""
+                Call WORKFLOW(8,[F:ZIA]ZIAMODELE,"IF","") From AWRK
+            Endif
+            Call EFFACE(WZIAREPFIC+WZIAFICHIER+".err",WZIASTA) From ORDSYS
+            # Ecriture du résultat
+            If WZIAERR>0
+                Call LIGNE_SUIVI([F:ZIA]ZIAMODELE,WZIAFICHIER,GTRACE,1,num$(WZIAERR)+" erreur(s) rencontrée(s). "+WZIAMESS,WZIAERR,0)
+            Else
+                adxifs=""
+                adxirs=chr$(10)
+                WZIAFICTRA=filpath("TRA",GTRACE,"tra")
+                If filinfo(WZIAFICTRA,7)>0
+                    Raz WZIANBAVE
+                    Openi WZIAFICTRA Using [ZTRA]
+                    Rdseq WZIALIGNE Using [ZTRA]
+                    While fstat=0
+                        If left$(WZIALIGNE,1)=">"
+                            WZIANBAVE += 1
+                        Endif
+                        Rdseq WZIALIGNE Using [ZTRA]
+                    Wend
+                    Openi Using [ZTRA]
+                Endif
+                Call LIGNE_SUIVI([F:ZIA]ZIAMODELE,WZIAFICHIER,GTRACE,2,"OK",0,WZIANBAVE)
+            Endif
+        Endif
+    Endif
+    If filinfo(filpath("FIL","ZIMPAUTO","stop"),7)>=0
+        Break
+    Endif
+Next
+Call EFFACE(WZIAREPFIC+"Liste_imp.bat",WZIAERR) From ORDSYS
+
+# Traitement fin
+If [F:ZIA]ZIATRTEND<>""
+    Gosub FIN From =[F:ZIA]ZIATRTEND
+Endif
+
+Return
+
+######################################################## PBCREATFIC
+
+$PBCREATFIC
+WZIAERR=errn
+Resume
+
+######################################################## LIGNE_SUIVI
+
+Subprog LIGNE_SUIVI(PMODELE,PFIC,PTRACE,PFLG,PMESS,PNBERR,PNBAVE)
+Value Char PMODELE()
+Value Char PFIC()
+Value Char PTRACE()
+Value Integer PFLG
+Value Char PMESS
+Value Integer PNBERR
+Value Integer PNBAVE
+
+Trbegin [F:ZIR]
+Raz [F:ZIR]
+[F:ZIR]ZIRDAT = date$
+[F:ZIR]ZIRHOU = format$("D:hhmmss",date$)
+[F:ZIR]ZIRMODELE = PMODELE
+[F:ZIR]ZIRFIC = PFIC
+[F:ZIR]ZIRTRACE = PTRACE
+[F:ZIR]ZIRFLG = PFLG
+[F:ZIR]ZIRMESS = PMESS
+[F:ZIR]ZIRNBERR = PNBERR
+[F:ZIR]ZIRNBAVE = PNBAVE
+Write [F:ZIR]
+If fstat=0
+    Commit
+Else
+    Rollback
+Endif
+End
+

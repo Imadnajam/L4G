@@ -1,0 +1,292 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### SPEZSS
+##################################################### créé le 13/09/2019
+##################################################### modifié le 13/09/2019
+
+$ACTION
+#Infbox ACTION
+Case ACTION
+  When "OUVRE"   : Gosub OUVRE
+  When "DEBUT"   : Gosub DEBUT
+  When "OK"      : Gosub OK
+  When "SETBOUT" : Gosub SETBOUT
+  When "BOUTON"  : Gosub BOUTON
+Endcase
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           LABELS                                                  #
+#---------------------------------------------------------------------------------------------------#
+
+######################################################################### OUVRE
+$OUVRE
+If clalev([F:ZCMC])=0   : Local File ZCOLMULTICHG [F:ZCMC]   : Endif
+If clalev([F:ZTMC])=0   : Local File ZTRIMULTICHG [F:ZTMC]   : Endif
+If clalev([F:ZMC])=0    : Local File ZCHGMULTICHG [F:ZMC]    : Endif
+If clalev([F:ZRMC])=0   : Local File ZRECMULTICHG [F:ZRMC]   : Endif
+If clalev([F:ZE2S])=0   : Local File ZEPX2SYNC    [F:ZE2S]   : Endif
+Return
+
+######################################################################### DEBUT
+$DEBUT
+Return
+
+######################################################################### OK
+$OK
+Return
+
+######################################################################### SETBOUT
+$SETBOUT
+Read[F:ZCMC]ZCMC=[M:ZSS0]ZCMCNUM
+If(fstat=0)Then
+  If([F:ZCMC]DATEVAL<>[0/0/0])Then
+    Call VIREBOUT(CHMEN,"3") From GOBJET #Poser sémaphore réception
+    Call VIREBOUT(CHMEN,"4") From GOBJET #Enlever sémaphore réception
+  Else
+    Call VIREBOUT(CHMEN,"5") From GOBJET #Poser sémaphore tri
+    Call VIREBOUT(CHMEN,"6") From GOBJET #Enlever sémaphore tri
+  Endif
+Endif
+Gosub SET_BOUT_SPE From GSAISIE
+Return
+
+######################################################################### BOUTON
+$BOUTON
+Local Char WZCMCNUM(30) : WZCMCNUM = [M:ZSS0]ZCMCNUM
+If(WZCMCNUM<>"")Then
+  If(BOUT="1" or BOUT="2" or BOUT="3" or BOUT="4" or BOUT="5" or BOUT="6")Then
+     #On va commencer paar essayer de vérrouiller l'enregistrement
+    SYMBOLE = "ZCMC~"+WZCMCNUM
+    Lock =SYMBOLE With lockwait = 0
+    If(fstat=0)Then
+      If(BOUT="1")Then
+        #L'utilisateur vient de cliquer sur le bouton "Synchro EPALIS <-> X3"
+        Call SPE_SIM_SYNC_EPI(WZCMCNUM,2)
+        Call AM_ZCMCNUM([M:ZSS0]ZCMCNUM)
+      Elsif(BOUT="2")Then
+        #L'utilisateur vient de cliquer sur le bouton "Désynchro EPALIS <-> X3"
+        Call SPE_SIM_SYNC_EPI(WZCMCNUM,1)
+        Call AM_ZCMCNUM([M:ZSS0]ZCMCNUM)
+      Elsif(BOUT="3")Then
+        #L'utilisateur vient de cliquer sur le bouton "Poser sémaphore réception"
+        Call SPE_SET_SEMA_REC(WZCMCNUM,3)
+        Call AM_ZCMCNUM([M:ZSS0]ZCMCNUM)
+      Elsif(BOUT="4")Then
+        #L'utilisateur vient de cliquer sur le bouton "Enlever sémaphore réception"
+        Call SPE_SET_SEMA_REC(WZCMCNUM,1)
+        Call AM_ZCMCNUM([M:ZSS0]ZCMCNUM)
+      Elsif(BOUT="5")Then
+        #L'utilisateur vient de cliquer sur le bouton "Poser sémaphore tri"
+        Call SPE_SET_SEMA_TRI(WZCMCNUM,3)
+        Call AM_ZCMCNUM([M:ZSS0]ZCMCNUM)
+      Elsif(BOUT="6")Then
+        #L'utilisateur vient de cliquer sur le bouton "Enlever sémaphore tri"
+        Call SPE_SET_SEMA_TRI(WZCMCNUM,1)
+        Call AM_ZCMCNUM([M:ZSS0]ZCMCNUM)
+      Endif
+      Unlock =SYMBOLE
+    Else
+      Call ERREUR("Impossible d'effectuer le traitement car la collecte multi-chargeur est vérrouillée") From GESECRAN
+    Endif
+  Endif
+Endif
+Return
+
+Subprog SPE_SET_SEMA_TRI(WZCMCNUM,WVALUE)
+  Value Char WZCMCNUM
+  Value Integer WVALUE
+  Local Integer WERR : WERR = 0
+  Local Integer WNUMLIG : WNUMLIG = 0
+  #Cette action permet de poser un sémaphore de tri venant du site web EPALIS sur les lignes sélectionnées dans le tableau
+  Trbegin [F:ZMC]
+  For WNUMLIG=0 To [M:ZSS0]NBLIG-1
+    If([M:ZSS0]ZSEL(WNUMLIG)=2)Then
+      Read[F:ZMC]ZMC0=WZCMCNUM;[M:ZSS0]ZCMCLIN(WNUMLIG)
+      If(fstat=0)Then
+        [F:ZMC]SEMATRI = WVALUE
+        Rewrite[F:ZMC]
+        If(fstat<>0)Then
+          WERR = 2
+        Endif
+      Else
+        WERR = 1
+        Break
+      Endif
+    Endif
+  Next WNUMLIG
+  If(WERR=0)Then
+    Commit
+    Call MESSAGE ("Traitement réalisé avec succès") From GESECRAN
+  Else
+    Rollback
+    Call ERREUR ("Impossible ! Des erreurs se sont produites durant le traitement. (erreur n°" + num$(WERR) + ")") From GESECRAN
+  Endif
+End
+
+Subprog SPE_SET_SEMA_REC(WZCMCNUM,WVALUE)
+  Value Char WZCMCNUM
+  Value Integer WVALUE
+  Local Integer WERR : WERR = 0
+  #Cette action permet de poser un sémaphore de réception sur la collecte multi-chargeur
+  Trbegin [F:ZCMC]
+  Read[F:ZCMC]ZCMC=WZCMCNUM
+  If(fstat=0)Then
+    [F:ZCMC]SEMAREC = WVALUE
+    Rewrite[F:ZCMC]
+    If(fstat<>0)Then
+      WERR = 2
+    Endif
+  Else
+    WERR = 1
+  Endif
+  If(WERR=0)Then
+    Commit
+    Call MESSAGE ("Traitement réalisé avec succès") From GESECRAN
+  Else
+    Rollback
+    Call ERREUR ("Impossible ! Des erreurs se sont produites durant le traitement. (erreur n°" + num$(WERR) + ")") From GESECRAN
+  Endif
+End
+
+Subprog SPE_SIM_SYNC_EPI(WZCMCNUM,WVALUE)
+  Value Char WZCMCNUM
+  Value Integer WVALUE
+  Local Integer WERR : WERR = 0
+  #Cette action permet de placer tous les indicateurs  de sunchronisation à oui champ SUNCHEPI des tables :
+  Trbegin [F:ZCMC],[F:ZTMC],[F:ZMC],[F:ZRMC]
+  For[F:ZCMC]ZCMC Where [F:ZCMC]ZCMCNUM=WZCMCNUM
+    If([F:ZCMC]SYNCHEPI<>WVALUE)Then
+      [F:ZCMC]SYNCHEPI = WVALUE
+      Rewrite [F:ZCMC]
+      If(fstat<>0)Then
+        WERR = 1
+        Break
+      Endif
+    Endif
+  Next
+  If(WERR=0)Then
+    For[F:ZTMC]ZTMC0 Where [F:ZTMC]ZCMCNUM=WZCMCNUM
+      If([F:ZTMC]SYNCHEPI<>WVALUE)Then
+        [F:ZTMC]SYNCHEPI = WVALUE
+        Rewrite[F:ZTMC]
+        If(fstat<>0)Then
+          WERR = 2
+          Break
+        Endif
+      Endif
+    Next
+  Endif
+  If(WERR=0)Then
+    For[F:ZMC]ZMC0 Where [F:ZMC]ZCMCNUM=WZCMCNUM
+      If([F:ZMC]SYNCHEPI<>WVALUE)Then
+        [F:ZMC]SYNCHEPI = WVALUE
+        Rewrite[F:ZMC]
+        If(fstat<>0)Then
+          WERR = 3
+          Break
+        Endif
+      Endif
+    Next
+  Endif
+  If(WERR=0)Then
+    For[F:ZRMC]ZRMC0 Where [F:ZRMC]ZCMCNUM=WZCMCNUM
+      If([F:ZRMC]SYNCHEPI<>WVALUE)Then
+        [F:ZRMC]SYNCHEPI = WVALUE
+        Rewrite[F:ZRMC]
+        If(fstat<>0)Then
+          WERR = 4
+          Break
+        Endif
+      Endif
+    Next
+  Endif
+  If(WERR=0)Then
+    Commit
+    Call MESSAGE ("Traitement réalisé avec succès") From GESECRAN
+  Else
+    Rollback
+    Call ERREUR ("Impossible ! Des erreurs se sont produites durant le traitement. (erreur n°" + num$(WERR) + ")") From GESECRAN
+  Endif
+End
+
+#---------------------------------------------------------------------------------------------------#
+#                                           SUBPROGS                                                #
+#---------------------------------------------------------------------------------------------------#
+
+Subprog AM_ZCMCNUM(VALEUR)
+Variable Char    VALEUR()
+#On commence par regarder si la collecte multi-chargeur est validée au niveau de la réception
+Effzo[M:ZSS0]10
+Raz[M:ZSS0]NBLIG
+Read[F:ZCMC]ZCMC=VALEUR
+If(fstat=0)Then
+  If([F:ZCMC]DATEVAL<>[0/0/0])Then
+    [M:ZSS0]ZINFO = "La phase de réception à été validé le " + format$("DD2",[F:ZCMC]DATEVAL)
+  Else
+    [M:ZSS0]ZINFO = "La phase de réception n'a pas été validée."
+  Endif
+  Affzo [M:ZSS0]ZINFO
+  [M:ZSS0]SEMAREC = [F:ZCMC]SEMAREC
+  If([F:ZCMC]SEMAREC=1)Then
+    Chgstl [M:ZSS0]SEMAREC With ""
+  Elsif([F:ZCMC]SEMAREC=2)Then
+    Chgstl [M:ZSS0]SEMAREC With "BACKGREEN"
+  Elsif([F:ZCMC]SEMAREC=3)Then
+    Chgstl [M:ZSS0]SEMAREC With "BACKRED"
+  Endif
+  Affzo [M:ZSS0]SEMAREC
+  #On va afficher tous les clients chargeurs qui sont en tri systématique
+  For [F:ZMC]ZMC0 Where [F:ZMC]ZCMCNUM=VALEUR #and [F:ZMC]TRIAFAIRE=2
+    [M:ZSS0]ZCMCLIN([M:ZSS0]NBLIG)   = [F:ZMC]ZCMCLIN
+    [M:ZSS0]SEMATRI([M:ZSS0]NBLIG)   = [F:ZMC]SEMATRI
+    Affzo[M:ZSS0]SEMATRI([M:ZSS0]NBLIG)
+    If([F:ZMC]SEMATRI=1)Then
+      Chgstl [M:ZSS0]SEMATRI([M:ZSS0]NBLIG) With ""
+    Elsif([F:ZMC]SEMATRI=2)Then
+      Chgstl [M:ZSS0]SEMATRI([M:ZSS0]NBLIG) With "BACKGREEN"
+    Elsif([F:ZMC]SEMATRI=3)Then
+      Chgstl [M:ZSS0]SEMATRI([M:ZSS0]NBLIG) With "BACKRED"
+    Endif
+    [M:ZSS0]ZCODCLT([M:ZSS0]NBLIG)   = [F:ZMC]ZCODCLT
+    [M:ZSS0]ZNOMCLT([M:ZSS0]NBLIG)   = [F:ZMC]ZNOMCLT
+    [M:ZSS0]TRIAFAIRE([M:ZSS0]NBLIG) = [F:ZMC]TRIAFAIRE
+    [M:ZSS0]NBLIG += 1
+  Next
+  Affzo [M:ZSS0]10
+Endif
+#On va mettre à jour les informatins sur la synchronisation des éléments de la collecte multi-chargeur
+Effzo[M:ZSS0]15
+Read[F:ZE2S]ZE2S0=VALEUR
+If(fstat=0)Then
+  [M:ZSS0]SYNCCOL = [F:ZE2S]SYNC_COL
+  [M:ZSS0]SYNCCHG = [F:ZE2S]SYNC_CHG
+  [M:ZSS0]SYNCREC = [F:ZE2S]SYNC_REC
+  [M:ZSS0]SYNCTRI = [F:ZE2S]SYNC_TRI
+Endif
+Affzo [M:ZSS0]15
+End
+
+Subprog AS_ZSEL(VALEUR)
+Variable Integer VALEUR
+Local Integer WNOL : WNOL = nolign-1
+If([M:ZSS0]TRIAFAIRE(WNOL)<>2)Then
+  mkstat = 2
+Endif
+End
+
+Subprog C_ZCMCNUM(VALEUR)
+Variable Char    VALEUR()
+#On va regarder que la collecte multi-chargeur existe et n'est pas validée
+Read[F:ZCMC]ZCMC=VALEUR
+If(fstat<>0)Then
+  Call ERREUR("Impossible, cette collecte multi-chargeur n'existe pas.") From GESECRAN
+  mkstat = 2
+Else
+  #La collecte multi-chargeur existe, on va regarder qu'elle n'est pas totalement validée
+  If([F:ZCMC]DATEVALCOL<>[0/0/0])Then
+    Call ERREUR("Impossible, cette collecte est validée.") From GESECRAN
+    mkstat = 2
+  Endif
+Endif
+End
+

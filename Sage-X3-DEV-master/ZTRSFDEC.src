@@ -1,0 +1,281 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+#################################################### ZTRSFDEC
+#################################################### 12/05/2020
+#Ce traitement permet de transférer à l'application Web EPALIS
+#Toutes les lignes de déconsignation qui ne l'auraient pas été
+
+#------------------------------------------------------------------------
+#Lancement de l'action par développement :
+#Local Decimal BASPAG
+#If !GWEBSERV
+# ## Action ZTRSFDEC
+# Local Char    PARMSK(250)(1..20) , SAVACT(20)
+# SAVACT = GACTION : GACTION = "ZTRSFDEC"
+# PARMSK(1) = <--- Mettre ici le n° de l'EPX à traiter
+# Call TRAITE_NUM(BASPAG,PARMSK,"","","",2,"ZTRSFDEC") From GTRAITE <--- Mettre la ligne là pour avoir la question de confirmation
+# Call TRAITE_NUM(BASPAG,PARMSK,"","","",1,"ZTRSFDEC") From GTRAITE <--- Mettre cette ligne pour ne pas avoir la confirmation
+# GACTION = SAVACT
+#Endif
+#------------------------------------------------------------------------
+
+################################################# ACTION
+$ACTION
+#Infbox ACTION
+Case ACTION
+  When "EXEC"       : Gosub EXEC
+  When "INIT"       : Gosub INIT
+Endcase
+Return
+
+################################################# INIT
+$INIT
+#Initialisation de la question qui sera posée à l'utilisateur
+TIT = "Etes-vous sûr(e) de vouloir transférer à EPALIS, les éléments de déconsignation ?"
+#Ouverture des tables
+If clalev([F:ZDEPMTV])=0 : Local File ZDECONSTRSF      [F:ZDEPMTV]  : Endif  #Vue du détails
+If clalev([F:ZDEPM])=0   : Local File ZDECONSEPM       [F:ZDEPM]    : Endif  #Table de sauvegarde
+If clalev([F:ZCOL])=0    : Local File ZCOLMULTICHG     [F:ZCOL]     : Endif  #Entête de la collecte MC
+Global Integer WERR : WERR = 0
+Return
+
+################################################# EXEC
+$EXEC
+GSILENCE = 1                            # global variable that inhibits all the messages on the screen
+Gosub EXEC_TRSF
+GSILENCE = 0                            # restore the value of GSILENCE
+Return
+
+################################################# EXEC_TRSF
+$EXEC_TRSF
+Local Char WZCMCNUM(30) : WZCMCNUM = PARAM(1)
+WERR = 0
+If(WZCMCNUM<>"")Then
+  #On va pouvoir lancer le traitement
+  #On va donc récupérer l'ensemble des lignes à transférer
+  Call TEMPON("Transfert des éléments à l'application EPALIS...") From GESECRAN
+  For[F:ZDEPMTV]ZDEPMTV0 Where [F:ZDEPMTV]ZCMCNUM=WZCMCNUM
+    #On va commencer par regarder s'il existe un enregistrement dans la table [F:ZDEPM]
+    #Si c'est le cas, c'est que l'élément à déjà été transféré à EPALIS, on va donc récupérer l'information pour savoir
+    #s'il a été traité par EPALIS
+    #Sinon, on va créer l'enregistrement dans la table et le transférer à EPALIS
+    Read[F:ZDEPM]ZDEPM0=[F:ZDEPMTV]ZCMCNUM;[F:ZDEPMTV]ZCODCHARG;[F:ZDEPMTV]ZCODCLT;[F:ZDEPMTV]ZITMREF
+    If(fstat=0)Then
+      #Infbox "1 - L'enregistrement existe dans la table"
+      #L'enregistrement existe dans la table, on va regarder s'il existe une date de transfert et si EPALIS à traité l'enregistrement
+      If([F:ZDEPM]DATTRSFEPI=[0/0/0])Then
+        #L'enregistrement existe mais il n'a pas été transféré à EPALIS
+        WERR = 0
+        Gosub SPE_TRANSFERT_LIGNE
+        If(WERR=0)Then
+          [F:ZDEPM]DATTRSFEPI = date$
+          [F:ZDEPM]HEUTRSFEPI = time$
+          If([F:ZDEPM]ZNUMEPM="")Then
+            Read[F:ZCOL]ZCMC=[F:ZDEPM]ZCMCNUM
+            If(fstat=0)Then
+              If([F:ZCOL]ZNUMEPM<>"")Then
+                [F:ZDEPM]ZNUMEPM = [F:ZCOL]ZNUMEPM
+              Endif
+            Endif
+          Endif
+          Rewrite[F:ZDEPM]
+        Endif
+      Else
+        #L'enregistrement existe et il a été transféré à EPALIS. S'il n'y a pas de date de déconsignation, on va interroger
+        #EPALIS pour savoir si l'enregistrement a été traité
+        If([F:ZDEPM]DATEDECONS=[0/0/0])Then
+          Gosub SPE_RECUP_INFO
+        Endif
+      Endif
+    Else
+      #Infbox "2 - L'enregistrement n'existe pas dans la table"
+      #L'enregistrement n'existe pas dans la table, on va donc le transférer à EPALIS et créer l'enregistrement dans la table
+      WERR = 0
+      Gosub SPE_CREER_LIGNE
+      If(WERR=0)Then
+        Gosub SPE_TRANSFERT_LIGNE
+        If(WERR=0)Then
+          [F:ZDEPM]DATTRSFEPI = date$
+          [F:ZDEPM]HEUTRSFEPI = time$
+          Rewrite[F:ZDEPM]
+#          Gosub SPE_RECUP_INFO
+        Endif
+      Endif
+    Endif
+  Next
+  Call TEMPOFF From GESECRAN
+Else
+  #On ne peut pas lancer le traitement car le N° EPX est vide
+  Call ERREUR ("Impossible de transférer les éléments de déconsignation à EPALIS car le N° EPX est vide.") From GESECRAN
+Endif
+Return
+
+################################################# SPE_CREER_LIGNE
+$SPE_CREER_LIGNE
+#Ce sous programme permet de créer l'enregistrement de l'élément dans la table ZDECONSEPM ([F:ZDEPM])
+#L'enregistrement courant de la vue [F:ZDEPMTV] contient les informations a sauvegarder
+Raz[F:ZDEPM]
+[F:ZDEPM] = [F:ZDEPMTV]
+Write[F:ZDEPM]
+Return
+
+################################################# SPE_TRANSFERT_LIGNE
+$SPE_TRANSFERT_LIGNE
+#Ce sous programme permet la création de l'enregistrement de déconsignation dans l'application EPALIS
+#via le web service REST
+#Il faut créer l'enregistrement
+Local Integer WRET
+Local Clbfile WRCORPS(0)
+Local Char WSPARAM1(50)
+Local Char WSPARAM2(10)
+Local Char WSPARAM3(250)
+Local Clbfile WSPARAM4(0)
+WSPARAM1 = GZWSREST
+#Infbox WSPARAM1
+WSPARAM2 = "POST"
+#Infbox WSPARAM2
+WSPARAM3 = "/deconsignes"
+#Infbox WSPARAM3
+WSPARAM4 = "{"
+WSPARAM4 += '"code_collecte": "' + [F:ZDEPM]ZNUMEPM + '",'
+WSPARAM4 += '"code_collecte_x3": "' + [F:ZDEPM]ZCMCNUM + '",'
+WSPARAM4 += '"code_chargeur_x3": "' + [F:ZDEPM]ZCODCHARG + '",'
+WSPARAM4 += '"stat_chargeur": "' + [F:ZDEPM]ZRGTNOMFIN + '",'
+WSPARAM4 += '"code_client_chargeur_x3": "' + [F:ZDEPM]ZCODCLT + '",'
+WSPARAM4 += '"code_depot_x3": "' + [F:ZDEPM]ZDEPNUM + '",'
+WSPARAM4 += '"date_enlevement": "' + format$("D:YYYY[-]MM[-]DD",[F:ZDEPM]DATEENL) + '",'
+If([F:ZDEPM]TRIAFAIRE=2)Then
+  WSPARAM4 += '"tri_a_faire": true,'
+Else
+  WSPARAM4 += '"tri_a_faire": false,'
+Endif
+WSPARAM4 += '"code_article": "' + [F:ZDEPM]ZARTDECONS + '",'
+WSPARAM4 += '"code_article_x3": "' + [F:ZDEPM]ZITMREF + '",'
+WSPARAM4 += '"quantity": ' + num$([F:ZDEPM]QTY) + ','
+WSPARAM4 += '"line_number": ' + num$([F:ZDEPM]ZCMCLIN) + ','
+WSPARAM4 += '"bl_chg": "' + [F:ZDEPM]ZBLCHG + '",'
+WSPARAM4 += '"nom_chantier": "' + [F:ZDEPM]CHANAM + '",'
+WSPARAM4 += '"cp_chantier": "' + [F:ZDEPM]CHACP + '",'
+WSPARAM4 += '"ville_chantier": "' + [F:ZDEPM]CHACITY + '",'
+WSPARAM4 += '"date_reception_tri": "' + format$("D:YYYY[-]MM[-]DD",[F:ZDEPM]DATERECTRI) + '"'
+WSPARAM4 += "}"
+#Infbox mid$(WSPARAM4,1,100)
+#Infbox mid$(WSPARAM4,101,100)
+#Infbox mid$(WSPARAM4,201,100)
+#Infbox mid$(WSPARAM4,301,100)
+Call SPE_WS_REST(WSPARAM1,WSPARAM2,WSPARAM3,WSPARAM4,"",WRET,WRCORPS) From ZWSEPALISC
+If(WRET>=300)Then
+  WERR = 1
+  #Infbox num$(WRET) + "---" + WRCORPS
+Elsif(WRET=201)Then
+  #La création a réussi, on va récupérer l'ID
+  Read[F:ZDEPM]ZDEPM0=[F:ZDEPMTV]ZCMCNUM;[F:ZDEPMTV]ZCODCHARG;[F:ZDEPMTV]ZCODCLT;[F:ZDEPMTV]ZITMREF
+  If(fstat=0)Then
+    [F:ZDEPM]ZIDEPI = val(func ZWSEPALISC.SPE_GET_VALUE_JSON(WRCORPS,"id"))
+    Rewrite[F:ZDEPM]
+    If(fstat<>0)Then
+      WERR = 2
+    Endif
+  Else
+    WERR = 3
+  Endif
+Endif
+Return
+
+################################################# SPE_RECUP_INFO
+$SPE_RECUP_INFO
+#Ce sous programme permet de récupérer les informations issues de l'application EPALIS
+#2 cas peuvent se présenter :
+#soit l'enregistrement à un ID EPALIS
+#soit l'enregistrement n'a pas d'ID Epalis
+Local Integer WRET
+Local Clbfile WRCORPS(0)
+Local Char WSPARAM1(50)
+Local Char WSPARAM2(10)
+Local Char WSPARAM3(250)
+Local Clbfile WSPARAM4(0)
+If([F:ZDEPM]ZIDEPI<>0)Then
+  WSPARAM1 = GZWSREST
+  #Infbox WSPARAM1
+  WSPARAM2 = "GET"
+  #Infbox WSPARAM2
+  WSPARAM3 = "/deconsignes/" + num$([F:ZDEPM]ZIDEPI)
+  #Infbox WSPARAM3
+  WSPARAM4 = "{}"
+  #Infbox WSPARAM4
+  Call SPE_WS_REST(WSPARAM1,WSPARAM2,WSPARAM3,WSPARAM4,"",WRET,WRCORPS) From ZWSEPALISC
+  If(WRET>=300)Then
+    WERR = 1
+  #  Infbox num$(WRET) + "---" + WRCORPS
+  Else
+    Local Char WDATEPI(10)
+    WDATEPI = func ZWSEPALISC.SPE_GET_VALUE_JSON(WRCORPS,"date_deconsigne")
+    If(WDATEPI<>"")Then
+      [F:ZDEPM]DATEDECONS = gdat$(val(right$(WDATEPI,len(WDATEPI)-1)),val(seg$(WDATEPI,6,7)),val(left$(WDATEPI,4)))
+    Endif
+    [F:ZDEPM]DECONS = 1
+    If(func ZWSEPALISC.SPE_GET_VALUE_JSON(WRCORPS,"deconsigne")="true")Then
+      [F:ZDEPM]DECONS = 2
+    Endif
+    WDATEPI = func ZWSEPALISC.SPE_GET_VALUE_JSON(WRCORPS,"date_deconsigne_chargeur")
+    If(WDATEPI<>"")Then
+      [F:ZDEPM]DATEDECONSCH = gdat$(val(right$(WDATEPI,len(WDATEPI)-1)),val(seg$(WDATEPI,6,7)),val(left$(WDATEPI,4)))
+    Endif
+    [F:ZDEPM]NUMPIECECHG = func ZWSEPALISC.SPE_GET_VALUE_JSON(WRCORPS,"num_piece_chargeur")
+    If([F:ZDEPM]ZNUMEPM="")Then
+      Read[F:ZCOL]ZCMC=[F:ZDEPM]ZCMCNUM
+      If(fstat=0)Then
+        If([F:ZCOL]ZNUMEPM<>"")Then
+          [F:ZDEPM]ZNUMEPM = [F:ZCOL]ZNUMEPM
+        Endif
+      Endif
+    Endif
+    Rewrite[F:ZDEPM]
+    If(fstat<>0)Then
+      WERR = 2
+    Endif
+  Endif
+Else
+  #On est dans le cas où on ne possède pas l'ID de l'enregistrement dans la base EPALIS,
+  #On va donc récupérer les informations en fonction des données X3
+  WSPARAM1 = GZWSREST
+  #Infbox WSPARAM1
+  WSPARAM2 = "GET"
+  #Infbox WSPARAM2
+  WSPARAM3 = "/x3/deconsigne/" + [F:ZDEPM]ZCMCNUM + "~" + [F:ZDEPM]ZCODCHARG + "~" + [F:ZDEPM]ZCODCLT + "~" + [F:ZDEPM]ZITMREF
+  #Infbox WSPARAM3
+  WSPARAM4 = "{}"
+  #Infbox WSPARAM4
+  Call SPE_WS_REST(WSPARAM1,WSPARAM2,WSPARAM3,WSPARAM4,"",WRET,WRCORPS) From ZWSEPALISC
+  If(WRET>=300)Then
+    WERR = 1
+  #  Infbox num$(WRET) + "---" + WRCORPS
+  Else
+    [F:ZDEPM]ZIDEPI = val(func ZWSEPALISC.SPE_GET_VALUE_JSON(WRCORPS,"id"))
+    WDATEPI = func ZWSEPALISC.SPE_GET_VALUE_JSON(WRCORPS,"date_deconsigne")
+    If(WDATEPI<>"")Then
+      [F:ZDEPM]DATEDECONS = gdat$(val(right$(WDATEPI,len(WDATEPI)-1)),val(seg$(WDATEPI,6,7)),val(left$(WDATEPI,4)))
+    Endif
+    [F:ZDEPM]DECONS = 1
+    If(func ZWSEPALISC.SPE_GET_VALUE_JSON(WRCORPS,"deconsigne")="true")Then
+      [F:ZDEPM]DECONS = 2
+    Endif
+    WDATEPI = func ZWSEPALISC.SPE_GET_VALUE_JSON(WRCORPS,"date_deconsigne_chargeur")
+    If(WDATEPI<>"")Then
+      [F:ZDEPM]DATEDECONSCH = gdat$(val(right$(WDATEPI,len(WDATEPI)-1)),val(seg$(WDATEPI,6,7)),val(left$(WDATEPI,4)))
+    Endif
+    [F:ZDEPM]NUMPIECECHG = func ZWSEPALISC.SPE_GET_VALUE_JSON(WRCORPS,"num_piece_chargeur")
+    If([F:ZDEPM]ZNUMEPM="")Then
+      Read[F:ZCOL]ZCMC=[F:ZDEPM]ZCMCNUM
+      If(fstat=0)Then
+        If([F:ZCOL]ZNUMEPM<>"")Then
+          [F:ZDEPM]ZNUMEPM = [F:ZCOL]ZNUMEPM
+        Endif
+      Endif
+    Endif
+    Rewrite[F:ZDEPM]
+    If(fstat<>0)Then
+      WERR = 2
+    Endif
+  Endif
+Endif
+Return

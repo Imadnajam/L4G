@@ -1,0 +1,115 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### SPEZDSRDP
+##################################################### créé le 26/08/2019
+##################################################### modifié le 26/08/2019
+
+$ACTION
+#infbox ACTION
+Case ACTION
+  When "OUVRE" : Gosub OUVRE
+  When "DEBUT" : Gosub DEBUT
+  When "OK"    : Gosub OK
+Endcase
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           LABELS                                                  #
+#---------------------------------------------------------------------------------------------------#
+
+######################################################################### OUVRE
+$OUVRE
+If clalev([F:ZSRDP])=0 : Local File ZSPERDP [ZSRDP] : Endif
+Return
+
+######################################################################### DEBUT
+$DEBUT
+[M:ZDSRDP]ZARNUM       = PARAM(1)
+[M:ZDSRDP]ZCODCHARG    = PARAM(2)
+[M:ZDSRDP]ZCODCLTCHARG = PARAM(3)
+Affzo [M:ZDSRDP]5
+#On va maintenant récupérer les enregistrements dans la table concernant l'article de prestation
+Effzo [M:ZDSRDP]10
+Raz [M:ZDSRDP]NBLIG
+For[F:ZSRDP]ZSRDP0 Where [F:ZSRDP]ZARNUM=[M:ZDSRDP]ZARNUM and [F:ZSRDP]ZCODCHARG=[M:ZDSRDP]ZCODCHARG and [F:ZSRDP]ZCODCLTCHARG=[M:ZDSRDP]ZCODCLTCHARG
+  [M:ZDSRDP]ZSITE([M:ZDSRDP]NBLIG)   = [F:ZSRDP]ZSITE
+  [M:ZDSRDP]ZTARIF([M:ZDSRDP]NBLIG)  = [F:ZSRDP]ZTARIF
+  [M:ZDSRDP]ZCLTFOU([M:ZDSRDP]NBLIG) = [F:ZSRDP]ZCLTFOU
+  [M:ZDSRDP]ZQTYMIN([M:ZDSRDP]NBLIG) = [F:ZSRDP]ZQTYMIN
+  [M:ZDSRDP]ZQTYMAX([M:ZDSRDP]NBLIG) = [F:ZSRDP]ZQTYMAX
+  [M:ZDSRDP]ZTYPPAL([M:ZDSRDP]NBLIG) = [F:ZSRDP]ZTYPPAL
+  [M:ZDSRDP]ZARTVEN([M:ZDSRDP]NBLIG) = [F:ZSRDP]ZARTVEN
+  [M:ZDSRDP]ZARTACH([M:ZDSRDP]NBLIG) = [F:ZSRDP]ZARTACH
+  [M:ZDSRDP]NBLIG += 1
+Next
+Affzo [M:ZDSRDP]10
+Return
+
+######################################################################### OK
+$OK
+#On va sauvegarder les lignes du tableau
+#L'opération va se faire à l'intérieure d'une transaction
+Local Integer WERR : WERR = 0
+Local Integer WNUMLIG : WNUMLIG = 0
+Trbegin [F:ZSRDP]
+#On commence par supprimer toute les lignes de la table concernant l'article de prestation
+Delete [F:ZSRDP] Where [F:ZSRDP]ZARNUM=[M:ZDSRDP]ZARNUM and [F:ZSRDP]ZCODCHARG=[M:ZDSRDP]ZCODCHARG and [F:ZSRDP]ZCODCLTCHARG=[M:ZDSRDP]ZCODCLTCHARG
+If(fstat=0)Then
+  #On va maintenant parcourir le tableau pour sauvegarder les lignes
+  For WNUMLIG=0 To [M:ZDSRDP]NBLIG-1
+    [F:ZSRDP]ZARNUM       = [M:ZDSRDP]ZARNUM
+    [F:ZSRDP]ZCODCHARG    = [M:ZDSRDP]ZCODCHARG
+    [F:ZSRDP]ZCODCLTCHARG = [M:ZDSRDP]ZCODCLTCHARG
+    [F:ZSRDP]ZSITE        = [M:ZDSRDP]ZSITE(WNUMLIG)
+    [F:ZSRDP]ZTARIF       = [M:ZDSRDP]ZTARIF(WNUMLIG)
+    [F:ZSRDP]ZCLTFOU      = [M:ZDSRDP]ZCLTFOU(WNUMLIG)
+    [F:ZSRDP]ZQTYMIN      = [M:ZDSRDP]ZQTYMIN(WNUMLIG)
+    [F:ZSRDP]ZQTYMAX      = [M:ZDSRDP]ZQTYMAX(WNUMLIG)
+    [F:ZSRDP]ZTYPPAL      = [M:ZDSRDP]ZTYPPAL(WNUMLIG)
+    [F:ZSRDP]ZARTVEN      = [M:ZDSRDP]ZARTVEN(WNUMLIG)
+    [F:ZSRDP]ZARTACH      = [M:ZDSRDP]ZARTACH(WNUMLIG)
+    Write[F:ZSRDP]
+    If(fstat<>0)Then
+      WERR = 1
+      Break
+    Endif
+  Next
+Else
+  WERR = 1
+Endif
+If(WERR=0)Then
+  Commit
+Else
+  Rollback
+  Call ERREUR("Impossible de sauvegarder les lignes !!") From GESECRAN
+Endif
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           SUBPROGS                                                #
+#---------------------------------------------------------------------------------------------------#
+
+Subprog C_ZPAYS(VALEUR)
+Variable Char    VALEUR()
+#On va controler que la valeur du code pays est bien dans le vue de sélection
+If(VALEUR<>"")Then
+  If clalev([F:ZSCRY])=0 : Local File ZSELCRY [ZSCRY] : Endif
+  Read[F:ZSCRY]ZSCRY0=VALEUR
+  If(fstat<>0)Then
+    mkstat = 2
+    GMESSAGE = "Impossible, ce code pays n'existe pas."
+  Endif
+Endif
+End
+
+Subprog C_ZSITE(VALEUR)
+Variable Char    VALEUR()
+#On va controler que la valeur du site est bien dans le vue de sélection
+If(VALEUR<>"")Then
+  If clalev([F:ZSFCY])=0 : Local File ZSELFCY [ZSFCY] : Endif
+  Read[F:ZSFCY]ZSFCY0=VALEUR
+  If(fstat<>0)Then
+    mkstat = 2
+    GMESSAGE = "Impossible, ce code site n'existe pas."
+  Endif
+Endif
+End

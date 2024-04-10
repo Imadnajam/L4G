@@ -1,0 +1,1114 @@
+#<AdxTL>@(#)3.0.0.0 $Revision:   1.5  $
+######################################################## SPEPIH
+######################################################## 27/02/2014
+
+$ACTION
+Case ACTION
+ When "OUVRE"     : Gosub OUVRE
+ When "VARIANTE"  : Gosub VARIANTE
+ When "TITRE"     : Gosub TITREFEN
+ When "FILTRE"    : Gosub FILTRE
+ When "SETBOUT"   : Gosub SETBOUT
+ When "AVANTBOUT" : Gosub AVANTBOUT
+ When "AVANT_ACT" : Gosub AVANT_ACT
+ When "RAZCRE"    : Gosub RAZCRE
+ When "RAZDUP"    : Gosub RAZDUP
+ When "VERIF_CRE" : Gosub VERIF_CRE
+ When "CREATION"  : Gosub CREATION
+ When "LIENS"     : Gosub LIENS
+ When "LIENS_LIG" : Gosub LIENS_LIG
+ When "PICKE"     : Gosub PICKE
+ When "INIMOD"    : Gosub INIMOD
+ When "INICRE"    : Gosub INICRE
+ When Default
+Endcase
+Return
+
+#################################################### OUVRE
+
+$OUVRE
+Global Date GWACCDAT
+If clalev([F:BPS2])=0 : Local File BPSUPPLIER [BPS2] : Endif
+If clalev([F:PPL])=0 : Local File PPRICLIST : Endif
+If clalev([F:ITM])=0 : Local File ITMMASTER : Endif
+If clalev([F:BPS])=0 : Local File BPSUPPLIER : Endif
+If clalev([F:BPR])=0 : Local File BPARTNER : Endif
+If clalev([F:ZUC])=0 : Local File ZUSRCPT : Endif
+If clalev([F:FCY])=0 : Local File FACILITY : Endif
+If clalev([F:ZRS])=0 : Local File ZSITERATT : Endif
+If clalev([F:ZNC])=0 : Local File ZNUMCHQ : Endif
+If clalev([F:AUS])=0 : Local File AUTILIS : Endif
+If clalev([F:PYH])=0 : Local File PAYMENTH : Endif
+If func AFNC.ACTIV("ZCVPI")
+    If clalev([F:ZVP])=0 : Local File ZVALPI : Endif
+Endif
+Global Integer WMODPCEIDENT, WORICONTPCE
+Return
+
+#################################################### VARIANTE
+
+$VARIANTE
+# Interdire le choix de la transaction FCP dans le menu "Controle Factures"
+# VARCOD contient le code de la transaction en cours
+If GFONCTION1="GESPIH" & VARCOD="FCP"
+    OK=0
+Endif
+Return
+
+#################################################### TITREFEN
+
+$TITREFEN
+If GFLAG="FCP"
+    TIT="Factures comptoirs"
+Endif
+Return
+
+#################################################### FILTRE
+
+$FILTRE
+Gosub ACTION From SUBPIH
+GPE=1
+Local Integer WNUMLIG, WZNBFC : WZNBFC=func AFNC.ACTIV("ZNBFC")
+Local Char WZUSRCPT(GLONBPS)(0..WZNBFC-1)
+For [F:ZUC]ZUC0 Where USR=GUSER
+    WZUSRCPT(WNUMLIG) = [F:ZUC]ZUCBPS
+    WNUMLIG += 1
+Next
+If GFLAG="FCP"
+    If WNUMLIG=0
+        FILTSUP += "&1=2"
+    Else
+        FILTSUP += " & [F:PIH]ZFRCOMPT<>'' & ((find([F:PIH]BPR,WZUSRCPT(0..WZNBFC-1))>0 & GPROFIL<>'ADMIN') or GPROFIL='ADMIN')"
+    Endif
+Else
+    FILTSUP += " & [F:PIH]ZFRCOMPT=''"
+Endif
+Return
+
+#################################################### SETBOUT
+
+$SETBOUT
+If GFLAG<>"FCP"
+    Call VIREBOUT(CHAINE,"z") From GOBJET
+Elsif [F:PIH]STA<=2
+    Call VIREBOUT(CHAINE,"z") From GOBJET
+Elsif [M:PIH0]PAZ<4
+    Call VIREBOUT(CHAINE,"z") From GOBJET
+Else
+    Local Decimal WSUMECHREG
+    If clalev([F:DUD])=0 : Local File GACCDUDATE : Endif
+    For [F:DUD]DUD0 Where [F:DUD]NUM=[M:PIH0]NUM
+        WSUMECHREG += ([F:DUD]PAYCUR+[F:DUD]TMPCUR)
+    Next
+    If WSUMECHREG>=[M:PIH1]TOTATIAMT1
+        Call VIREBOUT(CHAINE,"z") From GOBJET
+    Else
+        If clalev([F:PYD])=0 : Local File PAYMENTD : Endif
+        Filter [F:PYD] Where VCRNUM=[M:PIH0]NUM
+        If rowcount([F:PYD])>0
+            Call VIREBOUT(CHAINE,"z") From GOBJET
+        Endif
+        Filter [F:PYD]
+    Endif
+Endif
+If [M:PIH0]NUM="" & [M:PIH0]BPR<>""
+    Call VIREBOUT(CHAINE,"2") From GOBJET
+Endif
+If [M:PIH1]ZACCDAT=[0/0/0]
+    #On retire le bouton Validation
+    Call VIREBOUT(CHAINE,"2") From GOBJET
+Endif
+#On affiche le bouton "Impression chèque" dans les cas suivants:
+#Il faut que la transaction soit FCP
+Local Integer WIMPCHQ : WIMPCHQ = 0
+If(GFLAG="FCP")Then
+  If([F:PIH]STA=3 and [M:PIH0]PAZ=4)Then
+    Local Decimal WSUMECHREG
+    If clalev([F:DUD])=0 : Local File GACCDUDATE : Endif
+    For [F:DUD]DUD0 Where [F:DUD]NUM=[M:PIH0]NUM
+        WSUMECHREG += ([F:DUD]PAYCUR+[F:DUD]TMPCUR)
+    Next
+    If WSUMECHREG>=[M:PIH1]TOTATIAMT1
+      WIMPCHQ = 1
+    Else
+        If clalev([F:PYD])=0 : Local File PAYMENTD : Endif
+        Filter [F:PYD] Where VCRNUM=[M:PIH0]NUM
+        If rowcount([F:PYD])>0
+            WIMPCHQ = 1
+        Endif
+        Filter [F:PYD]
+    Endif
+  Endif
+Endif
+Local Char ZPAM(3)
+If(WIMPCHQ=1)Then
+  #Si on doit afficher le bouton, on regarde si le règlement se fait par cheque
+  Read[F:ZNC]ZNC0=[M:PIH0]NUM
+  If(fstat=0)Then
+    ZPAM=[F:ZNC]PAM
+    If([F:ZNC]PAM<>"CHQ" and [F:ZNC]PAM<>"MAN")Then
+      WIMPCHQ=0
+    Endif
+  Endif
+Endif
+#Si le bouton doit être affiché, on le grise si on est pas dans un des 3 cas suivant
+#C'est l'administrateur qui est connecté
+#L'utilisateur connecté à le droit de réimprimer des chèques
+#On est le même jour que le paiement
+Local Integer WUSERRIGHT : WUSERRIGHT = 1
+Local Integer WMODNUMMAN : WMODNUMMAN = 1
+Local Date WDATE : WDATE=[0/0/0]
+If(WIMPCHQ=1)Then
+  Read[F:AUS]CODUSR=GUSER
+  If(fstat=0)Then
+    WUSERRIGHT = [F:AUS]ZREIMPCHQ
+    WMODNUMMAN = [F:AUS]ZMODNUMMAN
+  Endif
+  Filter [F:ZNC] Where NUM_FAC=[M:PIH0]NUM
+  If(rowcount([F:ZNC])>0)Then
+    WDATE = [F:ZNC]ACCDAT
+  Endif
+  Filter [F:ZNC]
+#  If not((ZPAM="CHQ" and (WUSERRIGHT=2 or GPROFIL="ADMIN" or WDATE=date$)) or (ZPAM="MAN" and WMODNUMMAN=2))Then
+  If not((ZPAM="CHQ" and (WUSERRIGHT=2 or GPROFIL="ADMIN" or WDATE=date$)) or (ZPAM="MAN"))Then
+    WIMPCHQ=0
+  Endif
+Endif
+If(WIMPCHQ=0)Then
+    #On retire le bouton Impression chèque
+    Call VIREBOUT(CHAINE,"w") From GOBJET
+Endif
+Return
+
+#################################################### AVANTBOUT
+
+$AVANTBOUT
+If GFLAG="FCP"
+    If BOUT="z"
+        If clalev([F:HAE])=0 : Local File GACCENTRY : Endif
+        Read [F:HAE]HAE0=[M:PIH0]GTE;[M:PIH0]NUM
+        If fstat
+            GERR=1
+            GMESSAGE="Cette facture n'est pas encore présente en comptabilité. Recommencez plus tard."
+        Endif
+        Local Decimal WSUMECHREG
+        If clalev([F:DUD])=0 : Local File GACCDUDATE : Endif
+        For [F:DUD]DUD0 Where [F:DUD]NUM=[M:PIH0]NUM
+            WSUMECHREG += ([F:DUD]PAYCUR+[F:DUD]TMPCUR)
+        Next
+        If WSUMECHREG>=[M:PIH1]TOTATIAMT1
+            GERR=1
+            GMESSAGE="Cette facture est complètement réglée."
+        Endif
+    Endif
+Endif
+Return
+
+#################################################### AVANT_ACT
+
+$AVANT_ACT
+If GFLAG="FCP"
+    Case BOUT
+        When "E","C"
+            [M:PIH1]TOTLINAMT1=[M:PIH3]CUMLINAMT1
+            [M:PIH4]TOTLINAMT=[M:PIH3]CUMLINAMT1
+            [M:PIH4]TOTTAXAMT=[M:PIH4]TOTTAXCLC
+            Affzo [M:PIH1]TOTLINAMT1
+            Affzo [M:PIH4]TOTLINAMT, TOTTAXAMT
+            [M:PIH4]AMTATI=sum([M:PIH4]INVDTAAMT)+[M:PIH4]TOTLINAMT+[M:PIH4]TOTTAXAMT
+            [M:PIH1]TOTATIAMT1=[M:PIH4]AMTATI
+            [M:PIH1]TOTTAXAMT1=[M:PIH4]TOTTAXAMT
+            [M:PIH4]DIFTAXAMT=0
+            [M:PIH4]DIFAMTATI=0
+            Affzo [M:PIH4]AMTATI, DIFAMTATI, DIFTAXAMT
+            Affzo [M:PIH1]TOTATIAMT1, TOTTAXAMT1
+            # Suppression des lignes dont la qté n'a pas été saisi
+            Local Integer NOL
+            NOL=0
+            While NOL<=[M:PIH3]NBLIG-1
+                If [M:PIH3]QTYUOM(NOL)=0
+                    Dela NOL,1 [M:PIH3]NBLIG
+                    [M:PIH3]NBLIG -= 1
+                    NOL = 0
+                Else
+                    NOL += 1
+                Endif
+            Wend
+            Affzo [M:PIH3]
+        When Default
+    Endcase
+Endif
+Return
+
+#################################################### RAZCRE
+
+$RAZCRE
+Raz [M:PIH1]ZACCDAT, GWACCDAT
+If GFLAG="FCP"
+    Gosub ACTION From SUBPIH
+    GPE=1
+#    Suite demande de SLB de gérer plusieurs frs comptoirs pour un utilisateur
+#    Filter [F:BPS] Where [F:BPS]ZSITEFCPT=GFCYDEF(6)
+#    Read [F:BPS] First
+#    If fstat
+#        Call ERREUR("Pas de fournisseur générique comptoir pour votre site. Création impossible.") From GESECRAN
+#        End
+#    Else
+#        [M:PIH0]BPR=[F:BPS]BPSNUM
+#        Affzo [M:PIH0]BPR
+#        Call AM_BPR([M:PIH0]BPR) From SUBPIH
+#    Endif
+#    Affzo [M:PIH0]PIVTYP, FCY, BPR
+#    Diszo [M:PIH0]PIVTYP, FCY : # , BPR
+#    Filter [F:BPS]
+    [M:PIH0]PIVTYP="FCP"
+    Read [F:TPV]TPV0="FCP"
+    If fstat
+        Call ERREUR("Erreur de lecture du type de facture FCP.") From GESECRAN
+        OK=0
+        Return
+    Endif
+    Call AM_PIVTYP([M:PIH0]PIVTYP) From SUBPIH
+    Affzo [M:PIH0]PIVTYP
+    Diszo [M:PIH0]PIVTYP
+    [M:PIH0]GTE="FCP"
+    Filter [F:ZUC] Where USR=GUSER
+    If rowcount([F:ZUC])=0
+        GMESSAGE="Aucune gestion comptoir ne vous est attibuée. Création impossible."
+        GERR=1
+        Return
+    Endif
+    If rowcount([F:ZUC])=1
+        Read [F:ZUC]ZUC0 First
+        If fstat
+            Call ERREUR("Erreur de lecture de votre site comptoir. Création impossible.") From GESECRAN
+            OK=0
+            Filter [F:ZUC]
+            Return
+        Endif
+        Read [F:FCY]FCY0=[F:ZUC]ZUCFCY
+        If fstat
+            Call ERREUR("Erreur de lecture de la fiche Site. Création impossible.") From GESECRAN
+            OK=0
+            Filter [F:ZUC]
+            Return
+        Endif
+        Filter [F:ZUC]
+        Read [F:BPR]BPR0=[F:ZUC]ZUCBPS
+        If fstat
+            Call ERREUR("Erreur de lecture de la fiche Tiers.") From GESECRAN
+            OK=0
+            Return
+        Endif
+        Read [F:BPS]BPS0=[F:ZUC]ZUCBPS
+        If fstat
+            Call ERREUR("Erreur de lecture de la fiche Fournisseur.") From GESECRAN
+            OK=0
+            Return
+        Endif
+        [M:PIH0]ZCPTFCY=[F:ZUC]ZUCFCY
+        Call AM_FCY([F:FCY]FINRSPFCY) From SUBPIH
+        [M:PIH0]FCY = [F:FCY]FINRSPFCY
+        Call AM_BPR([F:ZUC]ZUCBPS) From SUBPIH
+        Call AM_BPSNUM([F:ZUC]ZUCBPS) From TRTACHCTL1
+        Call AM_BPR([F:ZUC]ZUCBPS)
+        [M:PIH0]BPR = [F:ZUC]ZUCBPS
+        Affzo [M:PIH0]FCY, ZFCY, BPR, BPRNAM1
+        Diszo [M:PIH0]FCY, BPR
+    Else
+        Filter [F:ZUC]
+        [M:PIH0]FCY=""
+        Affzo [M:PIH0]FCY, ZFCY
+        Call B3_FCY([M:PIH0]FCY)
+    Endif
+    WMODPCEIDENT=0
+Else
+    Diszo [M:ZPI9]
+Endif
+Return
+
+#################################################### RAZDUP
+
+$RAZDUP
+Raz [M:PIH1]ZACCDAT, GWACCDAT
+WMODPCEIDENT=0
+Return
+
+#################################################### VERIF_CRE
+
+$VERIF_CRE
+If GFLAG="FCP"
+    If [M:ZPI9]ZFRCOMPT=""
+        GERR=1 : GMESSAGE="Zone fournisseur comptoir obligatoire." : OK=0
+    Endif
+    #-----MODIFICATION JBS DU 10/12/2018-----
+    #Si on est dans une facture comptoir, on ne peut faire une facture uniquement
+    #si le montant de la facture est supérieur au montant mini défini dans le fournisseur comptoir
+    #Mis en commentaire le 20/03/2019 à la demande de SLB
+    #Read[F:BPS2]BPS0=[M:PIH0]BPR
+    #If(fstat=0)Then
+    #  If([M:PIH3]CUMLINAMT1<[F:BPS2]ZMINIFAC)Then
+    #    GERR=1
+    #    GMESSAGE="Impossible ! Pour ce fournisseur comptoir, le montant minimum pour établir une facture est de : " + vireblc(num$(format$("N:9.2[ €]",[F:BPS2]ZMINIFAC)),0)
+    #    OK=0
+    #  Endif
+    #Endif
+    #----------------------------------------
+Endif
+Return
+
+#################################################### CREATION
+
+$CREATION
+If GUSER="MICR2" : GOK=0 : Endif
+  #On regarde d'abord si c'est une facture de type 'comptoir'
+  If([M:PIH0]PIVTYP="FCP")Then
+    #On regarde si le fournisseur est en sommeil
+    #si c'est le cas, on décoche la case
+    Read [F:BPS2]BPS0=[M:ZPI9]ZFRCOMPT
+    If(fstat=0)Then
+      [F:BPS2]ZSOMMEIL = 1
+        # Si on a modifié au moins une donnée de la pièce d'identité, il faut la transférer dans la fiche fournisseur comptoir
+        If WMODPCEIDENT
+            [F:BPS2]ZIDENTTYP  = [M:ZPI9]ZIDENTTYP
+            [F:BPS2]ZIDENTNUM  = [M:ZPI9]ZIDENTNUM
+            [F:BPS2]ZIDENTLIEU = [M:ZPI9]ZIDENTLIEU
+            [F:BPS2]ZIDENTDAT  = [M:ZPI9]ZIDENTDAT
+        Endif
+      Rewrite [F:BPS2]
+      If fstat GOK=0 : Call FSTA("BPS") From GLOCK : Endif
+    Endif
+  Endif
+Return
+
+#################################################### INICRE
+
+$INICRE
+#On va calculer les frais de gestion
+Gosub SPE_CALC_FGESTION
+Return
+
+#################################################### INIMOD
+
+$INIMOD
+#On va calculer les frais de gestion
+Gosub SPE_CALC_FGESTION
+Return
+
+#################################################### SPE_CALC_FGESTION
+
+$SPE_CALC_FGESTION
+#On va commencer par se positionner sur le fournisseur
+If(GFLAG="FCP")Then
+  #On est sur les factures comptoir
+  Read[F:BPS2]BPS0=[M:PIH0]BPR
+  If(fstat=0)Then
+    #On calcule les frais de gestion pour l'espèce
+    If([F:BPS2]ZFGESP<>0)Then
+      If([M:PIH1]TOTLINAMT1<=[F:BPS2]ZMINIFAC)Then
+        [M:PIH0]ZFGESP=[F:BPS2]ZFGESP
+        [F:PIH]ZFGESP=[F:BPS2]ZFGESP
+      Else
+        [M:PIH0]ZFGESP=0
+        [F:PIH]ZFGESP=0
+      Endif
+    Else
+      [M:PIH0]ZFGESP=0
+      [F:PIH]ZFGESP=0
+    Endif
+    Affzo [M:PIH0]ZFGESP
+    #On calcule les frais de gestion pour les chèques
+    If([F:BPS2]ZFGCHQ<>0)Then
+      If([M:PIH1]TOTLINAMT1<=[F:BPS2]ZMINICHQ)Then
+        [M:PIH0]ZFGCHQ=[F:BPS2]ZFGCHQ
+        [F:PIH]ZFGCHQ=[F:BPS2]ZFGCHQ
+      Else
+        [M:PIH0]ZFGCHQ=0
+        [F:PIH]ZFGCHQ=0
+      Endif
+    Else
+      [M:PIH0]ZFGCHQ=0
+      [F:PIH]ZFGCHQ=0
+    Endif
+    Affzo [M:PIH0]ZFGCHQ
+    #On calcule les frais de gestion pour les Mandat WU
+    If([F:BPS2]ZFGMAN<>0)Then
+      If([M:PIH1]TOTLINAMT1<=[F:BPS2]ZMINIMAN)Then
+        [M:PIH0]ZFGMAN=[F:BPS2]ZFGMAN
+        [F:PIH]ZFGMAN=[F:BPS2]ZFGMAN
+      Else
+        [M:PIH0]ZFGMAN=0
+        [F:PIH]ZFGMAN=0
+      Endif
+    Else
+      [M:PIH0]ZFGMAN=0
+      [F:PIH]ZFGMAN=0
+    Endif
+    Affzo [M:PIH0]ZFGMAN
+  Endif
+Endif
+Return
+
+#################################################### LIENS
+
+$LIENS
+If GFLAG="FCP"
+    Read [F:BPS]BPS0=[M:ZPI9]ZFRCOMPT
+    If fstat=0
+        [M:ZPI9]ZFRNAM1=[F:BPS]BPSNAM
+    Endif
+    If [M:PIH1]STA>2
+        Grizo [M:ZPI9]
+        Actzo [M:ZPI9]ZIMPTARIF
+    Else
+        Actzo [M:ZPI9]
+    Endif
+Endif
+Gosub ACTION From SUBPIH
+GPE=1
+If [M:PIH1]STA>2 and GFLAG="FCP"
+    Diszo [M:PIH3]
+Endif
+#Si on connait le type de règlement, on va pouvoir en déduire le NET à payer
+If(GFLAG="FCP")Then
+  Chgfmt [M:PIH0]ZINFOREGCPT With "K:150X"
+  Chgfmt [M:PIH0]ZINFOREGCPT2 With "K:150X"
+  #Pour cela, on va regarder dans la vue [Z:ZNC]
+  If([M:PIH0]NUM<>"")Then
+    Read[F:ZNC]ZNC0=[M:PIH0]NUM
+    If(fstat=0)Then
+      Local Decimal WFRAISGEST : WFRAISGEST = 0
+      Local Char WLIBFGEST(15) : WLIBFGEST = ""
+      If([F:ZNC]PAM="ESP")Then
+        WFRAISGEST = [M:PIH0]ZFGESP
+        WLIBFGEST = "Espèce"
+      Elsif([F:ZNC]PAM="CHQ")Then
+        WFRAISGEST = [M:PIH0]ZFGCHQ
+        WLIBFGEST = "Chèque"
+      Elsif([F:ZNC]PAM="MAN")Then
+        WFRAISGEST = [M:PIH0]ZFGMAN
+        WLIBFGEST = "Mandat"
+      Endif
+#      [M:PIH0]ZINFOREGCPT="Net à payer : " + num$([F:PIH]AMTATIL-WFRAISGEST) + " € (" + num$([F:PIH]AMTATIL) + "-" + num$(WFRAISGEST) + ")"
+      [M:PIH0]ZINFOREGCPT="Net à payer (" + WLIBFGEST + ") : " + num$([F:PIH]AMTATIL-WFRAISGEST) + " €"
+      If([F:ZNC]PAM="MAN")Then
+        [M:PIH0]ZINFOREGCPT2 = "N° MTCN : " + [F:ZNC]NUM_CHQ
+      Elsif([F:ZNC]PAM="CHQ")Then
+        [M:PIH0]ZINFOREGCPT2 = "N° chèque : " + [F:ZNC]NUM_CHQ
+      Else
+        [M:PIH0]ZINFOREGCPT2 = ""
+      Endif
+    Else
+      [M:PIH0]ZINFOREGCPT=""
+    Endif
+    Affzo [M:PIH0]ZINFOREGCPT
+    If([M:PIH0]ZINFOREGCPT2 = "")Then
+      Chgfmt [M:PIH0]ZINFOREGCPT2 With "-K:150X"
+    Else
+      Chgfmt [M:PIH0]ZINFOREGCPT2 With "K:150X"
+    Endif
+    Affzo [M:PIH0]ZINFOREGCPT2
+  Endif
+Else
+  Chgfmt [M:PIH0]ZINFOREGCPT With "-K:150X"
+  Chgfmt [M:PIH0]ZINFOREGCPT2 With "-K:150X"
+Endif
+Return
+
+##############################################  LIENS_LIG
+
+$LIENS_LIG
+Local Integer NOL : NOL=nolign-1
+If NOL=0
+    [M:PIH3]WQTETOT=0
+Endif
+[M:PIH3]WQTETOT += [M:PIH3]QTYUOM(NOL)
+Affzo [M:PIH3]WQTETOT
+Return
+
+#################################################### PICKE
+
+$PICKE
+If GFLAG="FCP"
+    OK=0
+Endif
+Return
+
+####################################################
+#### ACTIONS CHAMPS
+####################################################
+
+#################################################### PIH0
+
+Subprog IB_FCY
+If GFLAG="FCP"
+    Raz GBOUTS
+    Raz GBOUT1
+Else
+    Raz GBOUT3
+Endif
+End
+
+Subprog B3_FCY(VALEUR)
+Variable Char    VALEUR()
+Filter [F:ZUC]
+Read [F:ZUC]ZUC0 First
+Choose [F:ZUC] Where [F:ZUC]USR=GUSER
+& Using [F:ZUC]ZUCBPS Titled "Fr comptoir", [F:ZUC]ZUCFCY Titled "Site", [F:ZUC]ZUCBAN Titled "Banque chèque", [F:ZUC]ZUCCAI Titled "Caisse"
+&, [F:ZUC]ZUCMAN Titled "Banque mandat"
+& Sized(80,240)
+& Titled "Choix fournisseur comptoir"
+If status=28
+    Read [F:FCY]FCY0=[F:ZUC]ZUCFCY
+    If fstat
+        Call ERREUR("Erreur de lecture de la fiche Site. Création impossible.") From GESECRAN
+        OK=0
+    Else
+        [M:PIH0]ZCPTFCY=[F:ZUC]ZUCFCY
+        Call AM_FCY([F:FCY]FINRSPFCY) From SUBPIH
+        [M:PIH0]FCY = [F:FCY]FINRSPFCY
+        Read [F:BPR]BPR0=[F:ZUC]ZUCBPS
+        If fstat
+            Call ERREUR("Erreur de lecture de la fiche Tiers.") From GESECRAN
+            VALEUR = ""
+            End
+        Endif
+        Read [F:BPS]BPS0=[F:ZUC]ZUCBPS
+        If fstat
+            Call ERREUR("Erreur de lecture de la fiche Fournisseur.") From GESECRAN
+            VALEUR = ""
+            End
+        Endif
+        Call AM_BPR([F:ZUC]ZUCBPS) From SUBPIH
+        Call AM_BPSNUM([F:ZUC]ZUCBPS) From TRTACHCTL1
+        Call AM_BPR([F:ZUC]ZUCBPS)
+        [M:PIH0]BPR = [F:ZUC]ZUCBPS
+        Affzo [M:PIH0]FCY, ZFCY, BPR, BPRNAM1
+        Diszo [M:PIH0]FCY, BPR
+    Endif
+Endif
+End
+
+Subprog C_FCY(VALEUR)
+Variable Char    VALEUR()
+If GFLAG="FCP"
+    Read [F:ZUC]ZUC0=GUSER;[M:PIH0]ZCPTFCY
+    If fstat
+        GMESSAGE="Site comptoir non défini sur votre profil."
+        mkstat=2
+    Endif
+Endif
+End
+
+Subprog C_BPR(VALEUR)
+Variable Char    VALEUR()
+If clalev([F:ZBPS])=0 : Local File BPSUPPLIER [ZBPS] : Endif
+Read [F:ZBPS]BPS0=VALEUR
+If fstat=0
+    If [F:ZBPS]BPSINV<>VALEUR
+        Call MESSAGE("Attention : le tiers facturant de ce fournisseur est "+[F:ZBPS]BPSINV+".") From GESECRAN
+    Endif
+Endif
+End
+
+Subprog AM_BPR(VALEUR)
+Variable Char    VALEUR()
+If GFLAG<>"FCP"
+    Call AFFCOM(VALEUR,"F") From ZAFFCOM
+Endif
+End
+
+#################################################### ZPIH9
+
+Subprog C_ZFRCOMPT(VALEUR)
+Variable Char    VALEUR()
+If !clalev([F:ZBPS]) : Local File BPSUPPLIER [F:ZBPS] Order By Key CLE=BPSNUM : Endif
+Read [F:ZBPS]CLE=VALEUR
+If fstat>0
+    Call ERREUR("Fournisseur inconnu.") From GESECRAN
+    mkstat=1
+Else
+    Read [F:BPS]BPS0=[M:PIH0]BPR
+    If fstat<>0
+        mkstat=1
+    Else
+        #If clalev([F:ZRS])=0 : Local File ZSITERATT : Endif
+        #Read [F:ZRS]ZRS0=VALEUR;GFCYDEF(6)
+        Read [F:ZRS]ZRS0=VALEUR;[M:PIH0]ZCPTFCY
+        If fstat>0
+            Local Integer WREP : WREP=1
+            Call OUINON("Fournisseur comptoir non rattaché à ce site. Doit-on continuer ?",WREP) From GESECRAN
+            If WREP=1
+                mkstat=1
+            Endif
+        Endif
+    Endif
+Endif
+Close Local File [F:ZBPS]
+End
+
+Subprog AM_ZFRCOMPT(VALEUR)
+Variable Char    VALEUR()
+Local Decimal ZENC
+Local Integer WREP
+If !clalev([F:ZBPS]) : Local File BPSUPPLIER [F:ZBPS] Order By Key CLE=BPSNUM : Endif
+Read [F:ZBPS]CLE=VALEUR
+If fstat=0
+    ZENC=0
+    Filter [F:PIH] Where [F:PIH]ZFRCOMPT=VALEUR & [F:PIH]ACCDAT>=gdat$(1,1,year([M:PIH0]ACCDAT)) & [F:PIH]ACCDAT<=[M:PIH0]ACCDAT
+    For [F:PIH]PIH0
+        ZENC += [F:PIH]AMTNOT
+    Next
+    Filter [F:PIH]
+    If ZENC>GZENCMAX
+        Call OUINON("Facturation théoriquement impossible, encours atteint : "+vireblc(format$("N3:9.2#",ZENC),0)+", limite : "+vireblc(format$("N3:9.2#",GZENCMAX),0)+". Doit-on continuer ?",WREP)
+& From GESECRAN
+        If WREP=1
+            mkstat=1
+        Else
+            [M:ZPI9]ZFRNAM1    = [F:ZBPS]BPSNAM
+            [M:ZPI9]ZIDENTTYP  = [F:ZBPS]ZIDENTTYP
+            [M:ZPI9]ZIDENTNUM  = [F:ZBPS]ZIDENTNUM
+            [M:ZPI9]ZIDENTLIEU = [F:ZBPS]ZIDENTLIEU
+            [M:ZPI9]ZIDENTDAT  = [F:ZBPS]ZIDENTDAT
+            [M:ZPI9]ZENCOURS   = ZENC
+            Affzo [M:ZPI9]ZFRNAM1, ZIDENTTYP, ZIDENTNUM, ZIDENTLIEU, ZIDENTDAT, ZENCOURS
+            Gosub CHARGE_LIGNES
+        Endif
+    Else
+        [M:ZPI9]ZFRNAM1    = [F:ZBPS]BPSNAM
+        [M:ZPI9]ZIDENTTYP  = [F:ZBPS]ZIDENTTYP
+        [M:ZPI9]ZIDENTNUM  = [F:ZBPS]ZIDENTNUM
+        [M:ZPI9]ZIDENTLIEU = [F:ZBPS]ZIDENTLIEU
+        [M:ZPI9]ZIDENTDAT  = [F:ZBPS]ZIDENTDAT
+        [M:ZPI9]ZENCOURS   = ZENC
+        Affzo [M:ZPI9]ZFRNAM1, ZIDENTTYP, ZIDENTNUM, ZIDENTLIEU, ZIDENTDAT, ZENCOURS
+        Gosub CHARGE_LIGNES
+    Endif
+Endif
+Close Local File [F:ZBPS]
+Call AFFCOM(VALEUR,"F") From ZAFFCOM
+WORICONTPCE=2
+Call C_ZIDENTDAT([M:ZPI9]ZIDENTDAT)
+WORICONTPCE=1
+End
+
+Subprog AM_ZIDENTTYP(VALEUR)
+Variable Integer VALEUR
+WMODPCEIDENT=1
+End
+
+Subprog AM_ZIDENTNUM(VALEUR)
+Variable Char    VALEUR()
+WMODPCEIDENT=1
+End
+
+Subprog AM_ZIDENTLIEU(VALEUR)
+Variable Char    VALEUR()
+WMODPCEIDENT=1
+End
+
+Subprog C_ZIDENTDAT(VALEUR)
+Variable Date    VALEUR
+If func AFNC.ACTIV("ZCVPI")
+    Local Integer WREP : WREP=1
+    # Controle sur la validité de la pièce d'identité
+    Read [F:ZVP]ZVP0=[M:ZPI9]ZIDENTTYP
+    If fstat
+        GMESSAGE="Contrôle validité pièce d'identité impossible. Donnée non présente."
+        If WORICONTPCE=2
+            Call MESSAGE(GMESSAGE) From GESECRAN
+        Else
+            mkstat=2
+        Endif
+        End
+    Elsif [F:ZVP]ZVALIDANN=0
+        If [F:ZVP]ZVALIDFLG=1 : # Contrôlé
+            Call OUINON("Le type de pièce sera bientôt non valide. Doit-on continuer ?",WREP) From GESECRAN
+            If WREP=1
+                mkstat=2
+                End
+            Endif
+        Elsif [F:ZVP]ZVALIDFLG=3 : # Bloqué
+            GMESSAGE="Type de pièce non valide."
+            If WORICONTPCE=2
+                Effzo [M:ZPI9]ZIDENTNUM,ZIDENTDAT, ZIDENTLIEU
+                Call MESSAGE(GMESSAGE) From GESECRAN
+            Else
+                mkstat=2
+            Endif
+            End
+        Endif
+    Elsif VALEUR=[0/0/0]
+        If [F:ZVP]ZVALIDFLG=1 : # Contrôlé
+            Call OUINON("La date de la pièce d'identité n'est pas renseignée. Doit-on continuer ?",WREP) From GESECRAN
+            If WREP=1
+                mkstat=2
+                End
+            Endif
+        Elsif [F:ZVP]ZVALIDFLG=3 : # Bloqué
+            GMESSAGE="La date de la pièce d'identité n'est pas renseignée. Saisie impossible."
+            If WORICONTPCE=2
+                Call MESSAGE(GMESSAGE) From GESECRAN
+            Else
+                mkstat=2
+            Endif
+            End
+        Endif
+    Elsif addmonth(VALEUR,[F:ZVP]ZVALIDANN)<date$
+        If [F:ZVP]ZVALIDFLG=1 : # Contrôlé
+            Call OUINON("La validité de la pièce d'identité est dépassée. Doit-on continuer ?",WREP) From GESECRAN
+            If WREP=1
+                mkstat=2
+                End
+            Endif
+        Elsif [F:ZVP]ZVALIDFLG=3 : # Bloqué
+            GMESSAGE="La validité de la pièce d'identité est dépassée. Saisie impossible."
+            If WORICONTPCE=2
+                Call MESSAGE(GMESSAGE) From GESECRAN
+                Effzo [M:ZPI9]ZIDENTNUM,ZIDENTDAT, ZIDENTLIEU
+            Else
+                mkstat=2
+            Endif
+            End
+        Endif
+    Elsif date$>addmonth(VALEUR,([F:ZVP]ZVALIDANN)-[F:ZVP]ZPREVMOIS)
+        Call AVERTIR("La validité de la pièce d'identité arrive bientôt à expiration.",WREP) From GESECRAN
+        If WREP=1
+            mkstat=2
+            End
+        Endif
+    Endif
+Endif
+End
+
+Subprog AM_ZIDENTDAT(VALEUR)
+Variable Date    VALEUR
+WMODPCEIDENT=1
+End
+
+$CHARGE_LIGNES
+Local Integer NOL
+Local Char    VAT(GLONVAT)(3), COMPTE(GLONGAC), NATURE(GLONCNA), VACBPR(3)
+CRITERE = "PLI='TFRSC'"
+CRITERE+= " & PLICRI1='"+[M:PIH0]BPR+"'"
+CRITERE+= " & PLISTRDAT<=["+format$("D:DD[/]MM[/]YYYY",[M:PIH0]ACCDAT)+"]"
+CRITERE+= " & PLIENDDAT>=["+format$("D:DD[/]MM[/]YYYY",[M:PIH0]ACCDAT)+"]"
+Filter [F:PPL] Where evalue(CRITERE)
+For [F:PPL]PPL0
+    Read [F:ITM]ITM0=[F:PPL]PLICRI2
+    If fstat=0
+        nolign = NOL+1
+        [M:PIH3]TYPORI(NOL) = 5
+        [M:PIH3]BPSNUM(NOL) = [M:PIH0]BPR
+        [M:PIH3]DIFPRI(NOL) = 1
+        [M:PIH3]DIFQTY(NOL) = 1
+        [M:PIH3]FCYLIN(NOL) = [M:PIH0]FCY
+        Call AM_ITMREF([F:ITM]ITMREF) From SUBPIH
+        [M:PIH3]ITMREF(NOL) = [F:ITM]ITMREF
+        #Call CHARGE_ITMDES("DES1AXX",[M:PIH0]LAN,[F:ITM]ITMREF,[M:PIH3]ITMDES(NOL)) From TRTX3
+        #If [M:PIH3]ITMDES(NOL)="" [M:PIH3]ITMDES(NOL)=[F:ITM]ITMDES1 : Endif
+        #[M:PIH3]ITMDES1(NOL)  =[F:ITM]ITMDES1
+        [M:PIH3]ZTYPPAL(NOL)  =val([F:PPL]PLICRI3)
+        #[M:PIH3]UOMPUUCOE(NOL)=1
+        #[M:PIH3]UOM(NOL)      =[F:ITM]PUU
+        #[M:PIH3]PUU(NOL)      =[F:ITM]PUU
+        #If dim([M:PIH3]TSICOD1(NOL))>0 [M:PIH3]TSICOD1(NOL)=[F:ITM]TSICOD(0) : Endif
+        #If dim([M:PIH3]TSICOD2(NOL))>0 [M:PIH3]TSICOD2(NOL)=[F:ITM]TSICOD(1) : Endif
+        #If dim([M:PIH3]TSICOD3(NOL))>0 [M:PIH3]TSICOD3(NOL)=[F:ITM]TSICOD(2) : Endif
+        #If dim([M:PIH3]TSICOD4(NOL))>0 [M:PIH3]TSICOD4(NOL)=[F:ITM]TSICOD(3) : Endif
+        #If dim([M:PIH3]TSICOD5(NOL))>0 [M:PIH3]TSICOD5(NOL)=[F:ITM]TSICOD(4) : Endif
+        #Call ALITAXE([M:PIH1]VAC,[F:ITM]VACITM,VAT) From TRTX3
+        #[M:PIH3]VAT1(NOL)=VAT(0)
+        #[M:PIH3]VAT2(NOL)=VAT(1)
+        #[M:PIH3]VAT3(NOL)=VAT(2)
+        #[M:PIH3]PRTFLG(NOL)=1
+        [M:PIH3]GROPRI(NOL) = [F:PPL]PRI
+        [M:PIH3]NETPRI(NOL) = [F:PPL]PRI
+        [M:PIH3]PRIREN(NOL) = 3
+        #If [M:PIH3]LINACC(NOL)="" & [M:PIH3]LINCNA(NOL)=""
+        #    Call CPTE_NATURE_LIGNE (NOL,COMPTE,NATURE) From SUBPIHC
+        #    If [M:PIH3]LINACC(NOL)="" [M:PIH3]LINACC(NOL)=COMPTE : Endif : # Chargement compte
+        #    If [M:PIH3]LINCNA(NOL)="" [M:PIH3]LINCNA(NOL)=NATURE : Endif : # Chargement nature
+        #Endif
+        #If [M:PIH3]LINPURTYP(NOL)=0
+        #    Call D_LINPURTYP ([M:PIH3]LINPURTYP(NOL))  From SUBPIH  : # Chargement type d'achat
+        #Endif
+        [M:PIH3]LINFLG(NOL) = 1
+        [M:PIH3]PIDLIN(NOL) = (NOL+1)*1000
+        [M:PIH3]UPDFLG(NOL) = 1
+        GBIDI2=1
+        #Gosub PREP_INIT_CCE From SUBPIHB
+        Read [F:BPS]BPS0=[M:PIH0]BPR
+        If fstat=0
+            [M:PIH3]CCE1(NOL) = [F:BPS]CCE(0)
+        Endif
+        [M:PIH3]CCE2(NOL) = "P"
+        [M:PIH3]PRIREN=3
+        NOL += 1
+    Endif
+Next
+[M:PIH3]NBLIG = NOL
+If NOL>0
+    [M:PIH3]CLCFLG = 2
+    [M:PIH3]PCLFLG = 1
+Endif
+Affzo [M:PIH3]
+Return
+
+###### Ancienne méthode de chargement des lignes basée sur le fichier ZARTCOMPT. Abandonnée le 27/05/2008.
+# Local Integer NOL
+# Local Char    VAT(GLONVAT)(3), COMPTE(GLONGAC), NATURE(GLONCNA), VACBPR(3)
+# If clalev([F:ZAC])=0 : Local File ZARTCOMPT : Endif
+# If clalev([F:ITM])=0 : Local File ITMMASTER : Endif
+# If clalev([F:BPS])=0 : Local File BPSUPPLIER : Endif
+# NOL=0
+# For [F:ZAC]ZAC0
+#     Read [F:ITM]ITM0=[F:ZAC]ITMREF
+#     If fstat=0
+#         [M:PIH3]TYPORI(NOL) = 5
+#         [M:PIH3]BPSNUM(NOL) = [M:PIH0]BPR
+#         [M:PIH3]DIFPRI(NOL) = 1
+#         [M:PIH3]DIFQTY(NOL) = 1
+#         [M:PIH3]FCYLIN(NOL) = [M:PIH0]FCY
+#         [M:PIH3]ITMREF(NOL) = [F:ITM]ITMREF
+#         Call CHARGE_ITMDES("DES1AXX",[M:PIH0]LAN,[F:ITM]ITMREF,[M:PIH3]ITMDES(NOL)) From TRTX3
+#         If [M:PIH3]ITMDES(NOL)="" [M:PIH3]ITMDES(NOL)=[F:ITM]ITMDES1 : Endif
+#         [M:PIH3]ITMDES1(NOL)  =[F:ITM]ITMDES1
+#         [M:PIH3]ZTYPPAL(NOL)  =1
+#         [M:PIH3]UOMPUUCOE(NOL)=1
+#         [M:PIH3]UOM(NOL)      =[F:ITM]PUU
+#         [M:PIH3]PUU(NOL)      =[F:ITM]PUU
+#         If dim([M:PIH3]TSICOD1(NOL))>0 [M:PIH3]TSICOD1(NOL)=[F:ITM]TSICOD(0) : Endif
+#         If dim([M:PIH3]TSICOD2(NOL))>0 [M:PIH3]TSICOD2(NOL)=[F:ITM]TSICOD(1) : Endif
+#         If dim([M:PIH3]TSICOD3(NOL))>0 [M:PIH3]TSICOD3(NOL)=[F:ITM]TSICOD(2) : Endif
+#         If dim([M:PIH3]TSICOD4(NOL))>0 [M:PIH3]TSICOD4(NOL)=[F:ITM]TSICOD(3) : Endif
+#         If dim([M:PIH3]TSICOD5(NOL))>0 [M:PIH3]TSICOD5(NOL)=[F:ITM]TSICOD(4) : Endif
+#         Call ALITAXE([M:PIH1]VAC,[F:ITM]VACITM,VAT) From TRTX3
+#         [M:PIH3]VAT1(NOL)=VAT(0)
+#         [M:PIH3]VAT2(NOL)=VAT(1)
+#         [M:PIH3]VAT3(NOL)=VAT(2)
+#         [M:PIH3]PRTFLG(NOL)=1
+#         Call RECH_TARIF(NOL,1)
+#         [M:PIH3]PRIREN(NOL) = 3
+#         If [M:PIH3]LINACC(NOL)="" & [M:PIH3]LINCNA(NOL)=""
+#             Call CPTE_NATURE_LIGNE (NOL,COMPTE,NATURE) From SUBPIHC
+#             If [M:PIH3]LINACC(NOL)="" [M:PIH3]LINACC(NOL)=COMPTE : Endif : # Chargement compte
+#             If [M:PIH3]LINCNA(NOL)="" [M:PIH3]LINCNA(NOL)=NATURE : Endif : # Chargement nature
+#         Endif
+#         If [M:PIH3]LINPURTYP(NOL)=0
+#             Call D_LINPURTYP ([M:PIH3]LINPURTYP(NOL))  From SUBPIH  : # Chargement type d'achat
+#         Endif
+#         [M:PIH3]LINFLG(NOL) = 1
+#         [M:PIH3]PIDLIN(NOL) = NOL*1000
+#         [M:PIH3]UPDFLG(NOL) = 1
+#         GBIDI2=1
+#         Gosub PREP_INIT_CCE From SUBPIHB
+#         Read [F:BPS]BPS0=[M:PIH0]BPR
+#         If fstat=0
+#             [M:PIH3]CCE1(NOL) = [F:BPS]CCE(0)
+#         Endif
+#         [M:PIH3]CCE2(NOL) = "P"
+#         [M:PIH3]PRIREN=3
+#         NOL += 1
+#     Endif
+# Next
+# [M:PIH3]NBLIG = NOL
+# If NOL>0
+#     [M:PIH3]CLCFLG = 2
+#     [M:PIH3]PCLFLG = 1
+# Endif
+# Affzo [M:PIH3]
+# Return
+
+#################################################### PIH1
+
+Subprog C_ACCDAT(VALEUR)
+Variable Date    VALEUR
+If GMODU(2) = 2    : # Présence du module compta
+    Local Date WSV_VALEUR
+    WSV_VALEUR = VALEUR
+    # Mail de SLB du 06/07/2011, 23h13
+    # Prise en compte de la date de création de la facture par rapport à la date de la facture
+#    If month(WSV_VALEUR)>month(date$) & year(WSV_VALEUR)>=year(date$)
+#        Raz GWACCDAT
+#    Else
+#        If month(WSV_VALEUR)<month(date$) & year(WSV_VALEUR)<=year(date$)
+#            WSV_VALEUR = date$
+#        Endif
+        Raz GWACCDAT
+        If clalev([F:PER])=0 : Local File PERIOD : Endif
+        If clalev([F:FCY])=0 : Local File FACILITY : Endif
+        If clalev([F:FIY])=0 : Local File FISCALYEAR : Endif
+        Local Integer EXERCICE, PERIOD
+        Read [F:FCY]FCY0=[M:PIH0]FCY
+        If fstat=0
+            For [PER]PER0 Where CPY=[F:FCY]LEGCPY & PERSTR<=WSV_VALEUR & PEREND>=WSV_VALEUR
+                EXERCICE = [F:PER]FIYNUM
+                PERIODE  = [F:PER]PERNUM
+            Next
+            If EXERCICE<>0 & PERIODE<>0
+                Read [F:PER]PER0 = [F:FCY]LEGCPY;1;EXERCICE;PERIODE
+                If fstat=0
+                    If [F:PER]ZGFCDAT<>[0/0/0]
+                        If WSV_VALEUR>=[F:PER]ZGFCDAT
+                            # il faut controler que la période suivante est ouverte.
+                            GWACCDAT=addmonth(WSV_VALEUR,1)
+                            GWACCDAT=gdat$(1,month(GWACCDAT),year(GWACCDAT))
+                            Raz EXERCICE,PERIODE
+                            For [PER]PER0 Where CPY=[F:FCY]LEGCPY & PERSTR<=GWACCDAT & PEREND>=GWACCDAT
+                                EXERCICE = [F:PER]FIYNUM
+                                PERIODE  = [F:PER]PERNUM
+                            Next
+                            If EXERCICE=0 | PERIODE=0
+                                GMESSAGE = "Date comptable : "-mess(1,104,1) : # MSG=Date incorrecte
+                                mkstat = 2
+                                Raz GWACCDAT
+                                End
+                            Endif
+                            Read [FIY]FIY0 = [F:FCY]LEGCPY;1;EXERCICE
+                            If fstat | [F:FIY]FIYSTA<>2
+                                GMESSAGE = "Date comptable : "-mess(20,101,1) : # MSG=Exercice non ouvert
+                                mkstat = 2
+                                Raz GWACCDAT
+                                End
+                            Endif
+                            If [F:PER]PERSTA<2
+                                GMESSAGE = "Date comptable : "-mess(35,101,1) : # MSG=Periode non ouverte
+                                mkstat = 2
+                                Raz GWACCDAT
+                                End
+                            Endif
+                            If [F:PER]PERSTA>2
+                                GMESSAGE = "Date comptable : "-mess(36,101,1) : # MSG=Période fermee
+                                mkstat = 2
+                                Raz GWACCDAT
+                                End
+                            Endif
+                        Else
+                            GWACCDAT=WSV_VALEUR
+                        Endif
+                    Endif
+                Endif
+            Endif
+        Endif
+#    Endif
+Endif
+End
+
+Subprog AP_ACCDAT(VALEUR)
+Variable Date    VALEUR
+If GWACCDAT<>[0/0/0]
+    [M:PIH1]ZACCDAT = GWACCDAT
+Else
+    [M:PIH1]ZACCDAT = VALEUR
+Endif
+Affzo [M:PIH1]ZACCDAT
+End
+
+#################################################### PIH3
+
+Subprog AVANT_NBLIG
+If GFLAG="FCP"
+    [M:PIH3]TYPORI(nolign-1)=5
+    [M:PIH3]NUMORI(nolign-1)=""
+    [M:PIH3]LINORI(nolign-1)=0
+    Grizo [M:PIH3]TYPORI, NUMORI, LINORI
+Endif
+[M:PIH3]WQTETOT -= [M:PIH3]QTYUOM(nolign-1)
+End
+
+Subprog APRES_NBLIG
+[M:PIH3]WQTETOT += [M:PIH3]QTYUOM(nolign-1)
+Affzo [M:PIH3]WQTETOT
+End
+
+Subprog C_NUM(VALEUR)
+Variable Char    VALEUR()
+If GFLAG="FCP"
+    If GREP<>"C" & VALEUR=""
+        GMESAGE="Duplication interdite."
+        GERR=1
+        VALEUR=[F:PIH]NUM
+        [M:PIH0]NUM=[F:PIH]NUM
+        Affzo [M:PIH0]NUM
+    Else
+        Call C_NUM(VALEUR) From SUBPIH
+    Endif
+Endif
+End
+
+Subprog AM_ZTYPPAL(VALEUR)
+Variable Integer VALEUR
+Local Integer NOL, REP
+If GFLAG="FCP"
+    NOL=nolign-1
+    If [M:PIH3]PRIREN(NOL)<>1
+        Call RECH_TARIF(NOL,VALEUR)
+        Affzo [M:PIH3]GROPRI, NETPRI
+        Call AM_NETPRI([M:PIH3]NETPRI(nolign-1)) From SUBPIH
+    Else
+        REP=1
+        Call OUINON("Voulez-vous reprendre le tarif standard ?",REP) From GESECRAN
+        If REP=2
+            Call RECH_TARIF(NOL,VALEUR)
+            Affzo [M:PIH3]GROPRI, NETPRI
+            Call AM_NETPRI([M:PIH3]NETPRI(nolign-1)) From SUBPIH
+        Endif
+    Endif
+Endif
+End
+
+Subprog RECH_TARIF(NUML,WTYPPAL)
+Variable Integer NUML
+Value Integer WTYPPAL
+Local Char CRITERE(255), WPLICRD(20)
+Local Integer WPLILIN
+Local Decimal WPRIX
+WPRIX=0
+If clalev([F:PPL])=0 : Local File PPRICLIST : Endif
+CRITERE = "PLI='TFRSC'"
+CRITERE+= " & PLICRI1='"+[M:PIH0]BPR+"'"
+CRITERE+= " & PLICRI2='"+[M:PIH3]ITMREF(NUML)+"'"
+CRITERE+= " & PLICRI3='"+vireblc(num$(WTYPPAL),2)+"'"
+CRITERE+= " & PLISTRDAT<=["+format$("D:DD[/]MM[/]YYYY",[M:PIH0]ACCDAT)+"]"
+CRITERE+= " & PLIENDDAT>=["+format$("D:DD[/]MM[/]YYYY",[M:PIH0]ACCDAT)+"]"
+Filter [F:PPL] Where evalue(CRITERE)
+For [F:PPL]PPL0
+    If WPRIX=0
+        WPLICRD=[F:PPL]PLICRD
+        WPLILIN=[F:PPL]PLILIN
+        WPRIX=[F:PPL]PRI
+    Elsif [F:PPL]PRI<=WPRIX
+        WPLICRD=[F:PPL]PLICRD
+        WPLILIN=[F:PPL]PLILIN
+        WPRIX=[F:PPL]PRI
+    Endif
+Next
+Filter [F:PPL]
+If WPRIX<>0
+    Read [F:PPL]PPL0="TFRSC";WPLICRD;WPLILIN
+    If fstat=0
+        [M:PIH3]GROPRI(NUML) = [F:PPL]PRI
+        [M:PIH3]NETPRI(NUML) = [F:PPL]PRI
+    Endif
+Endif
+End
+
+Subprog AM_NETPRI(VALEUR)
+Variable Decimal VALEUR
+If VALEUR<>[M:PIH3]NETPRI(nolign-1)
+    [M:PIH3]PRIREN(nolign-1)=1
+Endif
+End
+
+Subprog CL_ZIMPTARIF(VALEUR)
+Variable Char    VALEUR()
+   Local Char TBPAR(15) (1..99)         : # stocke les noms de paramètres transmis à l'état
+   Local Char TBVAL(30)(1..99)          : # stocke les valeurs associée transmises à l'état
+   TBPAR(1) = "Site"
+   TBVAL(1) = [M:PIH0]ZCPTFCY+'CPT'
+   # -- impression de l'état des tarifs
+   Call ETAT("ZTARIFCPT","PREVISU","FRA",0,"",TBPAR,TBVAL) From AIMP3
+End
+

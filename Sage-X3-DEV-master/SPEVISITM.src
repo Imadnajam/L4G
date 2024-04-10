@@ -1,0 +1,21 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+################################################################### SPEVISITM
+################################################################### 20/12/2019
+
+$ACTION
+Case ACTION
+ When "BOUTON"      : Gosub BOUTON_SEL
+Endcase
+Return
+
+$BOUTON_SEL
+Gosub ACTION From SUBVISITM
+GPE = 1
+Case BOUT
+  When "1" :
+    If nolign > 0
+      Assign("[M:"+WABREV+"]QTY(SVNOLIGN-1)") With 0
+    Endif
+    FIN=1
+Endcase
+Return

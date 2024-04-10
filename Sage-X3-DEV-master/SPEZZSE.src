@@ -1,0 +1,133 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### SPEZGA
+##################################################### créé le 30/03/2020
+##################################################### modifié le 30/03/2020
+
+$ACTION
+#Infbox ACTION
+Case ACTION
+  When "OUVRE"     : Gosub OUVRE
+  When "DEBUT"     : Gosub DEBUT
+  When "SETBOUT"   : Gosub SETBOUT
+  When "BOUTON"    : Gosub BOUTON
+  When "OK"        : Gosub OK
+Endcase
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           LABELS                                                  #
+#---------------------------------------------------------------------------------------------------#
+
+######################################################################### OUVRE
+$OUVRE
+  # Ouverture des tables
+  If clalev([F:ZZSE])=0   : Local File ZONESSYNCEPI  [F:ZZSE]   : Endif
+Return
+
+######################################################################### DEBUT
+$DEBUT
+#On efface tout le masque
+Effzo[M:ZZSE0]
+[M:ZZSE0]NBLIG=0
+Call SPE_RECH_ENR("")
+Return
+
+######################################################################### SETBOUT
+$SETBOUT
+Return
+
+######################################################################### BOUTON
+$BOUTON
+If(BOUT="R") #RECHERCHER
+  Call SPE_RECH_ENR([M:ZZSE0]RTABLE)
+Endif
+If(BOUT="W") #ENREGISTRER
+  #L'utilisateur vient de cliqquer sur Ok, nous allons enregistrer le tableau dans une transaction
+  Local Integer WERROR : WERROR = 0
+  Local Integer WNUMLIG : WNUMLIG = 0
+  Trbegin [F:ZZSE]
+  #On commence par supprimer toutes les lignes de la table
+  Local Char WCRITERE(250) : WCRITERE = "1=1"
+  If([M:ZZSE0]RTABLE<>"")Then
+    WCRITERE += " & [F:ZZSE]ZTABLE='" + [M:ZZSE0]RTABLE + "'"
+  Endif
+  Delete [F:ZZSE] Where evalue(WCRITERE)
+  If(fstat=0)Then
+    #On va maintenant parcourir le tableau pour sauvegarder toutes les lignes
+    For WNUMLIG=0 To [M:ZZSE0]NBLIG-1
+      [F:ZZSE]ZTABLE      = [M:ZZSE0]ZTABLE(WNUMLIG)
+      [F:ZZSE]ZCHAMPSX3   = [M:ZZSE0]ZCHAMPSX3(WNUMLIG)
+      [F:ZZSE]ZCHAMPSEPI  = [M:ZZSE0]ZCHAMPSEPI(WNUMLIG)
+      [F:ZZSE]ZTYPEPI     = [M:ZZSE0]ZTYPEPI(WNUMLIG)
+      [F:ZZSE]ZURLREST    = [M:ZZSE0]ZURLREST(WNUMLIG)
+      [F:ZZSE]ZMETHODREST = [M:ZZSE0]ZMETHODREST(WNUMLIG)
+      [F:ZZSE]ZRESTNAME   = [M:ZZSE0]ZRESTNAME(WNUMLIG)
+      [F:ZZSE]ZGROUPE     = [M:ZZSE0]ZGROUPE(WNUMLIG)
+      [F:ZZSE]ZVALEUREPI  = [M:ZZSE0]ZVALEUREPI(WNUMLIG)
+      Write[F:ZZSE]
+      If(fstat<>0)Then
+        WERROR = 2
+      Endif
+    Next WNUMLIG
+  Else
+    WERROR = 1
+  Endif
+  If(WERROR=0)Then
+    Commit
+  Else
+    Rollback
+    Call ERREUR("Impossible de sauvegarder les modifications. [Erreur N°" + num$(WERROR) + "]") From GESECRAN
+  Endif
+Endif
+Return
+
+######################################################################### OK
+$OK
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           SUBPROGS                                                #
+#---------------------------------------------------------------------------------------------------#
+Subprog SPE_RECH_ENR(WTABLE)
+Value Char WTABLE
+  Local Char WCRITERE(250) : WCRITERE = "1=1"
+  Effzo[M:ZZSE0]10
+  [M:ZZSE0]NBLIG=0
+  If(WTABLE<>"")Then
+    WCRITERE += " & [F:ZZSE]ZTABLE='" + WTABLE + "'"
+  Endif
+  For[F:ZZSE]ZZSE0 Where evalue(WCRITERE)
+    [M:ZZSE0]ZTABLE([M:ZZSE0]NBLIG)      = [F:ZZSE]ZTABLE
+    [M:ZZSE0]ZCHAMPSX3([M:ZZSE0]NBLIG)   = [F:ZZSE]ZCHAMPSX3
+    [M:ZZSE0]ZCHAMPSEPI([M:ZZSE0]NBLIG)  = [F:ZZSE]ZCHAMPSEPI
+    [M:ZZSE0]ZTYPEPI([M:ZZSE0]NBLIG)     = [F:ZZSE]ZTYPEPI
+    [M:ZZSE0]ZURLREST([M:ZZSE0]NBLIG)    = [F:ZZSE]ZURLREST
+    [M:ZZSE0]ZMETHODREST([M:ZZSE0]NBLIG) = [F:ZZSE]ZMETHODREST
+    [M:ZZSE0]ZRESTNAME([M:ZZSE0]NBLIG)   = [F:ZZSE]ZRESTNAME
+    [M:ZZSE0]ZGROUPE([M:ZZSE0]NBLIG)     = [F:ZZSE]ZGROUPE
+    [M:ZZSE0]ZVALEUREPI([M:ZZSE0]NBLIG)  = [F:ZZSE]ZVALEUREPI
+    [M:ZZSE0]NBLIG +=1
+  Next
+  Affzo [M:ZZSE0]NBLIG
+  Affzo [M:ZZSE0]10
+  #On va colorier les lignes de table pour mieux les identifier
+  Local Char WOLDTABLE(30) : WOLDTABLE = ""
+  Local Char WCOLOR(40) : WCOLOR = ""
+  For I=0 To [M:ZZSE0]NBLIG-1
+    If([M:ZZSE0]ZTABLE(I)<>WOLDTABLE)Then
+      WOLDTABLE = [M:ZZSE0]ZTABLE(I)
+      If(WCOLOR="GDD3")Then
+        WCOLOR = ""
+      Else
+        WCOLOR = "GDD3"
+      Endif
+    Endif
+    Chgstl [M:ZZSE0]NBLIG(I) With WCOLOR
+  Next
+End
+
+Subprog AM_RTABLE(VALEUR)
+Variable Char    VALEUR()
+  Call SPE_RECH_ENR(VALEUR)
+End
+

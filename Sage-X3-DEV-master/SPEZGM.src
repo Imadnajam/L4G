@@ -1,0 +1,136 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### SPEZGM
+##################################################### créé le 12/03/2020
+##################################################### modifié le 12/03/2020
+
+$ACTION
+#infbox ACTION
+Case ACTION
+  When "OUVRE"   : Gosub OUVRE
+  When "DEBUT"   : Gosub DEBUT
+  When "BOUTON"  : Gosub BOUTON
+Endcase
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           LABELS                                                  #
+#---------------------------------------------------------------------------------------------------#
+
+######################################################################### OUVRE
+$OUVRE
+If clalev([F:ZMANQ])=0  : Local File ZMANQUANTS   [F:ZMANQ]  : Endif
+If clalev([F:BPC])=0    : Local File BPCUSTOMER   [F:BPC]    : Endif
+If clalev([F:ZTE])=0    : Local File ZTEMPEPI     [F:ZTE]    : Endif
+If clalev([F:ZZS])=0    : Local File ZZSTOCK      [F:ZZS]    : Endif
+If clalev([F:ZZSA])=0   : Local File ZZSTOCKARCH  [F:ZZSA]   : Endif
+If clalev([F:ZZAT])=0   : Local File ZZATRIER     [F:ZZAT]   : Endif
+If clalev([F:ZZHF])=0   : Local File ZZHISTOFAC   [F:ZZHF]   : Endif
+If clalev([F:ZZHL])=0   : Local File ZZHISTOLIGNE [F:ZZHL]   : Endif
+Return
+
+######################################################################### DEBUT
+$DEBUT
+#On va maintenant récupérer les enregistrements dans la vue ZGESTMANQ en fonction du site et du code chargeur
+Effzo [M:ZGM0]5
+Raz [M:ZGM0]NBLIG
+For[F:ZMANQ]ZMANQ0 Where [F:ZMANQ]CODCHG=PARAM(1) and [F:ZMANQ]FCY=PARAM(2)
+  [M:ZGM0]FCY([M:ZGM0]NBLIG)     = [F:ZMANQ]FCY
+  [M:ZGM0]CODCHG([M:ZGM0]NBLIG)  = [F:ZMANQ]CODCHG
+  [M:ZGM0]ITMREF([M:ZGM0]NBLIG)  = [F:ZMANQ]ITMREF
+  [M:ZGM0]ZTYPPAL([M:ZGM0]NBLIG) = [F:ZMANQ]ZTYPPAL
+  [M:ZGM0]ZACT([M:ZGM0]NBLIG)    = [F:ZMANQ]ZACT
+  [M:ZGM0]QTYMANQ([M:ZGM0]NBLIG) = [F:ZMANQ]QTYMANQ
+  [M:ZGM0]NBLIG += 1
+Next
+Affzo [M:ZGM0]5
+[M:ZGM0]REFERENCE = "Réajustement stock du " + format$("D:DD[/]MM[/]YYYY", date$)
+Affzo [M:ZGM0]10
+Return
+
+######################################################################### BOUTON
+$BOUTON
+If(BOUT="C")Then
+  Local Integer WREP
+  Local Integer WNUMLIG
+  Local Integer WRESULT
+  Local Char WBPAADD(30)
+  Local Char WCOMPTEUR(30)
+  If([M:ZGM0]NBLIG>0)Then
+    WCOMPTEUR = func Z2WSEPALIS.SPE_GET_COMPTEUR()
+    Call OUINON("Etes-vous sûr(e) de vouloir créer l'entrée diverse maintenant ?",WREP) From GESECRAN
+    If(WREP=2)Then
+      #On va parcourir l'ensemble des lignes du tableau
+      Read[F:BPC]BPC0=[M:Z2AE0]ZBPCORD
+      WBPAADD = [F:BPC]BPAADD
+      For WNUMLIG=0 To [M:ZGM0]NBLIG-1
+        Call SET_ACT_EPI(
+&WCOMPTEUR
+&,[M:Z2AE0]ZFCY
+&,[M:Z2AE0]ZBPCORD
+&,[M:Z2AE0]ZUSER
+&,[M:ZGM0]ITMREF(WNUMLIG)
+&,[M:ZGM0]QTYMANQ(WNUMLIG)
+&,5
+&,date$
+&,[M:ZGM0]REFERENCE
+&,WBPAADD
+&,[M:ZGM0]CODCHG(WNUMLIG)
+&,[M:ZGM0]FCY(WNUMLIG)
+&,""
+&,""
+&,1
+&,"FR"
+&,0
+&,0
+&,""
+&,[M:ZGM0]ZTYPPAL(WNUMLIG)
+&,""
+&,""
+&,(WNUMLIG+1)*1000
+&,WRESULT
+&) From Z2WSEPALIS
+        If(WRESULT<>1)Then
+          #Il y a eu un souci, on arrête tout
+          Break
+        Endif
+      Next WNUMLIG
+      If(WRESULT=1)Then
+        #Les lignes de l'action ont été créées, on va pouvoir écécuter l'action
+        Local Integer WRETOUR
+        Call EXEC_ACT_EPI(WCOMPTEUR,WRETOUR) From Z2WSEPALIS
+        If(WRETOUR=0)Then
+          Infbox "Création de l'entrée diverse effectuée."
+          FIN = 1
+          #On va maintenant réfraichir la fenêtre des action
+          #On va récupérer le site et le client sur lequel on était
+          Local Char WFCYSAV(10) : WFCYSAV = [M:Z2AE0]ZFCY
+          Local Char WBPCORDSAV(30) : WBPCORDSAV = [M:Z2AE0]ZBPCORD
+          Local Char WCODCLTSAV(30) : WCODCLTSAV = [M:Z2AE0]ZCODCLT
+          Gosub DEBUT From SPEZ2AE
+          [M:Z2AE0]ZFCY = WFCYSAV
+          Affzo [M:Z2AE0]ZFCY
+          Affzo [M:Z2AE0]ZZFCY
+          Call AM_ZFCY([M:Z2AE0]ZFCY) From SPEZ2AE
+          [M:Z2AE0]ZBPCORD = WBPCORDSAV
+          Affzo [M:Z2AE0]ZBPCORD
+          Affzo [M:Z2AE0]ZZBPCORD
+          Call AM_ZBPCORD([M:Z2AE0]ZBPCORD) From SPEZ2AE
+          [M:Z2AE0]ZCODCLT = WCODCLTSAV
+          Affzo [M:Z2AE0]ZCODCLT
+          Call AM_ZCODCLT([M:Z2AE0]ZCODCLT) From SPEZ2AE
+        Endif
+      Else
+        #Il y a eu un problème, il faut que l'n supprime l'action que l'on vient de créer
+        Delete [F:ZTE] Where [F:ZTE]ZCOMPTEUR=WCOMPTEUR and [F:ZTE]ZBPCORD=[M:Z2AE0]ZBPCORD and [F:ZTE]ZFCY=[M:Z2AE0]ZFCY
+      Endif
+    Endif
+  Else
+    Call ERREUR ("Impossible ! Il n'y a aucune ligne à traiter") From GESECRAN
+  Endif
+Endif
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           SUBPROGS                                                #
+#---------------------------------------------------------------------------------------------------#
+

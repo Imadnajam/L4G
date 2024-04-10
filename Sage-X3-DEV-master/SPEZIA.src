@@ -1,0 +1,507 @@
+#<AdxTL>@(#)8.0.0.0 $Revision$
+################################################### SPEZIA
+################################################### 26/06/2015
+
+$ACTION
+Case ACTION
+ When "OUVRE" : Gosub OUVRE
+ When "DEBUT" : Gosub DEBUT
+ When "SETBOUT" : Gosub SETBOUT
+ When "AVANT_BOUTON" : Gosub AVANT_BOUTON
+ When "BOUTON" : Gosub BOUTON
+ When "APRES_MODIF" : Gosub APRES_MODIF
+ When "ENR" : Gosub ENR
+ When "ABA" : Gosub ABA
+ When Default
+Endcase
+Return
+
+################################################### OUVRE
+
+$OUVRE
+Gosub OUVRE_FIC From ZIMPAUTO
+
+If clalev([F:ABR])=0 : Local File "@X3.ABATRQT" [ABR] : Endif
+Return
+
+################################################### DEBUT
+
+$DEBUT
+Raz [M:ZIA]
+[M:ZIA]ZDATFIN = date$
+[M:ZIA]ZDATDEB = date$-GZIAFILNBJ
+Affzo [M:ZIA]20
+Gosub AFFICHE_TAB_MODELE
+Gosub AFFICHE_TAB_RESULTAT
+Gosub AFFICHE_REQUETE
+Return
+
+################################################### SETBOUT
+
+$SETBOUT
+If [M:ZIA]ZNUMREQ>0 and [M:ZIA]ZETAREQ<=2
+    Call VIREBOUT(CHMEN,"2") From GOBJET
+    Gosub SET_BOUT_SPE From GSAISIE
+Endif
+If [M:ZIA]ZNUMREQ=0 or [M:ZIA]ZETAREQ<>2
+    Call VIREBOUT(CHMEN,"4") From GOBJET
+    Gosub SET_BOUT_SPE From GSAISIE
+Endif
+If REP="M"
+    Call VIREBOUT(CHMEN,"12345") From GOBJET
+    Gosub SET_BOUT_SPE From GSAISIE
+Endif
+Return
+
+################################################### AVANT_BOUTON
+
+$AVANT_BOUTON
+If find(BOUT,"2","3","4","5")>0
+    # Contrôle d'autorisation
+    Case BOUT
+     When "2" : # Démarrage tâche
+        GBIDC2="D"
+     When "3" : # Exécution manuelle
+        GBIDC2="E"
+     When "4" : # Arrêt tâche
+        GBIDC2="A"
+     When "5" : # Epuration
+        GBIDC2="P"
+    Endcase
+    Gosub AUTORIS_OPT From CONTX3
+    If !GBIDI2
+        GERR = 1
+        GMESSAGE = mess(7,104,1)
+        Return
+    Endif
+Endif
+Return
+
+################################################### BOUTON
+
+$BOUTON
+Case BOUT
+ When "1" : # Rafraîchir les données
+    Gosub AFFICHE_TAB_MODELE
+    Gosub AFFICHE_TAB_RESULTAT
+    Gosub AFFICHE_REQUETE
+ When "2" : # Démarrage tâche
+    Local Integer WSTAT
+    If filinfo(filpath("FIL","ZIMPAUTO","run"),7)>=0
+        Call EFFACE(filpath("FIL","ZIMPAUTO","run"),WSTAT) From ORDSYS
+    Endif
+    Local Integer ZHEU, ZMIN
+    ZHEU = val(seg$(time$,1,2))
+    ZMIN = val(seg$(time$,4,5))
+    If ZMIN>=5
+        ZMIN = ZMIN-5
+    Else
+        ZMIN = 60+ZMIN-5
+        ZHEU = ZHEU-1
+    Endif
+    If clalev([M:ABQ1])=0 : Local Mask ABQ1 : Endif
+    [M:ABQ1]DAT = date$
+    [M:ABQ1]DOSSIER = [S]nomap(0)
+    [M:ABQ1]HEURE = format$("N#0:2",ZHEU)+format$("N#0:2",ZMIN)
+    [M:ABQ1]JOBMOD = 1
+    [M:ABQ1]TACHE = "ZIMPAUTO"
+    [M:ABQ1]USER = GUSER
+    Local Char PARBOUT(250)(1..20), VALBOUT(250), SAVACT(GLONACT)
+    Local Integer FLGEXE
+    SAVACT = GACTION
+    PARBOUT(1) = [M:ABQ1]DOSSIER
+    PARBOUT(2) = [M:ABQ1]GRP
+    PARBOUT(3) = [M:ABQ1]TACHE
+    PARBOUT(4) = num$(0)
+    FLGEXE = 1
+    GACTION="AFRQTPAR"
+    Call TRAITE_CHAR(VALBOUT,PARBOUT,"","ARQTPAR","ABATPAR",4,"XYARQTPAR") From GTRAITE
+    GACTION = SAVACT
+    Sleep 5
+    Gosub AFFICHE_REQUETE
+ When "3" : # Exécution manuelle
+    Gosub OUVRE_FIC From ZIMPAUTO
+    GZIAEXEMAN = 2
+    Gosub LIRE_MODELES From ZIMPAUTO
+    Gosub AFFICHE_TAB_RESULTAT
+ When "4" : # Arrêt de la tâche
+    Call MESSAGE("Demande d'arrêt de la tâche envoyée.") From GESECRAN
+    Openo filpath("FIL","ZIMPAUTO","stop")
+    Openo
+    Sleep 5
+    Gosub AFFICHE_REQUETE
+ When "5" : # Epuration
+    Gosub AFFICHE_TAB_RESULTAT
+Endcase
+Return
+
+################################################### APRES_MODIF
+
+$APRES_MODIF
+If COUZON="NBZIA"
+    REP="M"
+Endif
+Return
+
+################################################### ENR
+
+$ENR
+# Mise à jour du tableau vers la table
+Local Integer WNUMLIG, WNUMEXE
+For WNUMLIG=0 To [M:ZIA]NBZIA-1
+    nolign = WNUMLIG + 1
+    Read [F:ZIA]ZIA0=[M:ZIA]ZIAMODELE(WNUMLIG)
+    If fstat=0
+        [F:ZIA] = [M:ZIA]
+        For WNUMEXE=0 To 9
+            Assign("[F:ZIA]ZIAHEUEXE("+num$(WNUMEXE)+")") With evalue("[M:ZIA]ZIAHEUEXE"+num$(WNUMEXE)+"(nolign-1)")
+        Next
+        Rewrite [F:ZIA]
+    Else
+        Raz [F:ZIA]
+        [F:ZIA] = [M:ZIA]
+        For WNUMEXE=0 To 9
+            Assign("[F:ZIA]ZIAHEUEXE("+num$(WNUMEXE)+")") With evalue("[M:ZIA]ZIAHEUEXE"+num$(WNUMEXE)+"(nolign-1)")
+        Next
+        Write [F:ZIA]
+    Endif
+Next
+# Suppression des enregistrements de la table non présents dans le tableau
+For [F:ZIA]ZIA0
+    If find([F:ZIA]ZIAMODELE,[M:ZIA]ZIAMODELE(0..[M:ZIA]NBZIA-1))=0
+        # Suppression des résultats associés au modèle
+        For [F:ZIR] Where ZIRMODELE=[F:ZIA]ZIAMODELE
+            Delete [F:ZIR]
+        Next
+        Delete [F:ZIA]
+    Endif
+Next
+REP=""
+Gosub AFFICHE_TAB_MODELE
+Gosub AFFICHE_TAB_RESULTAT
+Return
+
+################################################### ABA
+
+$ABA
+Gosub AFFICHE_TAB_MODELE
+REP=""
+Return
+
+###################################################
+#### SOUS-PROGRAMMES
+###################################################
+
+################################################### AFFICHE_TAB_MODELE
+
+$AFFICHE_TAB_MODELE
+Effzo [M:ZIA]5
+Local Integer WNUMLIG
+For [F:ZIA]ZIA0
+    nolign = WNUMLIG + 1
+    [M:ZIA] = [F:ZIA]
+    For WNUMEXE=0 To 9
+        Assign("[M:ZIA]ZIAHEUEXE"+num$(WNUMEXE)+"(nolign-1)") With evalue("[F:ZIA]ZIAHEUEXE("+num$(WNUMEXE)+")")
+    Next
+    WNUMLIG += 1
+Next
+[M:ZIA]NBZIA = WNUMLIG
+Affzo [M:ZIA]5
+Return
+
+################################################### AFFICHE_TAB_RESULTAT
+
+$AFFICHE_TAB_RESULTAT
+Effzo [M:ZIA]10
+Local Integer WNUMLIG, WMAXLIG
+WMAXLIG = func AFNC.ACTIV("ZIALR")
+#For [F:ZIR]ZIR1
+For [F:ZIR] Where ZIRDAT>=[M:ZIA]ZDATDEB and ZIRDAT<=[M:ZIA]ZDATFIN
+    nolign = WNUMLIG + 1
+    [M:ZIA] = [F:ZIR]
+    WNUMLIG += 1
+    If WNUMLIG=WMAXLIG-1
+        Call ERREUR("Trop de lignes. Augmentez le code activité ZIALR.") From GESECRAN
+        Break
+    Endif
+Next
+[M:ZIA]NBZIR = WNUMLIG
+Affzo [M:ZIA]10
+#Sorta [M:ZIA]NBZIR [M:ZIA]NBZIR Order By [M:ZIA]ZIRDAT(indice), [M:ZIA]ZIRHOU(indice)
+Return
+
+################################################### AFFICHE_REQUETE
+
+$AFFICHE_REQUETE
+Effzo [M:ZIA]15
+Filter [F:ABR] Where TACHE="ZIMPAUTO" and DOSSIER=[S]nomap(0) and FLAG=2
+Read [F:ABR]NUMREQ Last
+If fstat
+    Filter [F:ABR] Where TACHE="ZIMPAUTO" and DOSSIER=[S]nomap(0) and FLAG=1
+    Read [F:ABR]NUMREQ Last
+    If fstat
+        Filter [F:ABR] Where TACHE="ZIMPAUTO" and DOSSIER=[S]nomap(0)
+        Read [F:ABR]NUMREQ Last
+        If fstat
+            Raz [F:ABR]
+        Endif
+    Endif
+Endif
+Filter [F:ABR]
+[M:ZIA]ZNUMREQ = [F:ABR]NUMREQ
+If [F:ABR]FLAG=0
+    [M:ZIA]ZETAREQ = 3
+Else
+    [M:ZIA]ZETAREQ = [F:ABR]FLAG
+Endif
+Affzo [M:ZIA]15
+Return
+
+################################################### CONTROLE_ZIAHEUEXE
+
+Subprog CONTROLE_ZIAHEUEXE(PNUMHEU,PVALEUR,PNOLIGN)
+Value Integer PNUMHEU
+Value Char PVALEUR()
+Value Integer PNOLIGN
+
+Local Char WVALAVANT(4), WVALAPRES(4)
+
+If PNUMHEU>0
+    Assign("WVALAVANT") With evalue("[M:ZIA]ZIAHEUEXE"+num$(PNUMHEU-1)+"(PNOLIGN)")
+Endif
+If PNUMHEU<9
+    Assign("WVALAPRES") With evalue("[M:ZIA]ZIAHEUEXE"+num$(PNUMHEU+1)+"(PNOLIGN)")
+Endif
+
+If PVALEUR=""
+    If WVALAPRES<>""
+        GMESSAGE="Zone à renseigner"
+        mkstat=2
+        End
+    Endif
+Else
+    If PNUMHEU>0 and PVALEUR<=WVALAVANT
+        GMESSAGE="Valeur antérieure à l'heure précédente interdite."
+        mkstat=2
+        End
+    Endif
+    If PNUMHEU<9 and PVALEUR>=WVALAPRES and WVALAPRES<>""
+        GMESSAGE="Valeur supérieure à l'heure suivante interdite."
+        mkstat=2
+        End
+    Endif
+Endif
+End
+
+###################################################
+#### ACTIONS CHAMPS
+###################################################
+
+Subprog B1_NBZIA
+# Exécution manuelle de la ligne du modèle uniquement
+Local Integer WNOL : WNOL=nolign-1
+Gosub OUVRE_FIC From ZIMPAUTO
+GZIAEXEMAN = 3
+Gosub LIRE_MODELES From ZIMPAUTO
+Gosub AFFICHE_TAB_RESULTAT
+End
+
+Subprog C_ZIAMODELE(VALEUR)
+Variable Char    VALEUR()
+# Modèle ne doit pas déjà être sur une autre ligne
+Local Integer WNOL, WNUMLIG : WNOL=nolign-1
+For WNUMLIG=0 To [M:ZIA]NBZIA-1
+    If WNUMLIG<>WNOL and [M:ZIA]ZIAMODELE(WNUMLIG)=VALEUR
+        GMESSAGE="Modèle déjà utilisé."
+        mkstat=2
+        Break
+    Endif
+Next
+End
+
+Subprog C_ZIAREPERT(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNUMLIG, WNOL : WNOL=nolign-1
+For WNUMLIG=0 To [M:ZIA]NBZIA-1
+    If WNUMLIG<>WNOL and [M:ZIA]ZIAREPERT(WNUMLIG)=VALEUR and [M:ZIA]ZIAEXTENS(WNUMLIG)=[M:ZIA]ZIAEXTENS(WNOL)
+        GMESSAGE="Répertoire et extension déjà utilisé."
+        mkstat=2
+        Break
+    Endif
+Next
+End
+
+Subprog C_ZIAEXTENS(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNUMLIG, WNOL : WNOL=nolign-1
+For WNUMLIG=0 To [M:ZIA]NBZIA-1
+    If WNUMLIG<>WNOL and [M:ZIA]ZIAREPERT(WNUMLIG)=[M:ZIA]ZIAREPERT(WNOL) and [M:ZIA]ZIAEXTENS(WNUMLIG)=VALEUR
+        GMESSAGE="Répertoire et extension déjà utilisé."
+        mkstat=2
+        Break
+    Endif
+Next
+End
+
+Subprog AM_ZIATRTSTR(VALEUR)
+Variable Char    VALEUR()
+VALEUR=toupper(VALEUR)
+End
+
+Subprog AM_ZIATRTBEF(VALEUR)
+Variable Char    VALEUR()
+VALEUR=toupper(VALEUR)
+End
+
+Subprog AM_ZIATRTAFT(VALEUR)
+Variable Char    VALEUR()
+VALEUR=toupper(VALEUR)
+End
+
+Subprog AM_ZIATRTEND(VALEUR)
+Variable Char    VALEUR()
+VALEUR=toupper(VALEUR)
+End
+
+Subprog AS_ZIAPERIOD(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL=nolign-1
+If [M:ZIA]ZIAHEUEXE1(WNOL)<>""
+    mkstat=2
+Endif
+End
+
+Subprog C_ZIAHEUEXE0(VALEUR)
+Variable Char    VALEUR()
+Call CONTROLE_ZIAHEUEXE(0,VALEUR,nolign-1)
+End
+
+Subprog AS_ZIAHEUEXE1(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL=nolign-1
+If [M:ZIA]ZIAPERIOD(WNOL)<>0
+    mkstat=2
+Endif
+End
+
+Subprog C_ZIAHEUEXE1(VALEUR)
+Variable Char    VALEUR()
+Call CONTROLE_ZIAHEUEXE(1,VALEUR,nolign-1)
+End
+
+Subprog AS_ZIAHEUEXE2(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL=nolign-1
+If [M:ZIA]ZIAPERIOD(WNOL)<>0
+    mkstat=2
+Endif
+End
+
+Subprog C_ZIAHEUEXE2(VALEUR)
+Variable Char    VALEUR()
+Call CONTROLE_ZIAHEUEXE(2,VALEUR,nolign-1)
+End
+
+Subprog AS_ZIAHEUEXE3(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL=nolign-1
+If [M:ZIA]ZIAPERIOD(WNOL)<>0
+    mkstat=2
+Endif
+End
+
+Subprog C_ZIAHEUEXE3(VALEUR)
+Variable Char    VALEUR()
+Call CONTROLE_ZIAHEUEXE(3,VALEUR,nolign-1)
+End
+
+Subprog AS_ZIAHEUEXE4(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL=nolign-1
+If [M:ZIA]ZIAPERIOD(WNOL)<>0
+    mkstat=2
+Endif
+End
+
+Subprog C_ZIAHEUEXE4(VALEUR)
+Variable Char    VALEUR()
+Call CONTROLE_ZIAHEUEXE(4,VALEUR,nolign-1)
+End
+
+Subprog AS_ZIAHEUEXE5(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL=nolign-1
+If [M:ZIA]ZIAPERIOD(WNOL)<>0
+    mkstat=2
+Endif
+End
+
+Subprog C_ZIAHEUEXE5(VALEUR)
+Variable Char    VALEUR()
+Call CONTROLE_ZIAHEUEXE(5,VALEUR,nolign-1)
+End
+
+Subprog AS_ZIAHEUEXE6(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL=nolign-1
+If [M:ZIA]ZIAPERIOD(WNOL)<>0
+    mkstat=2
+Endif
+End
+
+Subprog C_ZIAHEUEXE6(VALEUR)
+Variable Char    VALEUR()
+Call CONTROLE_ZIAHEUEXE(6,VALEUR,nolign-1)
+End
+
+Subprog AS_ZIAHEUEXE7(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL=nolign-1
+If [M:ZIA]ZIAPERIOD(WNOL)<>0
+    mkstat=2
+Endif
+End
+
+Subprog C_ZIAHEUEXE7(VALEUR)
+Variable Char    VALEUR()
+Call CONTROLE_ZIAHEUEXE(7,VALEUR,nolign-1)
+End
+
+Subprog AS_ZIAHEUEXE8(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL=nolign-1
+If [M:ZIA]ZIAPERIOD(WNOL)<>0
+    mkstat=2
+Endif
+End
+
+Subprog C_ZIAHEUEXE8(VALEUR)
+Variable Char    VALEUR()
+Call CONTROLE_ZIAHEUEXE(8,VALEUR,nolign-1)
+End
+
+Subprog AS_ZIAHEUEXE9(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL=nolign-1
+If [M:ZIA]ZIAPERIOD(WNOL)<>0
+    mkstat=2
+Endif
+End
+
+Subprog C_ZIAHEUEXE9(VALEUR)
+Variable Char    VALEUR()
+Call CONTROLE_ZIAHEUEXE(9,VALEUR,nolign-1)
+End
+
+Subprog IB_NBZIR
+Local Integer WNOL : WNOL=nolign-1
+If [M:ZIA]ZIRTRACE(WNOL)=""
+    Raz GBOUT1
+Endif
+End
+
+Subprog B1_NBZIR
+Local Integer WNOL : WNOL=nolign-1
+GTRACE=[M:ZIA]ZIRTRACE(WNOL)
+Call LEC_TRACE From LECFIC
+End

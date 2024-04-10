@@ -1,0 +1,545 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+#################################################### ZIMPICRTRI
+#################################################### 19/02/2020
+#Cette procédure permet de parser le fichier XML issu de l'ICR et représentant le tri d'un client chargeur d'un EPX
+Gosub DEBUT
+End
+#################################################### DEBUT
+
+$DEBUT
+Local Char WREP(250), WREPORI(250), WFICTST(250), WMESS(250), WLISFIC(250)(0..199)
+Local Char WFICORI(250), WFICFIN(250)
+Local Clbfile ZLIGFIC(7)
+Local Char WNUMANA(30)
+Local Char WITMREF(GLONITM), WEMPDEP(GLONLOC), WEMPFIN(GLONLOC), WLOT(GLONLOT), WHORODAT(20)
+Local Char WSTATUT(3), WFCY(GLONFCY), WUOM(GLONUOM), WDATE(10), WLOCTYP(GLONTLO)
+Local Integer WERR, WERR2, WNUMFIC, WENT, WLIGNE, WERRL
+
+#Déclaration d'un tableau de 20 chaines de 80 caractères où l'on stockera les mots clés à retrouver
+Global Char WMOTCLE(80)(20)
+#Déclaration d'un tableau de 20 chaines de 80 caractères où l'on stockera les valeurs des clés à retrouver
+Global Char WVALCLE(80)(20)
+Global Integer WFINLIGNE
+Global Char WCLE(30), WSAU(5), WNOMFIC(250)
+Global Char GZEXTICR(5) : GZEXTICR = "xml"
+
+WMOTCLE(0)  = "_CODE_CHARGEUR"
+WMOTCLE(1)  = "_CODE_CLIENT_CHARGEUR"
+WMOTCLE(2)  = "_BON_X3"
+WMOTCLE(3)  = "_DATE_DE_TRI_YYYYMMDD"
+WMOTCLE(4)  = "_CODE_UTIL_IMP"
+WMOTCLE(5)  = "_DATE_IMP_YYYYMMDD"
+WMOTCLE(6)  = "_CODE_ARTICLE"
+WMOTCLE(7)  = "_OK"
+WMOTCLE(8)  = "_KC"
+WMOTCLE(9)  = "_HS"
+WMOTCLE(10)  = "_TOTAL_LIGNE"
+WCLE = func Z2WSEPALIS.SPE_GET_COMPTEUR()
+WSAU = "UN"
+WNOMFIC = ""
+
+If clalev([F:ZRI])=0   : Local File ZRESULTICR   [F:ZRI]   : Endif
+If clalev([F:ZIIT])=0  : Local File ZIMPICRTRI   [F:ZIIT]  : Endif
+If clalev([F:ZCOL])=0  : Local File ZCOLMULTICHG [F:ZCOL]  : Endif
+If clalev([F:ZCHG])=0  : Local File ZCHGMULTICHG [F:ZCHG]  : Endif
+If clalev([F:ZTRI])=0  : Local File ZTRIMULTICHG [F:ZTRI]  : Endif
+If clalev([F:ZPRC])=0  : Local File ZPALREC      [F:ZPRC]  : Endif
+If clalev([F:ZARE])=0  : Local File ZARTRECEP    [F:ZARE]  : Endif
+If clalev([F:ZIE2])=0  : Local File ZEPALIS      [F:ZIE2]  : Endif
+If clalev([F:ZATCV])=0 : Local File ZARTTRICCV   [F:ZATCV] : Endif
+If clalev([F:ZATV])=0  : Local File ZARTTRIV     [F:ZATV]  : Endif
+If clalev([F:ZIIT2])=0 : Local File ZIMPICRTRI   [F:ZIIT2] : Endif
+
+# Contrôle extension fichiers ICR
+If GZEXTICR=""
+    WMESS = "Extension ICR non renseignée."
+    #Gosub ENVOI_ERREUR
+    Return
+Endif
+
+WREP="\\192.168.200.111\X$\IMPORT\ICR\EPX_TRI\" + nomap
+If right$(WREP,len(WREP))<>"\"
+    WREP += "\"
+Endif
+WERR=0
+WFICTST = WREP+"TEST_"+GUSER+"_"+format$("D:YYYYMMDDhhmmss",date$)+".TEST"
+Onerrgo PBCREATFIC
+Openo WFICTST,0 Using [ZTST]
+Openo Using [ZTST]
+If WERR>0
+    Case WERR
+     When 20
+        WMESS = "Répertoire ICR inexistant. Arrêt du traitement."
+     When 27
+        WMESS = "Accès impossible (permission refusée) au répertoire ICR. Arrêt du traitement."
+     When 44
+        WMESS = "Problème de place disque sur le répertoire ICR. Arrêt du traitement."
+     When Default
+        WMESS = "Problème système rencontré lors de la vérification d'accès au répertoire ICR ("+errmes$(WERR)+"). Arrêt du traitement."
+    Endcase
+    #Gosub ENVOI_ERREUR
+    Return
+Endif
+Onerrgo
+WERR=0
+Onerrgo PBCREATFIC
+Call EFFACE(WFICTST,WERR) From ORDSYS
+Onerrgo
+If WERR>0
+  Call SPE_SET_MES_LOG("Erreur - ZIMPICRTRI [1] - Ligne "+num$(WERRL) + " / " + errmes$(WERR))
+  #Gosub ENVOI_ERREUR
+  Return
+Endif
+
+# Controle existence sous-répertoire ORIGINE
+WREPORI=WREP
+If right$(WREPORI,len(WREPORI))<>"\"
+    WREPORI += "\"
+Endif
+WREPORI += "ORIGINE\"
+WERR=0
+WFICTST = WREPORI+"TEST_"+GUSER+"_"+format$("D:YYYYMMDDhhmmss",date$)+".TEST"
+Onerrgo PBCREATFIC
+Openo WFICTST,0 Using [ZTST]
+Openo Using [ZTST]
+If WERR>0
+    Case WERR
+     When 20
+        WMESS = "Répertoire Origine ICR inexistant. Arrêt du traitement."
+     When 27
+        WMESS = "Accès impossible (permission refusée) au répertoire Origine ICR. Arrêt du traitement."
+     When 44
+        WMESS = "Problème de place disque sur le répertoire Origine ICR. Arrêt du traitement."
+     When Default
+        WMESS = "Problème système rencontré lors de la vérification d'accès au répertoire Origine ICR ("+errmes$(WERR)+"). Arrêt du traitement."
+    Endcase
+    #Gosub ENVOI_ERREUR
+    Return
+Endif
+Onerrgo
+WERR=0
+Onerrgo PBCREATFIC
+Call EFFACE(WFICTST,WERR) From ORDSYS
+Onerrgo
+If WERR>0
+  Call SPE_SET_MES_LOG("Erreur - ZIMPICRTRI [2] - Ligne "+num$(WERRL) + " / " + errmes$(WERR))
+  #Gosub ENVOI_ERREUR
+  Return
+Endif
+
+# Création du fichier batch pour lire les fichiers présents
+Raz WLISFIC, WNUMFIC, WFICORI, WFICFIN, WERR
+Onerrgo PBCREATFIC
+Openo WREP+"Liste_Tempo.bat",0 Using [XXX]
+Wrseq 'DIR /B "'+WREP+'*.'+GZEXTICR+'"' Using [XXX]
+Openo Using [XXX]
+Sleep 2
+System WLISFIC=WREP+"Liste_Tempo.bat"
+Onerrgo
+If WERRL>0
+  Call SPE_SET_MES_LOG("Erreur - ZIMPICRTRI [3] - Ligne "+num$(WERRL) + " / " + errmes$(WERR))
+  #Gosub ENVOI_ERREUR
+  Return
+Endif
+Local Integer WNBFICTRAIT : WNBFICTRAIT=0
+Raz WERRL
+Onerrgo PBCREATFIC
+Call SPE_SET_MES_LOG("------------------------------------------------------")
+Call SPE_SET_MES_LOG("-------- Début du traitement d'import ICR Tri --------")
+Gosub BOUCLE_FICHIER
+Onerrgo
+If WERRL>0
+  Call SPE_SET_MES_LOG("Erreur - ZIMPICRTRI [4] - Ligne "+num$(WERRL) + " / " + errmes$(WERR))
+Else
+  Call SPE_SET_MES_LOG("--------- Fin du traitement d'import ICR Tri ---------")
+  Call SPE_SET_MES_LOG("------------------------------------------------------")
+Endif
+Call EFFACE(WREP+"Liste_Tempo.bat",WERR2) From ORDSYS
+Return
+
+######################################################## BOUCLE_FICHIER
+
+$BOUCLE_FICHIER
+Local Integer WCREATEFIC,WENTETE
+WCREATEFIC = 0
+# Boucle des fichiers à traiter
+For WNUMFIC=0 To 199
+  WFICORI = toupper(WLISFIC(WNUMFIC))
+  If vireblc(WFICORI,4)<>""
+    If toupper(right$(WFICORI,len(WFICORI)-(len(GZEXTICR)-1)))=toupper(GZEXTICR)
+      Raz WERR, WNOMFIC, WSOHNUM, WZDATTRI, WZDATREC, WITMREF, WITMDES, WZQTEOK, WZQTEKC, WZQTEHS, WZQTETOTLIG, WZTYPART, WSAU
+      Raz WVALCLE
+      WFINLIGNE=0
+      WCREATEFIC = 0
+      WNOMFIC = WFICORI
+      Call SPE_SET_MES_LOG("------------------------------------------------------------")
+      Call SPE_SET_MES_LOG("Traitement du fichier : " + WNOMFIC)
+      adxifs="|"
+      adxirs=chr$(13)+chr$(10)
+      Openi WREP+WFICORI Using [ZENT]
+      Rdseq ZLIGFIC Using [ZENT]
+      While fstat=0
+        Call SPE_SET_MOT_CLE(ZLIGFIC)
+        #Si WVALCLE(6) est diférent de "", alors on a tous les eléments pour écrire dans la table
+        If(WFINLIGNE=1)Then
+          WFINLIGNE=0
+          If(val(WVALCLE(10))>0)Then
+            #On va maintenant ajouter un enregistrement dans la table ZIMPICR(ZII)
+              Raz [F:ZIIT]
+              [F:ZIIT]NOMFIC     = WNOMFIC
+              [F:ZIIT]ZCLE       = WCLE
+              [F:ZIIT]ZCMCNUM    = WVALCLE(2)
+              [F:ZIIT]DATETRI    = WVALCLE(3)
+              [F:ZIIT]ZCODCHARG  = WVALCLE(0)
+              [F:ZIIT]ZCODCLT    = WVALCLE(1)
+              [F:ZIIT]ITMREF     = WVALCLE(6)
+              [F:ZIIT]QTEOK      = val(WVALCLE(7))
+              [F:ZIIT]QTEKC      = val(WVALCLE(8))
+              [F:ZIIT]QTEHS      = val(WVALCLE(9))
+              [F:ZIIT]USERIMP    = WVALCLE(4)
+              [F:ZIIT]DATEIMP    = WVALCLE(5)
+              Write [F:ZIIT]
+              If(fstat<>0)Then
+                Call SPE_SET_MES_LOG("### Erreur ### - Pb lors de l'enregistrement de l'article : Code erreur -> " + num$(fstat))
+              Else
+                WCREATEFIC = 1
+              Endif
+            Call SPE_SET_MES_LOG("---deb---")
+            For I=0 To 19
+              If(WMOTCLE(I)<>"")Then
+                Call SPE_SET_MES_LOG(WMOTCLE(I) + "=" + WVALCLE(I))
+              Endif
+            Next
+            Call SPE_SET_MES_LOG("---fin---")
+          Endif
+          #Ensuite on va vider le tableau à partir de la cellule 6 pour conserver les champs de début
+          For I=6 To 19
+            WVALCLE(I) = ""
+          Next
+        Endif
+        Rdseq ZLIGFIC Using [ZENT]
+      Wend
+      Openi Using [ZENT]
+      #On va tout d'abord regarder si l'EPX n'est pas verrouillée
+      Call SPE_SET_MES_LOG("### Vérouillage du symbole " + "ZCMC~"+WVALCLE(2) + "###")
+      SYMBOLE2 = "ZCMC~"+WVALCLE(2)
+      Lock =SYMBOLE2
+      If fstat
+         # modification en cours sur un autre poste
+         WCREATEFIC = 0
+         Call SPE_SET_MES_LOG("### Impossible de vérouiller le symbole " + "ZCMC~"+WVALCLE(2) + "###")
+      Endif
+      If(WCREATEFIC = 1)Then
+        #On est dans le cas où on va modifier l'EPX
+        #Il y a différente chose à regarder avant de modifier l'EPX
+        Local Integer WERRRGEN : WERRRGEN = 1
+        Local Integer WCOND1 : WCOND1 = 1 # 1 - La réception de l'EPX doit être validée
+        Local Integer WCOND2 : WCOND2 = 1 # 2 - L'EPX ne doit pas être soldé
+        Local Integer WCOND3 : WCOND3 = 1 # 3 - Il ne faut pas que l'EPX soit validé
+        Local Integer WCOND4 : WCOND4 = 1 # 4 - Il ne faut pas que le tri de l'EPX soit validé
+        Local Integer WCOND5 : WCOND5 = 1 # 5 - Il ne faut pas qu'il y a un sémaphore web de poser sur l'EPX en tri
+        Local Integer WCOND6 : WCOND6 = 1 # 6 - Tous le chargeur et le code client doit être présent dans l'EPX
+        Local Integer WCOND7 : WCOND7 = 1 # 7 - Tous les articles doivent être présent dans les articles de tri du client chargeur concerné
+        Local Integer WCOND8 : WCOND8 = 1 # 8 - La ligne du client chargeur doit être en tri à faire
+#        Read[F:ZIIT]ZIIT0=WNOMFIC;WCLE
+#        If(fstat=0)Then
+        For[F:ZIIT]ZIIT0 Where [F:ZIIT]NOMFIC=WNOMFIC and [F:ZIIT]ZCLE=WCLE
+          #On va lire les informations de l'EPX
+          Read[F:ZCOL]ZCMC=[F:ZIIT]ZCMCNUM
+          If(fstat=0)Then
+            If([F:ZCOL]DATEVAL<>[0/0/0])Then
+              If([F:ZCOL]DATESOLDE=[0/0/0])Then
+                If([F:ZCOL]DATEVALCOL=[0/0/0])Then
+                  Read[F:ZCHG]ZMC1=[F:ZIIT]ZCMCNUM;[F:ZIIT]ZCODCHARG;[F:ZIIT]ZCODCLT
+                  If(fstat=0)Then
+                    If([F:ZCHG]TRIAFAIRE=2)Then
+                      If([F:ZCHG]DATEVALTRI=[0/0/0])Then
+                        If([F:ZCHG]SEMATRI<>3)Then
+                          #Il faut maintenant regarder que chaque article soit bien un article de tri du chargeur
+                            If clalev([F:ZATCV])<>0 : Close File [F:ZATCV] : Endif
+                            If clalev([F:ZATCV])=0  : Local File ZARTTRICCV     [F:ZATCV]  : Endif
+                            Read[F:ZATCV]ZATV=[F:ZIIT]ZCODCHARG;[F:ZIIT]ZCODCLT;[F:ZIIT]ITMREF
+                            If(fstat<>0)Then
+                              If clalev([F:ZATV])<>0 : Close File [F:ZATV] : Endif
+                              If clalev([F:ZATV])=0  : Local File ZARTTRIV     [F:ZATV]  : Endif
+                              Read[F:ZATV]ZATV=[F:ZIIT]ZCODCHARG;"";[F:ZIIT]ITMREF
+                              If(fstat<>0)Then
+                                WCOND7 = 0
+                              Else
+                                If([F:ZATV]ZVISIBLE<>2)Then
+                                  WCOND7 = 0
+                                Endif
+                              Endif
+                            Else
+                              If([F:ZATCV]ZVISIBLE<>2)Then
+                                WCOND7 = 0
+                              Endif
+                            Endif
+#                          Next
+                        Else
+                          WCOND5 = 0
+                        Endif
+                      Else
+                        WCOND4 = 0
+                      Endif
+                    Else
+                      WCOND8 = 0
+                    Endif
+                  Else
+                    WCOND6 = 0
+                  Endif
+                Else
+                  WCOND3 = 0
+                Endif
+              Else
+                WCOND2 = 0
+              Endif
+            Else
+              WCOND1 = 0
+            Endif
+          Else
+            WERRRGEN = 0
+          Endif
+        Next
+#        Else
+#          WERRRGEN = 0
+#          Infbox "Erreur 3"
+#        Endif
+        If(WERRRGEN=1 and WCOND1=1 and WCOND2=1 and WCOND3=1 and WCOND4=1 and WCOND5=1 and WCOND6=1 and WCOND7=1 and WCOND8=1)Then
+          #On est dans le cas, ou l'on peut traiter l'EPX et le modifier en fonction de l'import
+          #On va effectuer les modifications au travers d'une transaction
+          Local Integer WERRMOD     : WERRMOD    = 0
+          Local Char WZCMCNUM(30)   : WZCMCNUM   = [F:ZIIT]ZCMCNUM
+          Local Char WZCODCHARG(30) : WZCODCHARG = [F:ZIIT]ZCODCHARG
+          Local Char WZCODCLT(30)   : WZCODCLT   = [F:ZIIT]ZCODCLT
+          Local Date WDATETRI       : WDATETRI   = [F:ZIIT]DATETRI
+          Local Integer WNUMLIG     : WNUMLIG    = 1
+          Trbegin [F:ZCOL],[F:ZCHG],[F:ZRI]
+          #<----- Nous allons maintenant effectuer les modifications-----
+          #Nous allons commencer par supprimer toutes les lignes de tris liées à la pièce multi chargeur, du chargeur et du code client chargeur concerné
+          Delete [F:ZTRI] Where [F:ZTRI]ZCMCNUM=WZCMCNUM and [F:ZTRI]ZCODCHARG=WZCODCHARG and [F:ZTRI]ZCODCLT=WZCODCLT
+          If(fstat<>0)Then
+            WERRMOD = 1 : Call SPE_SET_MES_LOG("Erreur N° 1" + " [fstat=" + num$(fstat) + "]")
+          Endif
+          #Nous allons maintenant parcourir l'ensemble des lignes et les importer dans l'EPX
+          For [F:ZIIT]ZIIT0 Where [F:ZIIT]NOMFIC=WNOMFIC and [F:ZIIT]ZCLE=WCLE and [F:ZIIT]ZCMCNUM=WZCMCNUM and [F:ZIIT]ZCODCHARG=WZCODCHARG and [F:ZIIT]ZCODCLT=WZCODCLT
+            Raz[F:ZTRI]
+            [F:ZTRI]ZCMCNUM    = WZCMCNUM
+            [F:ZTRI]ZCMCLIN    = (WNUMLIG*1000)
+            [F:ZTRI]ZCODCHARG  = WZCODCHARG
+            [F:ZTRI]ZCODCLT    = WZCODCLT
+            [F:ZTRI]ITMREF     = [F:ZIIT]ITMREF
+            [F:ZTRI]QTEOK      = [F:ZIIT]QTEOK
+            [F:ZTRI]QTEKC      = [F:ZIIT]QTEKC
+            [F:ZTRI]QTEHS      = [F:ZIIT]QTEHS
+            [F:ZTRI]USR        = "ICR"
+            [F:ZTRI]DATEOPE    = date$
+            [F:ZTRI]HEUREOPE   = time$
+            [F:ZTRI]SYNCHEPI   = 2
+            Write[F:ZTRI]
+            If(fstat<>0)Then
+              WERRMOD = 1 : Call SPE_SET_MES_LOG("Erreur N° 2" + " [fstat=" + num$(fstat) + "]")
+            Else
+              WNUMLIG += 1
+            Endif
+            Read[F:ZCHG]ZMC1=WZCMCNUM;WZCODCHARG;WZCODCLT
+            If(fstat=0)Then
+              [F:ZCHG]SEMATRI = 3
+              Rewrite[F:ZCHG]
+            Endif
+          Next
+          #------------------------------------------------------------->
+          If(WERRMOD=0)Then
+            Raz[ZRI]
+            [ZRI]NOMFIC    = WNOMFIC
+            [ZRI]ZCLE      = WCLE
+            [ZRI]OBJET     = "ZCMC"
+            [ZRI]NUM       = WZCMCNUM
+            [ZRI]DATEIMP   = date$
+            [ZRI]HEUREIMP  = time$
+            [ZRI]IMPOK     = 2
+            [ZRI]TYPIMP    = 3
+            [ZRI]MESSAGE   = "Modification de l'EPX avec les données de l'ICR effectuée avec succès."
+            Write[ZRI]
+            If(fstat=0)Then
+              Commit
+              #La mise à jour de l'EPX s'est correctement déroulé, on va donc maintenant essayer de valider la réception
+              Local Integer WRESULT
+              Local Char WINFO(250)
+              Call SET_VAL_TRI(WZCMCNUM,WZCODCHARG,WZCODCLT,"",WDATETRI,WRESULT,WINFO) From ZWSEPALISC
+              Read[F:ZRI]ZRI0=WNOMFIC;WCLE
+              If(fstat=0)Then
+                [F:ZRI]NOMFIC    = WNOMFIC
+                [F:ZRI]ZCLE      = WCLE
+                [F:ZRI]OBJET     = "ZCMC"
+                [F:ZRI]NUM       = WZCMCNUM
+                [F:ZRI]DATEIMP   = date$
+                [F:ZRI]HEUREIMP  = time$
+                [F:ZRI]TYPIMP    = 3
+                If(WRESULT=1)Then
+                  [F:ZRI]IMPOK     = 3
+                  [F:ZRI]MESSAGE   = "Validation du tri de l'EPX effectuée avec succès."
+                Else
+                  [F:ZRI]IMPOK     = 1
+                  [F:ZRI]MESSAGE   = "Erreur lors de la validation du tri de l'EPX : " + WINFO
+                Endif
+                Rewrite[F:ZRI]
+                If(WRESULT=1)Then
+                  Call COPIE(WREP+WFICORI,WREP+"TRAITE\",WERR2) From ORDSYS
+                Else
+                  Call COPIE(WREP+WFICORI,WREP+"ERREUR\",WERR2) From ORDSYS
+                  Read[F:ZCHG]ZMC1=WZCMCNUM;WZCODCHARG;WZCODCLT
+                  If(fstat=0)Then
+                    [F:ZCHG]SEMATRI = 2
+                    Rewrite[F:ZCHG]
+                  Endif
+                Endif
+              Endif
+            Else
+              Rollback
+              Read[F:ZRI]ZRI0=WNOMFIC;WCLE
+              If(fstat=0)Then
+                [ZRI]NOMFIC    = WNOMFIC
+                [ZRI]ZCLE      = WCLE
+                [ZRI]OBJET     = "ZCMC"
+                [ZRI]NUM       = WVALCLE(2)
+                [ZRI]DATEIMP   = date$
+                [ZRI]HEUREIMP  = time$
+                [ZRI]IMPOK     = 1
+                [ZRI]TYPIMP    = 3
+                [ZRI]MESSAGE   = "[1] - Erreur lors de la modification de l'EPX."
+                Rewrite[ZRI]
+                Call COPIE(WREP+WFICORI,WREP+"ERREUR\",WERR2) From ORDSYS
+              Endif
+            Endif
+          Else
+            Rollback
+            Read[F:ZRI]ZRI0=WNOMFIC;WCLE
+              [ZRI]NOMFIC    = WNOMFIC
+              [ZRI]ZCLE      = WCLE
+              [ZRI]OBJET     = "ZCMC"
+              [ZRI]NUM       = WVALCLE(2)
+              [ZRI]DATEIMP   = date$
+              [ZRI]HEUREIMP  = time$
+              [ZRI]IMPOK     = 1
+              [ZRI]TYPIMP    = 3
+              [ZRI]MESSAGE   = "[2] - Erreur lors de la modification de l'EPX."
+            If(fstat=0)Then
+              Rewrite[ZRI]
+            Else
+              Write[ZRI]
+            Endif
+            Call COPIE(WREP+WFICORI,WREP+"ERREUR\",WERR2) From ORDSYS
+          Endif
+        Else
+          #On est dans le cas où il y a une erreur et on ne peut pas traiter l'import
+          Raz[ZRI]
+          [ZRI]NOMFIC    = WNOMFIC
+          [ZRI]ZCLE      = WCLE
+          [ZRI]OBJET     = "ZCMC"
+          [ZRI]NUM       = WVALCLE(2)
+          [ZRI]DATEIMP   = date$
+          [ZRI]HEUREIMP  = time$
+          [ZRI]IMPOK     = 1
+          [ZRI]TYPIMP    = 3
+          If(WERRRGEN<>1)Then
+            [ZRI]MESSAGE = "Erreur de lecture de l'enregistrement d'import ou bien de l'EPX"
+          Elsif(WCOND1<>1)Then
+            [ZRI]MESSAGE = "La réception de l'EPX n'est pas validée"
+          Elsif(WCOND2<>1)Then
+            [ZRI]MESSAGE = "L'EPX est soldé"
+          Elsif(WCOND3<>1)Then
+            [ZRI]MESSAGE = "L'EPX est validé"
+          Elsif(WCOND4<>1)Then
+            [ZRI]MESSAGE = "Le tri de l'EPX est déjà validée"
+          Elsif(WCOND5<>1)Then
+            [ZRI]MESSAGE = "Impossible ! il y a un sémaphore web de posé sur le tri de l'EPX"
+          Elsif(WCOND6<>1)Then
+            [ZRI]MESSAGE = "Le Chargeur/Code client chargeur n'existe pas dans l'EPX"
+          Elsif(WCOND7<>1)Then
+            [ZRI]MESSAGE = "Au moins un emballages n'est pas un emballage de tri du chargeur"
+          Elsif(WCOND8<>1)Then
+            [ZRI]MESSAGE = "La ligne du clode client chargeur n'est pas en tri à faire."
+          Endif
+          Write[ZRI]
+          Call COPIE(WREP+WFICORI,WREP+"ERREUR\",WERR2) From ORDSYS
+        Endif
+
+        # Déplacement du fichier xml ICR dans le répertoire d'origine
+        Call SPE_SET_MES_LOG("Déplacement du fichier " + WREP+WFICORI + " dans le répertoire ORIGINE")
+        Call MOVE(WREP+WFICORI,WREP+"ORIGINE\",WERR2) From ORDSYS
+        # Unlock entête de la collecte
+        SYMBOLE2 = "ZCMC~"+WVALCLE(2)
+        Unlock = SYMBOLE2
+        Call SPE_SET_MES_LOG("### Dévérouillage du symbole " + "ZCMC~"+WVALCLE(2) + "###")
+      Endif
+      Call SPE_SET_MES_LOG("Fin du traitement du fichier : " + WREP+WFICORI)
+      Call SPE_SET_MES_LOG("------------------------------------------------------------")
+    Endif
+  Endif
+Next
+Return
+
+######################################################## PBCREATFIC
+
+$PBCREATFIC
+WERR=errn
+WERRLIG=errl
+Resume
+
+######################################################## ENVOI_ERREUR
+
+$ENVOI_ERREUR
+#Trbegin [F:ZIR]
+#Raz [F:ZIR]
+#[F:ZIR]ZIRDAT = date$
+#[F:ZIR]ZIRHOU = format$("D:hhmmss",date$)
+#[F:ZIR]ZIRFLG = 1
+#[F:ZIR]ZIRFIC = WFICORI
+#[F:ZIR]ZIRMODELE = "Imp ICRREC"
+#[F:ZIR]ZIRMESS = WMESS
+#Write [F:ZIR]
+#If fstat=0
+#  Commit
+#Else
+#  Rollback
+#Endif
+Return
+
+######################################################## SPE_SET_MES_LOG
+
+Subprog SPE_SET_MES_LOG(WMESSAGE)
+  Value Char WMESSAGE
+  Openo filpath("TRA","Import_Auto_ICR_TRI_" + format$("D:YYYYMMDD",date$),"tra") Using [ZSUR]
+  Wrseq format$("D:DD[/]MM[/]YYYY[  ]hh[:]mm[:]ss",date$) + " - " + WMESSAGE Using [ZSUR]
+  Openo Using [ZSUR]
+End
+
+######################################################## SPE_SET_MOT_CLE
+
+Subprog SPE_SET_MOT_CLE(WLIGNE)
+  Value Clbfile WLIGNE
+  Local Integer WPOS1, WPOS2, WLENGTH
+  Local Char WBALISEFIN(20)
+  WBALISEFIN="_TOTAL_LIGNE"
+  #Cette procédure va parcourir l'ensemble des mots clés se traouvant dans la tableau WMOTCLE
+  #Et va rechercher dans WLIGNE si le mot clé existe.
+  #si oui, on va récupérer la valeur de la balise
+  For I=0 To 19
+    If(WMOTCLE(I)<>"")Then
+      #Le mot clé est différent de vide, on va donc le rechercher à l'intérieur de WLIGNE
+      WPOS1 = instr(1,toupper(WLIGNE),"<" + WMOTCLE(I) + ">")
+      WPOS2 = instr(1,toupper(WLIGNE),"</" + WMOTCLE(I) + ">")
+      WLENGTH = len(WMOTCLE(I))
+      If(WPOS1>0 and WPOS2>0 and WPOS2>=(WPOS1+WLENGTH+2))Then
+        #La balise début et fin existe
+        WVALCLE(I) = mid$(WLIGNE,(WPOS1+WLENGTH+2),WPOS2-(WPOS1+WLENGTH+2))
+        #Call SPE_SET_MES_LOG("SPE_SET_MOT_CLE - WVALCLE(" + num$(I) + ")=" + WVALCLE(I))
+      Endif
+    Endif
+  Next
+  #Si on trouve la balise de fin, on va le signifier en mettant 1 dans la variable globale WFINLIGNE
+  If(instr(1,toupper(WLIGNE),"<" + WBALISEFIN + ">")>0 or instr(1,toupper(WLIGNE),"<" + WBALISEFIN + "/>")>0)Then
+    WFINLIGNE=1
+  Endif
+End

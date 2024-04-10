@@ -1,0 +1,70 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### ZRECHDEP
+##################################################### créé le 26/07/2019
+##################################################### modifié le 26/07/2019
+
+###################################################################################### ACTION
+$ACTION
+#Infbox ACTION
+Case ACTION
+ When "SEL_TABLE" : Gosub SEL_TABLE
+ When Default
+Endcase
+Return
+
+###################################################################################### SEL_TABLE
+$SEL_TABLE
+#  Infbox PARAM(1)
+  If clalev([F:ZRD])=0 : Local File ZRECHDEPOT [F:ZRD] : Endif
+  If clalev([F:AUS])=0 : Local File AUTILIS [AUS] : Endif
+  #On va maintenant récupérer le champ ZACTLSENS de l'utilisateur
+  Local Integer WAFFCLTSENS : WAFFCLTSENS=1
+  Read[F:AUS]CODUSR=GUSER
+  If(fstat=0)Then
+    WAFFCLTSENS = [F:AUS]ZACTLSENS
+  Endif
+  Raz CRITERE
+  #On défini la table par défaut, celle qui va servir pour la sélection
+  Default File [F:ZRD]
+  #On défini le nombre de colonne de la fenêtre de sélection
+  NBCOL = 10
+  #On défini le nom de chaque colonne
+  TIT(1) = "code dépôt"
+  TIT(2) = "Dépôt"
+  TIT(3) = "Code chargeur"
+  TIT(4) = "Chargeur"
+  TIT(5) = "Code client chargeur"
+  TIT(6) = "Client chargeur"
+  TIT(7) = "Adresse"
+  TIT(8) = "CP"
+  TIT(9) = "Ville"
+  TIT(10) = "Pays"
+  #On défini les champs à afficher
+  COL(1) = "ZDEPNUM"
+  COL(2) = "ZDEPNAM"
+  COL(3) = "BPCNUM"
+  COL(4) = "BPCNAM"
+  COL(5) = "ZCODCLT"
+  COL(6) = "ZNOMCLT"
+  COL(7) = "ZADRESSE"
+  COL(8) = "ZPOSCOD"
+  COL(9) = "ZCITY"
+  COL(10) = "ZPAYS"
+  #On indique le titre de la sélection
+  TIT(0) = "Recherche d'un dépôt EPALIS"
+  START = "ZDEPNUM"
+  #On indique au système de gérer les pages
+  DEFPAG = 1
+  #Critère de sélection
+  If(WAFFCLTSENS=2)Then
+    CRITERE = ""
+  Else
+    CRITERE = "[F:ZRD]ZDEPINC<>2"
+  Endif
+  #Trier
+  ORDRE = "ZDEPNUM"
+  #Ordre Décroissant
+  #SENS = 2
+  ORDCHO="ZDEPNUM"
+  EXPSTART="ZDEPNUM>=''"
+Return

@@ -1,0 +1,323 @@
+#<AdxTL>@(#)4.0.0.0 $Revision$
+################################################### SPEZIH
+################################################### 12/01/2018
+
+GBIDC1=""
+GBIDC2=""
+GBIDC3=""
+Call OBJET("ZIH",GBIDC1,GBIDC2) From GOBJET
+End
+
+###################################################
+###################################################
+
+$ACTION
+#Infbox ACTION
+Case ACTION
+ When "OUVRE"       : Gosub OUVRE
+ When "INICRE"      : Gosub INICRE
+ When "CREATION"    : Gosub CREATION
+ When "LIENS"       : Gosub LIENS
+ When "MODIF"       : Gosub MODIF
+ When "ANNULE"      : Gosub ANNULE
+ When "ABANDON"     : Gosub ABANDON
+ When "FERME"       : Gosub FERME
+ When "RAZCRE"      : Gosub RAZCRE
+ When "APRES_CRE"   : Gosub APRES_CRE
+ When "APRES_MOD"   : Gosub APRES_MOD
+ When "SETBOUT"     : Gosub SETBOUT
+ When "EXEBOUT"     : Gosub EXEBOUT
+ When Default
+Endcase
+Return
+
+################################################### OUVRE
+
+$OUVRE
+If clalev([F:ZIH])=0 : Local File ZINVEPIH [ZIH] : Endif
+If clalev([F:ZID])=0 : Local File ZINVEPID [ZID] : Endif
+If clalev([F:ZIN])=0 : Local File ZINVEPI  [ZIN] : Endif
+Return
+
+
+################################################# RAZCRE
+
+$RAZCRE
+Diszo [M:ZIH0]ZIHNUM
+Return
+
+################################################# APRES_CRE
+
+$APRES_CRE
+  Gosub RELIT From GOBJSUB
+  Gosub SPE_SAVE_INVENTAIRE
+Return
+
+################################################# INICRE
+
+$INICRE
+Local Integer WSTAT, WNOL
+Local Char WYPSNUM(15)
+Call NUMERO("ZIH",[M:ZIH0]ZSITEINV,date$,"",WYPSNUM,WSTAT) From SUBANM
+If GOK<0 : Return : Endif
+If WSTAT=0
+    [M:ZIH0]ZIHNUM = WYPSNUM
+    [F:ZIH]ZIHNUM = WYPSNUM
+    Affzo [M:ZIH0]ZIHNUM
+Else
+    GERR=1
+    GMESSAGE=mess(60,199,1)
+    GOK=0
+    Return
+Endif
+Return
+
+################################################### CREATION
+
+$CREATION
+Return
+
+################################################### LIENS
+
+$LIENS
+#On va parcourir la vue ZINVEPI pour récupérer les lignes de la liste d'inventaire
+Effzo [M:ZIH1]5
+[M:ZIH1]NBLIG=0
+Local Integer I : I=0
+Local Char WOLDCODCHG(30) : WOLDCODCHG = ""
+Local Char WCOLOR : WCOLOR = "BACKYELLOW"
+#Affzo [M:ZIH1]NBLIG
+For[F:ZIN]ZIN0 Where [F:ZIN]ZIHNUM=[M:ZIH0]ZIHNUM
+  #Si la liste d'inventaire est validée, on ne montre que les lignes inventoriées
+  If([M:ZIH0]ZDATVAL=[0/0/0] or ([M:ZIH0]ZDATVAL<>[0/0/0] and [F:ZIN]ZINVENT=2))Then
+    [M:ZIH1]ZIHNUM(I)  = [F:ZIN]ZIHNUM
+    [M:ZIH1]ZCODCHG(I) = [F:ZIN]CODCHG
+    [M:ZIH1]ZNAMCHG(I) = [F:ZIN]NAMCHG
+    [M:ZIH1]ZCODART(I) = [F:ZIN]CODART
+    [M:ZIH1]ZNAMART(I) = [F:ZIN]NAMART
+    [M:ZIH1]QTEOK(I)   = [F:ZIN]QTEOK
+    [M:ZIH1]QTEKC(I)   = [F:ZIN]QTEKC
+    [M:ZIH1]ZINVENT(I) = [F:ZIN]ZINVENT
+    I = I+1
+    [M:ZIH1]NBLIG=[M:ZIH1]NBLIG+1
+  Endif
+Next
+[M:ZIH1]NBLIG=I
+Affzo [M:ZIH1]
+For I=0 To [M:ZIH1]NBLIG-1
+    If([M:ZIH1]ZCODCHG(I)<>WOLDCODCHG)Then
+      WOLDCODCHG = [M:ZIH1]ZCODCHG(I)
+      If(WCOLOR="BACKYELLOW")Then
+        WCOLOR = ""
+      Else
+        WCOLOR = "BACKYELLOW"
+      Endif
+    Endif
+#    [M:ZIH1]NBLIG=I+1
+    Chgstl [M:ZIH1]NBLIG(I) With WCOLOR
+#    Affzo[M:ZIH1]NBLIG(I)
+Next
+#  Chgstl [M:ZIH1]NBLIG With ""
+#  Chgstl [M:ZIH1]NBLIG With "GDD2G"
+  Affzo [M:ZIH1]NBLIG
+If([M:ZIH0]ZDATVAL<>[0/0/0])Then
+  # on grise tout sauf le numéro
+  Affzo [M:ZIH0]ZDATVAL
+  Grizo [M:ZIH0]
+  Actzo [M:ZIH0]ZIHNUM
+  Grizo [M:ZIH1]
+  If(GPROFIL="ADMIN" or GPROFIL="BP")Then
+    Actzo [M:ZIH0]ZDATVAL
+    Actzo [M:ZIH0]ZMAJSTOCK
+  Endif
+Else
+  Actzo [M:ZIH0]
+  Actzo [M:ZIH1]
+  If(GPROFIL<>"ADMIN" and GPROFIL<>"BP")Then
+    Grizo [M:ZIH0]ZDATVAL
+    Grizo [M:ZIH0]ZMAJSTOCK
+  Endif
+Endif
+#Si la liste d'inventaire à un numéro, alors on grise la champ ZSITEINV
+If([M:ZIH0]ZSITEINV<>"")Then
+  Grizo [M:ZIH0]ZSITEINV
+Else
+  Actzo [M:ZIH0]ZSITEINV
+Endif
+Return
+
+################################################### MODIF
+
+$MODIF
+Return
+
+################################################### APRES_MOD
+
+$APRES_MOD
+  Gosub SPE_SAVE_INVENTAIRE
+  Gosub RELIT From GOBJSUB
+Return
+
+################################################### ANNULE
+
+$ANNULE
+Return
+
+################################################### ABANDON
+
+$ABANDON
+If GREP="C"
+    Effzo [M:ZIH0]
+    Effzo [M:ZIH1]
+    Actzo [M:ZIH0]ZIHNUM
+Endif
+Return
+
+################################################### FERME
+
+$FERME
+Return
+
+################################################### SETBOUT
+
+$SETBOUT
+If not(GREP="" and [M:ZIH0]ZDATVAL=[0/0/0])Then
+  Call VIREBOUT(CHAINE,"v") From GOBJET #Bouton Valider
+Endif
+If ([M:ZIH0]ZDATVAL<>[0/0/0])Then
+  Call VIREBOUT(CHAINE,"A") From GOBJET #Bouton Supprimer
+Endif
+Return
+
+################################################### EXEBOUT
+
+$EXEBOUT
+Case BOUT
+ When "v" : # Validation de l'inventaire EPALIS
+    Local Integer WREP : WREP=1
+    Call OUINON("Confirmez-vous la validation de cet inventaire ?",WREP) From GESECRAN
+    If WREP=1
+        Return
+    Endif
+    [M:ZIH0]ZDATVAL = date$
+    [F:ZIH]ZDATVAL = date$
+    Rewrite [F:ZIH]
+    If fstat
+        Call MESSAGE("[" + num$(fstat) + "] " + "Erreur de mise à jour de la liste d'inventaire. Quittez et recommencez.") From GESECRAN
+        Return
+    Else
+        # on grise tout sauf le numéro
+        Affzo [M:ZIH0]ZDATVAL
+        Grizo [M:ZIH0]
+        Actzo [M:ZIH0]ZIHNUM
+        Grizo [M:ZIH1]
+        If(GPROFIL="ADMIN" or GPROFIL="BP")Then
+          Actzo [M:ZIH0]ZDATVAL
+          Actzo [M:ZIH0]ZMAJSTOCK
+        Endif
+        Gosub LIENS
+    Endif
+Endcase
+Return
+
+################################################### SPE_SAVE_INVENTAIRE
+
+$SPE_SAVE_INVENTAIRE
+#On va faire la modification dans une transaction
+Local Integer WERR : WERR = 0
+Trbegin [F:ZID]
+Delete [F:ZID] Where [F:ZID]ZIHNUM=[M:ZIH0]ZIHNUM
+If(fstat=0)Then
+  #On va maintenant basculer l'ensemble des lignes du tableau dans la table
+  For I=0 To [M:ZIH1]NBLIG-1
+    If(([M:ZIH1]QTEOK(I)+[M:ZIH1]QTEKC(I)>0) or [M:ZIH1]ZINVENT(I)=2)Then
+      Raz [F:ZID]
+      [F:ZID]ZIHNUM  = [M:ZIH1]ZIHNUM(I)
+      [F:ZID]ZCODCHG = [M:ZIH1]ZCODCHG(I)
+      [F:ZID]ZCODART = [M:ZIH1]ZCODART(I)
+      [F:ZID]QTEOK   = [M:ZIH1]QTEOK(I)
+      [F:ZID]QTEKC   = [M:ZIH1]QTEKC(I)
+      [F:ZID]ZINVENT = [M:ZIH1]ZINVENT(I)
+      Write [F:ZID]
+      If(fstat<>0)Then
+        WERR = 1
+      Endif
+    Endif
+  Next
+Else
+  WERR = 1
+Endif
+If(WERR=1)Then
+  Rollback
+  Infbox "Impossible de sauvegarder les lignes de tarifs. Essayer de nouveau"
+Else
+  Commit
+Endif
+Return
+
+Subprog SPE_MAJ_PROD_INV(WCODCHG)
+Variable Char WCODCHG()
+#On va parcourir l'ensemble du tableau pour mettre tous les articles du charge WCODCHG comme étant inventorié
+For I=0 To [M:ZIH1]NBLIG-1
+  If([M:ZIH1]ZCODCHG(I)=WCODCHG)Then
+    [M:ZIH1]ZINVENT(I) = 2
+    Affzo [M:ZIH1]ZINVENT(I)
+  Endif
+Next
+End
+
+################################################### ACTIONS CHAMPS
+################################################### ZIH0
+
+Subprog AM_ZIHNUM(VALEUR)
+Variable Char    VALEUR()
+#Si la liste d'inventaire à un numéro, alors on grise la champ ZSITEINV
+If(VALEUR<>"")Then
+  Grizo [M:ZIH0]ZSITEINV
+Else
+  Actzo [M:ZIH0]ZSITEINV
+Endif
+#On vide le tableau
+Raz [M:ZIH1]NBLIG
+Effzo [M:ZIH1]25
+End
+
+################################################### ZIH1
+
+Subprog AM_QTEOK(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL = nolign-1
+#Si la valeur est supérieure à 0, alors on va cocher la case ZINVENT
+If(VALEUR>0)Then
+  Call SPE_MAJ_PROD_INV([M:ZIH1]ZCODCHG(WNOL))
+Endif
+#If((VALEUR+[M:ZIH1]QTEKC(WNOL))=0)Then
+#  [M:ZIH1]ZINVENT(WNOL) = 1
+#  Affzo [M:ZIH1]ZINVENT(WNOL)
+#Endif
+End
+
+Subprog AM_QTEKC(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL = nolign-1
+#Si la valeur est supérieure à 0, alors on va cocher la case ZINVENT
+If(VALEUR>0)Then
+  Call SPE_MAJ_PROD_INV([M:ZIH1]ZCODCHG(WNOL))
+Endif
+#If((VALEUR+[M:ZIH1]QTEOK(WNOL))=0)Then
+#  [M:ZIH1]ZINVENT(WNOL) = 1
+#  Affzo [M:ZIH1]ZINVENT(WNOL)
+#Endif
+End
+
+Subprog AM_ZINVENT(VALEUR)
+Variable Integer VALEUR
+Local Integer WNOL : WNOL = nolign-1
+  If(VALEUR<>2)Then
+    [M:ZIH1]QTEKC(WNOL) = 0
+    Affzo [M:ZIH1]QTEKC(WNOL)
+    [M:ZIH1]QTEOK(WNOL) = 0
+    Affzo [M:ZIH1]QTEOK(WNOL)
+  Endif
+End
+

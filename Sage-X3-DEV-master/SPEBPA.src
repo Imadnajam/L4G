@@ -1,0 +1,380 @@
+#<AdxTL>@(#)0.0.0.0 $Revision:   1.5  $
+###################################################### SPEBPA
+###################################################### 19/02/2013
+
+$ACTION
+Case ACTION
+ When default
+Endcase
+Return
+
+######################################################
+#### ACTIONS CHAMPS
+######################################################
+
+Subprog AS_NBADR
+Local Integer WNOL : WNOL=nolign-1
+If clalev([M:BPAS])
+    [M:BPAS]XZCOMMENT1 = [M:BPAS]ZCOMMENT1(WNOL)
+    [M:BPAS]XZCOMMENT2 = [M:BPAS]ZCOMMENT2(WNOL)
+    [M:BPAS]XZCOMMENT3 = [M:BPAS]ZCOMMENT3(WNOL)
+    [M:BPAS]XZHORAIRES = [M:BPAS]ZHORAIRES(WNOL)
+    [M:BPAS]XZMLIV     = [M:BPAS]ZMLIV(WNOL)
+    [M:BPAS]XZTYPPASS  = [M:BPAS]ZTYPPASS(WNOL)
+    [M:BPAS]XZDETAILTR = [M:BPAS]ZDETAILTRI(WNOL)
+    [M:BPAS]XZFREQCDEF = [M:BPAS]ZFREQCDEF(WNOL)
+    [M:BPAS]XZDATRF    = [M:BPAS]ZDATRF(WNOL)
+    [M:BPAS]XZFCYREC   = [M:BPAS]ZFCYREC(WNOL)
+    [M:BPAS]XZCTREC    = [M:BPAS]ZCTREC(WNOL)
+    [M:BPAS]XZNUMREC   = [M:BPAS]ZNUMREC(WNOL)
+    [M:BPAS]XZTAXEGOAC = [M:BPAS]ZTAXEGOAC(WNOL)
+    [M:BPAS]XZINDGOREF = [M:BPAS]ZINDGOREF(WNOL)
+    [M:BPAS]XZDEPPLAT  = [M:BPAS]ZDEPPLAT(WNOL)
+    [M:BPAS]XZDATPLAT  = [M:BPAS]ZDATPLAT(WNOL)
+    [M:BPAS]XZNBPLAT   = [M:BPAS]ZNBPLAT(WNOL)
+    [M:BPAS]XZDEPBENN  = [M:BPAS]ZDEPBENN(WNOL)
+    [M:BPAS]XZDATBENN  = [M:BPAS]ZDATBENN(WNOL)
+    [M:BPAS]XZNBBENN   = [M:BPAS]ZNBBENN(WNOL)
+    [M:BPAS]XZREPNUM   = [M:BPAS]ZREPNUM(WNOL)
+    [M:BPAS]XZTPLFLG   = [M:BPAS]ZTPLFLG(WNOL)
+    [M:BPAS]XZTPLVAL   = [M:BPAS]ZTPLVAL(WNOL)
+    Affzo [M:BPAS]XZCOMMENT1, XZCOMMENT2, XZCOMMENT3, XZHORAIRES, XZMLIV, XZTYPPASS, XZDETAILTR
+    Affzo [M:BPAS]XZFREQCDEF, XZDATRF, XZTAXEGOAC, XZINDGOREF, XZDEPPLAT, XZDATPLAT, XZNBPLAT
+    Affzo [M:BPAS]XZDEPBENN, XZDATBENN, XZNBBENN, XZREPNUM, XZTPLFLG, XZTPLVAL: #, ZXZREPNUM
+    Affzo [M:BPAS]XZFCYREC, XZCTREC, XZNUMREC
+    If [F:BPS]ZTAXEGOAC=1
+        Diszo [M:BPAS]XZTAXEGOAC, XZINDGOREF
+    Endif
+Elsif clalev([M:BPAC])
+    [M:BPAC]XZDATRC    = [M:BPAC]ZDATRC(WNOL)
+    [M:BPAC]XZFREQCDEC = [M:BPAC]ZFREQCDEC(WNOL)
+    [M:BPAC]XZDEPPLAT  = [M:BPAC]ZDEPPLAT(WNOL)
+    [M:BPAC]XZNBPLAT   = [M:BPAC]ZNBPLAT(WNOL)
+    [M:BPAC]XZFCYLIV   = [M:BPAC]ZFCYLIV(WNOL)
+    [M:BPAC]XZCTLIV    = [M:BPAC]ZCTLIV(WNOL)
+    [M:BPAC]XZNUMLIV   = [M:BPAC]ZNUMLIV(WNOL)
+    [M:BPAC]XZDATPLAT  = [M:BPAC]ZDATPLAT(WNOL)
+    [M:BPAC]XZDEPBENN  = [M:BPAC]ZDEPBENN(WNOL)
+    [M:BPAC]XZNBBENN   = [M:BPAC]ZNBBENN(WNOL)
+    [M:BPAC]XZDATBENN  = [M:BPAC]ZDATBENN(WNOL)
+    Affzo [M:BPAC]XZDATRC, XZFREQCDEC, XZDEPPLAT, XZNBPLAT, XZDATPLAT, XZDEPBENN, XZNBBENN, XZDATBENN, XZFCYLIV, XZCTLIV, XZNUMLIV
+Endif
+End
+
+Subprog AM_XZCOMMENT1(VALEUR)
+Variable Char    VALEUR()
+[M:BPAS]ZCOMMENT1([M:BPAS]XNUMLIG)=VALEUR
+End
+
+Subprog AM_XZCOMMENT2(VALEUR)
+Variable Char    VALEUR()
+[M:BPAS]ZCOMMENT2([M:BPAS]XNUMLIG)=VALEUR
+End
+
+Subprog AM_XZCOMMENT3(VALEUR)
+Variable Char    VALEUR()
+[M:BPAS]ZCOMMENT3([M:BPAS]XNUMLIG)=VALEUR
+End
+
+Subprog AM_XZHORAIRES(VALEUR)
+Variable Char    VALEUR()
+[M:BPAS]ZHORAIRES([M:BPAS]XNUMLIG)=VALEUR
+End
+
+Subprog AM_XZMLIV(VALEUR)
+Variable Char    VALEUR()
+[M:BPAS]ZMLIV([M:BPAS]XNUMLIG)=VALEUR
+End
+
+Subprog AM_XZTYPPASS(VALEUR)
+Variable Integer VALEUR
+[M:BPAS]ZTYPPASS([M:BPAS]XNUMLIG)=VALEUR
+End
+
+Subprog AM_XZDETAILTR(VALEUR)
+Variable Integer VALEUR
+[M:BPAS]ZDETAILTRI([M:BPAS]XNUMLIG)=VALEUR
+End
+
+Subprog AM_XZVOYGRAT(VALEUR)
+Variable Integer VALEUR
+End
+
+Subprog AM_XZFREQCDEF(VALEUR)
+Variable Decimal VALEUR
+[M:BPAS]ZFREQCDEF([M:BPAS]XNUMLIG) = VALEUR
+End
+
+Subprog AM_XZDATRF(VALEUR)
+Variable Date    VALEUR
+[M:BPAS]ZDATRF([M:BPAS]XNUMLIG) = VALEUR
+End
+
+Subprog AM_XZFREQCDEC(VALEUR)
+Variable Decimal VALEUR
+[M:BPAC]ZFREQCDEC([M:BPAC]XNUMLIG) = VALEUR
+End
+
+Subprog AM_XZDATRC(VALEUR)
+Variable Date    VALEUR
+[M:BPAC]ZDATRC([M:BPAC]XNUMLIG) = VALEUR
+End
+
+Subprog AM_XZTAXEGOAC(VALEUR)
+Variable Integer VALEUR
+[M:BPAS]ZTAXEGOAC([M:BPAS]XNUMLIG) = VALEUR
+If VALEUR=2
+    ## Attribution de l'indice de référence
+    If clalev([F:ZGI])=0 : Local File ZGOINDIC : Endif
+    Read [F:ZGI]ZGI0 Last
+    If fstat=0
+        [M:BPAS]XZINDGOREF = [F:ZGI]VALIND
+        [M:BPAS]ZINDGOREF([M:BPAS]XNUMLIG) = [F:ZGI]VALIND
+        Affzo [M:BPAS]XZINDGOREF
+        Actzo [M:BPAS]XZINDGOREF
+    Endif
+Else
+    [M:BPAS]XZINDGOREF = 0
+    [M:BPAS]ZINDGOREF([M:BPAS]XNUMLIG) = 0
+    Affzo [M:BPAS]XZINDGOREF
+    Diszo [M:BPAS]XZINDGOREF
+Endif
+End
+
+Subprog AS_XZINDGOREF(VALEUR)
+Variable Decimal VALEUR
+If [M:BPAS]XZTAXEGOAC=1
+    mkstat=2
+Endif
+End
+
+Subprog AM_XZINDGOREF(VALEUR)
+Variable Decimal VALEUR
+[M:BPAS]ZINDGOREF([M:BPAS]XNUMLIG) = VALEUR
+End
+
+Subprog AM_XZDEPPLAT(VALEUR)
+Variable Integer VALEUR
+If clalev([M:BPAS])
+    [M:BPAS]ZDEPPLAT([M:BPAS]XNUMLIG) = VALEUR
+    If VALEUR=1
+        Raz [M:BPAS]XZNBPLAT, ZNBPLAT([M:BPAS]XNUMLIG), XZDATPLAT, ZDATPLAT([M:BPAS]XNUMLIG)
+        # [M:BPAS]XZNBPLAT = 0
+        # [M:BPAS]ZNBPLAT([M:BPAS]XNUMLIG) = 0
+    Endif
+Elsif clalev([M:BPAC])
+    [M:BPAC]ZDEPPLAT([M:BPAC]XNUMLIG) = VALEUR
+    If VALEUR=1
+        Raz [M:BPAC]XZNBPLAT, ZNBPLAT([M:BPAC]XNUMLIG), XZDATPLAT, ZDATPLAT([M:BPAC]XNUMLIG)
+        # [M:BPAC]XZNBPLAT = 0
+        # [M:BPAC]ZNBPLAT([M:BPAC]XNUMLIG) = 0
+    Endif
+Endif
+End
+
+Subprog AS_XZNBPLAT(VALEUR)
+Variable Decimal VALEUR
+If clalev([M:BPAS])
+    If [M:BPAS]XZDEPPLAT=1
+        mkstat=2
+    Endif
+Elsif clalev([M:BPAC])
+    If [M:BPAC]XZDEPPLAT=1
+        mkstat=2
+    Endif
+Endif
+End
+
+Subprog AM_XZNBPLAT(VALEUR)
+Variable Decimal VALEUR
+If clalev([M:BPAS])
+    [M:BPAS]ZNBPLAT([M:BPAS]XNUMLIG) = VALEUR
+Elsif clalev([M:BPAC])
+    [M:BPAC]ZNBPLAT([M:BPAC]XNUMLIG) = VALEUR
+Endif
+End
+
+Subprog AS_XZDATPLAT(VALEUR)
+Variable Date    VALEUR
+If clalev([M:BPAS])
+    If [M:BPAS]XZDEPPLAT=1
+        mkstat=2
+    Endif
+Elsif clalev([M:BPAC])
+    If [M:BPAC]XZDEPPLAT=1
+        mkstat=2
+    Endif
+Endif
+End
+
+Subprog AM_XZDATPLAT(VALEUR)
+Variable Date    VALEUR
+If clalev([M:BPAS])
+    [M:BPAS]ZDATPLAT([M:BPAS]XNUMLIG) = VALEUR
+Elsif clalev([M:BPAC])
+    [M:BPAC]ZDATPLAT([M:BPAC]XNUMLIG) = VALEUR
+Endif
+End
+
+Subprog AM_XZDEPBENN(VALEUR)
+Variable Integer VALEUR
+If clalev([M:BPAS])
+    [M:BPAS]ZDEPBENN([M:BPAS]XNUMLIG) = VALEUR
+    If VALEUR=1
+        Raz [M:BPAS]XZNBBENN, ZNBBENN([M:BPAS]XNUMLIG), XZDATBENN, ZDATBENN([M:BPAS]XNUMLIG)
+    Endif
+Elsif clalev([M:BPAC])
+    [M:BPAC]ZDEPBENN([M:BPAC]XNUMLIG) = VALEUR
+    If VALEUR=1
+        Raz [M:BPAC]XZNBBENN, ZNBBENN([M:BPAC]XNUMLIG), XZDATBENN, ZDATBENN([M:BPAC]XNUMLIG)
+    Endif
+Endif
+End
+
+Subprog AS_XZDATBENN(VALEUR)
+Variable Date    VALEUR
+If clalev([M:BPAS])
+    If [M:BPAS]XZDEPBENN=1
+        mkstat=2
+    Endif
+Elsif clalev([M:BPAC])
+    If [M:BPAC]XZDEPBENN=1
+        mkstat=2
+    Endif
+Endif
+End
+
+Subprog AM_XZDATBENN(VALEUR)
+Variable Date    VALEUR
+If clalev([M:BPAS])
+    [M:BPAS]ZDATBENN([M:BPAS]XNUMLIG) = VALEUR
+Elsif clalev([M:BPAC])
+    [M:BPAC]ZDATBENN([M:BPAC]XNUMLIG) = VALEUR
+Endif
+End
+
+Subprog AS_XZNBBENN(VALEUR)
+Variable Decimal VALEUR
+If clalev([M:BPAS])
+    If [M:BPAS]XZDEPBENN=1
+        mkstat=2
+    Endif
+Elsif clalev([M:BPAC])
+    If [M:BPAC]XZDEPBENN=1
+        mkstat=2
+    Endif
+Endif
+End
+
+Subprog AM_XZNBBENN(VALEUR)
+Variable Decimal VALEUR
+If clalev([M:BPAS])
+    [M:BPAS]ZNBBENN([M:BPAS]XNUMLIG) = VALEUR
+Elsif clalev([M:BPAC])
+    [M:BPAC]ZNBBENN([M:BPAC]XNUMLIG) = VALEUR
+Endif
+End
+
+Subprog AM_XZREPNUM(VALEUR)
+Variable Char    VALEUR()
+If clalev([M:BPAS])
+    [M:BPAS]ZREPNUM([M:BPAS]XNUMLIG) = VALEUR
+Endif
+End
+
+Subprog AS_XZTPLFLG(VALEUR)
+Variable Integer VALEUR
+If [M:ZIDF]ZTPLFLG=1
+    mkstat=2
+Endif
+End
+
+Subprog AM_XZTPLFLG(VALEUR)
+Variable Integer VALEUR
+If clalev([M:BPAS])
+    [M:BPAS]ZTPLFLG([M:BPAS]XNUMLIG) = VALEUR
+Endif
+End
+
+Subprog AS_XZTPLVAL(VALEUR)
+Variable Decimal VALEUR
+If [M:ZIDF]ZTPLFLG=1 or [M:BPAS]XZTPLFLG=1
+    mkstat=2
+Endif
+End
+
+Subprog C_XZTPLVAL(VALEUR)
+Variable Decimal VALEUR
+If VALEUR>100
+    GMESSAGE="Vous devez saisir un pourcentage."
+    mkstat=2
+Endif
+End
+
+Subprog AM_XZTPLVAL(VALEUR)
+Variable Decimal VALEUR
+If clalev([M:BPAS])
+    [M:BPAS]ZTPLVAL([M:BPAS]XNUMLIG) = VALEUR
+Endif
+End
+
+Subprog AM_XZFCYREC(VALEUR)
+Variable Char    VALEUR()
+If clalev([M:BPAS])
+    [M:BPAS]ZFCYREC([M:BPAS]XNUMLIG) = VALEUR
+Endif
+End
+
+Subprog AM_XZFCYLIV(VALEUR)
+Variable Char    VALEUR()
+[M:BPAC]ZFCYLIV([M:BPAC]XNUMLIG) = VALEUR
+End
+
+Subprog AM_XZCTLIV(VALEUR)
+Variable Char    VALEUR()
+[M:BPAC]ZCTLIV([M:BPAC]XNUMLIG) = VALEUR
+End
+
+Subprog AM_XZNUMLIV(VALEUR)
+Variable Char    VALEUR()
+[M:BPAC]ZNUMLIV([M:BPAC]XNUMLIG) = VALEUR
+End
+
+Subprog AM_XZCTREC(VALEUR)
+Variable Char    VALEUR()
+If clalev([M:BPAS])
+    [M:BPAS]ZCTREC([M:BPAS]XNUMLIG) = VALEUR
+Endif
+End
+
+Subprog AM_XZNUMREC(VALEUR)
+Variable Char    VALEUR()
+If clalev([M:BPAS])
+    [M:BPAS]ZNUMREC([M:BPAS]XNUMLIG) = VALEUR
+Endif
+End
+
+Subprog AM_XPOSCOD(VALEUR)
+Variable Char    VALEUR()
+#Si on modifie le code postal, on va également modifier le département du client livré
+#issue de cette adresse
+For I=0 To [M:BPC4]NBDLV-1
+    If([M:BPC4]BPAADD(I)=[M:BPAC]XCODADR)Then
+        [M:BPC4]ZDEPT(I)=VALEUR
+        Affzo [M:BPC4]ZDEPT(I)
+        If([M:BPC4]XBPAADD=[M:BPAC]XCODADR)Then
+            [M:BPC4]XZDEPT=VALEUR
+            Affzo [M:BPC4]XZDEPT
+        Endif
+    Endif
+Next
+End
+######################################################################################
+## Etiquette ajoutée par le superviseur (écran BPABPC) 24/01/2014 19:54:09 (ADMIN)
+######################################################################################
+Subprog IB_ZDATRC
+End
+
+
+######################################################################################
+

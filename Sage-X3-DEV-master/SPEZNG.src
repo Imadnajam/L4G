@@ -1,0 +1,1107 @@
+#<AdxTL>@(#)5.0.0.0 $Revision$
+############################################ SPEZNG
+############################################ 01/07/2015
+
+$ACTION
+Case ACTION
+ When "OUVRE" : Gosub OUVRE
+ When "SETBOUT" : Gosub SETBOUT
+ When "EXEBOUT" : Gosub EXEBOUT
+ When "DEFLIG" : Gosub DEFLIG
+ When "RAZCRE" : Gosub RAZCRE
+ When "VERIF_CRE" : Gosub VERIF_CRE
+ When "INICRE" : Gosub INICRE
+ When "INICRE_LIG" : Gosub INICRE_LIG
+ When "CREATION" : Gosub CREATION
+ When "LIENS" : Gosub LIENS
+ When "VERIF_MOD" : Gosub VERIF_MOD
+ When "INIMOD" : Gosub INIMOD
+ When "INIMOD_LIG" : Gosub INIMOD_LIG
+ When "MODIF" : Gosub MODIF
+ When "ANNULE" : Gosub ANNULE
+ When "ABANDON" : Gosub ABANDON
+ When Default
+Endcase
+Return
+
+############################################ OUVRE
+
+$OUVRE
+If clalev([F:ZNH])=0 : Local File ZNEGHEA : Endif
+If clalev([F:ZNL])=0 : Local File ZNEGLIG : Endif
+If clalev([F:BPS])=0 : Local File BPSUPPLIER : Endif
+If clalev([F:MVS])=0 : Local File BPSUPPMVT : Endif
+If clalev([F:BPC])=0 : Local File BPCUSTOMER : Endif
+If clalev([F:BPR])=0 : Local File BPARTNER : Endif
+If clalev([F:PBD])=0 : Local File BPDLVCUST : Endif
+If clalev([F:MVC])=0 : Local File BPCUSTMVT : Endif
+If clalev([F:ITM])=0 : Local File ITMMASTER : Endif
+If clalev([F:ITF])=0 : Local File ITMFACILIT : Endif
+If clalev([F:ITP])=0 : Local File ITMBPS : Endif
+If clalev([F:ITS])=0 : Local File ITMSALES : Endif
+If clalev([F:TCY])=0 : Local File TABCOUNTRY : Endif
+If clalev([F:BPA])=0 : Local File BPADDRESS : Endif
+If clalev([F:FCY])=0 : Local File FACILITY : Endif
+If clalev([F:SPK])=0 : Local File SPRICLINK : Endif
+If clalev([F:SPL])=0 : Local File SPRICLIST : Endif
+If clalev([F:SPF])=0 : Local File SPRICFICH : Endif
+If clalev([F:SPC])=0 : Local File SPRICCONF : Endif
+If clalev([F:PPK])=0 : Local File PPRICLINK : Endif
+If clalev([F:PPL])=0 : Local File PPRICLIST : Endif
+If clalev([F:PPF])=0 : Local File PPRICFICH : Endif
+If clalev([F:PPC])=0 : Local File PPRICCONF : Endif
+If clalev([F:DIE])=0 : Local File GDIE : Endif
+If clalev([F:TSV])=0 : Local File TABSIVTYP : Endif
+If clalev([F:SIV])=0 : Local File SINVOICEV : Endif
+If clalev([F:AOE])=0 : Local File AOBJEXT : Endif
+
+Gosub DECLARE From TABLEAUX
+Return
+
+############################################ SETBOUT
+
+$SETBOUT
+If [M:ZNG0]ZNHNUM="" or GREP<>"" or ([M:ZNG1]ZNHPPTHNUM<>"" and [M:ZNG1]ZNHSSDHNUM<>"" and (([M:ZNG1]ZNHTPTHNUM<>"" and [M:ZNG1]ZNHBPT<>"") or ([M:ZNG1]ZNHTPTHNUM="" and [M:ZNG1]ZNHBPT="")))
+    Call VIREBOUT(CHAINE,"1") From GOBJET
+    Call VIREBOUT(CHAINE,"2") From GOBJET
+Endif
+If [M:ZNG1]ZNHPPTHNUM<>"" or [M:ZNG1]ZNHSSDHNUM<>"" or ([M:ZNG1]ZNHTPTHNUM<>"" and [M:ZNG1]ZNHBPT<>"")
+    Call VIREBOUT(CHAINE,"A") From GOBJET
+Endif
+If GZNEGAOEPRO="" or GZNEGTYPPRO="" or [M:ZNG1]ZNHSPROF<>""
+    Call VIREBOUT(CHAINE,"2") From GOBJET
+Endif
+Return
+
+############################################ EXEBOUT
+
+$EXEBOUT
+Case BOUT
+ When "1" : # Validation
+    If date$<[M:ZNG1]ZNHSDLVDAT
+        Call ERREUR("La date de livraison est au-delà de la date du jour. Traitement impossible.") From GESECRAN
+        Return
+    Elsif [M:ZNG1]ZNHBETFCY<>1 and [M:ZNG1]ZNHBETFCY<>2
+        Call ERREUR("Erreur de la valeur Bon inter-site.") From GESECRAN
+        Return
+    Else
+        Gosub ACTION From SPEZNGV
+    Endif
+ When "2" : # Proforma
+    Local Char WFIC(255), WMESS(255), WFICSIH(255), WHORODAT(20)
+    Local Integer WERR, WSTA, WNUMLIG
+    # Vérification répertoire
+    If GZNEGREP=""
+        Call ERREUR("Répertoire de travail non renseigné. Traitement impossible.") From GESECRAN
+        Return
+    Else
+        Onerrgo PBCREATFICTXT
+        WFIC = GZNEGREP
+        If right$(WFIC,len(WFIC))<>"\"
+            WFIC += "\"
+        Endif
+        WFIC += "TEST_"+GUSER+"_"+format$("D:YYYYMMDD",date$)+".TXT"
+        Openo WFIC,0 Using [ZTST]
+        Onerrgo
+        If WERR>0
+            Case WERR
+             When 20
+                WMESS = "Répertoire inexistant. Arrêt du traitement."
+             When 27
+                WMESS = "Accès impossible (permission refusée) au répertoire. Arrêt du traitement."
+             When 44
+                WMESS = "Problème de place disque sur le répertoire. Arrêt du traitement."
+             When Default
+                WMESS = "Problème système rencontré lors de la création du fichier ("+errmes$(WERR)+"). Arrêt du traitement."
+            Endcase
+            Call ERREUR(WMESS) From GESECRAN
+            Return
+        Endif
+        Openo Using [ZTST]
+        Call EFFACE(WFIC,WSTA) From ORDSYS
+    Endif
+    # Vérification des paramètres
+    If GZNEGAOEPRO=""
+        Call ERREUR("Modèle d'import Facture proforma non renseigné. Traitement impossible.") From GESECRAN
+        Return
+    Else
+        Read [F:AOE]AOE0=GZNEGAOEPRO
+        If fstat
+            Call ERREUR("Modèle d'import Facture proforma inconnu. Traitement impossible.") From GESECRAN
+            Return
+        Endif
+    Endif
+    If GZNEGTYPPRO=""
+        Call ERREUR("Type de facture proforma non renseigné. Traitement impossible.") From GESECRAN
+        Return
+    Else
+        Read [F:TSV]TSV0=GZNEGTYPPRO
+        If fstat
+            Call ERREUR("Type de facture proforma inconnu. Traitement impossible.") From GESECRAN
+            Return
+        Endif
+    Endif
+    # Recherche du site pour récupération du site financier
+    Read [F:FCY]FCY0=[M:ZNG0]ZNHFCY
+    If fstat
+        Raz [F:FCY]
+    Endif
+
+    # Génération du fichier texte
+    WHORODAT=format$("D:YYYYMMDDhhmmss",date$)
+    WFICSIH = GZNEGREP
+    If right$(WFICSIH,len(WFICSIH))<>"\"
+        WFICSIH += "\"
+    Endif
+    WFICSIH += "NEGSIHP_"+GUSER+"_"+format$("D:YYYYMMDDhhmmss",date$)+".TXT"
+    Openo WFICSIH,0 Using [ZSIH]
+
+    adxifs = ";"
+    adxirs = chr$(13)+chr$(10)
+    adxium = 50
+
+    # Site vente, type de facture, numéro, client facture, devise, date facture, référence, horodatage
+    Wrseq "V",[F:FCY]FINRSPFCY,GZNEGTYPPRO,"",[M:ZNG1]ZNHBPC,[M:ZNG1]ZNHSCUR,format$("D:YYYYMMDD",date$),[M:ZNG0]ZREFVENTE,WHORODAT Using [ZSIH]
+    # Article, désignation, unité vente, quantité, prix
+    For WNUMLIG=0 To [M:ZNG2]NBLIG-1
+        Wrseq "D",[M:ZNG2]ZNLITMREF(WNUMLIG),[M:ZNG2]ZNLITMDES(WNUMLIG),[M:ZNG2]ZNLUOM(WNUMLIG),[M:ZNG2]ZNLQTY(WNUMLIG),[M:ZNG2]ZNLPRIVEN(WNUMLIG),[M:ZNG0]ZNHNUM,
+&             format$("D:YYYYMMDD",[M:ZNG0]ZNHDAT),[M:ZNG1]ZNHBPT,[M:ZNG1]ZNHBPS Using [ZSIH]
+    Next
+    Openo Using [ZSIH]
+
+    # Import du fichier
+    Gosub OUVRE From GIMPOBJ
+    [M:IMP2]MODIMP=GZNEGAOEPRO
+    [M:IMP2]TYPEXP=2
+    [M:IMP2]NOMIMP=WFICSIH
+    GSERVEUR=1
+    Gosub EXEC From GIMPOBJ
+    GSERVEUR=0
+
+    Call EFFACE(WFICSIH,WSTA) From ORDSYS
+    Filter [F:SIV] Where ZNEGHORO=WHORODAT
+    Read [F:SIV]SIV0 First
+    If fstat=0
+        Call MESSAGE("Facture proforma "+[F:SIV]NUM+" générée.") From GESECRAN
+        [F:ZNH]ZNHSPROF = [F:SIV]NUM
+        Rewrite [F:ZNH]
+        [M:ZNG1]ZNHSPROF = [F:SIV]NUM
+        Affzo [M:ZNG1]ZNHSPROF
+    Else
+        Call ERREUR("Erreur de génération de la facture proforma.") From GESECRAN
+    Endif
+    Filter [F:SIV]
+Endcase
+Return
+
+############################################ DEFLIG
+
+$DEFLIG
+Default Mask [M:ZNG2]
+Default File [F:ZNL]
+CRIT='ZNHNUM="'+[M:ZNG0]ZNHNUM+'"'
+FICLIG="ZNEGLIG"
+ABLIG="ZNL"
+ZONLIG="ZNLLIN"
+Return
+
+############################################ RAZCRE
+
+$RAZCRE
+If GZNEGCPT=""
+    GERR=1
+    GMESSAGE="Compteur document non défini."
+    OK=0
+    Return
+Endif
+Grizo [M:ZNG0]ZNHNUM
+Actzo [M:ZNG0]ZNHFCY
+[M:ZNG0]ZNHFCY = GFCYDEF(6)
+[M:ZNG0]ZSALFCY = GFCYDEF(6)
+[M:ZNG0]ZNHDAT = date$
+Affzo [M:ZNG0]
+#[M:ZNG1]NBAXE = GOPTCANA
+Gosub INIT_TAB_ANA
+[M:ZNG1]ZNHCCE(1)="N"
+Read [F:FCY]FCY0=GFCYDEF(6)
+If fstat=0
+    [M:ZNG1]ZNHCCE(0) = [F:FCY]CCE(0)
+Endif
+Affzo [M:ZNG1]20
+Diszo [M:ZNG1]ZNHSSDHNUM, ZNHTPTHNUM, ZNHPPTHNUM, ZNHSPROF
+[M:ZNG1]ZNHBETFCY=1
+Return
+
+############################################ VERIF_CRE
+
+$VERIF_CRE
+# Au moins une ligne saisie
+If [M:ZNG2]NBLIG=0
+    GERR=1
+    GMESSAGE=mess(61,199,1)
+    OK=0
+    Return
+Endif
+Return
+
+############################################ INICRE
+
+$INICRE
+# Récupération du compteur
+Local Integer WSTA
+Local Char WZNHNUM(GLONVCR)
+Call NUMERO(GZNEGCPT,[M:ZNG0]ZNHFCY,[M:ZNG0]ZNHDAT,"",WZNHNUM,WSTA) From SUBANM
+If WSTA=0
+    [F:ZNH]ZNHNUM = WZNHNUM
+    [M:ZNG0]ZNHNUM = WZNHNUM
+    Affzo [M:ZNG0]ZNHNUM
+Else
+    GERR=1
+    GMESSAGE=mess(60,199,1)
+    GOK=0
+    Return
+Endif
+[F:ZNH]CREUSR=GUSER
+[F:ZNH]CREDAT=date$
+Return
+
+############################################ CREATION
+
+$CREATION
+Gosub CREATION From TABLEAUX
+Actzo [M:ZNG0]ZNHNUM
+Return
+
+############################################ INICRE_LIG
+
+$INICRE_LIG
+[F:ZNL]ZNHNUM = [M:ZNG0]ZNHNUM
+Return
+
+############################################ LIENS
+
+$LIENS
+Local Integer WNUMLIG
+Read [F:BPA]BPA0=1;[M:ZNG1]ZNHBPS;[M:ZNG1]ZNHPBPA
+If fstat=0
+    [M:ZNG1]ZNHPBPADES = [F:BPA]BPADES
+    Affzo [M:ZNG1]ZNHPBPADES
+Endif
+Read [F:BPA]BPA0=1;[M:ZNG1]ZNHBPC;[M:ZNG1]ZNHSBPA
+If fstat=0
+    [M:ZNG1]ZNHSBPADES = [F:BPA]BPADES
+    Affzo [M:ZNG1]ZNHSBPADES
+Endif
+Read [F:BPA]BPA0=1;[M:ZNG1]ZNHBPT;[M:ZNG1]ZNHTBPA
+If fstat=0
+    [M:ZNG1]ZNHTBPADES = [F:BPA]BPADES
+    Affzo [M:ZNG1]ZNHTBPADES
+Endif
+#[M:ZNG1]NBAXE = GOPTCANA
+Gosub INIT_TAB_ANA
+Gosub LIENS From TABLEAUX
+For WNUMLIG=0 To [M:ZNG2]NBLIG-1
+    [M:ZNG2]ZTOTQTY += [M:ZNG2]ZNLQTY(WNUMLIG)
+    [M:ZNG2]ZTOTAMTACH += ([M:ZNG2]ZNLQTY(WNUMLIG)*[M:ZNG2]ZNLPRIACH(WNUMLIG))
+    [M:ZNG2]ZTOTAMTVEN += ([M:ZNG2]ZNLQTY(WNUMLIG)*[M:ZNG2]ZNLPRIVEN(WNUMLIG))
+Next
+Affzo [M:ZNG2]10
+# Permet de gérer le filtre sur BPDLVCUST pour le controle de l'adresse de livraison
+GBPCNUM=[M:ZNG1]ZNHBPC
+# Ne pas faire de modification si au moins un document est créé
+If [M:ZNG1]ZNHPPTHNUM<>"" or [M:ZNG1]ZNHSSDHNUM<>"" or [M:ZNG1]ZNHTPTHNUM<>""
+    Diszo [M:ZNG0]
+    Actzo [M:ZNG0]ZNHNUM
+    Diszo [M:ZNG1]
+    Diszo [M:ZNG2]
+Else
+    Actzo [M:ZNG0]
+    Diszo [M:ZNG0]ZNHFCY
+    Actzo [M:ZNG1]
+    Actzo [M:ZNG2]
+Endif
+Diszo [M:ZNG1]ZNHSSDHNUM, ZNHTPTHNUM, ZNHPPTHNUM, ZNHSPROF
+Return
+
+############################################ VERIF_MOD
+
+$VERIF_MOD
+# Au moins une ligne saisie
+If [M:ZNG2]NBLIG=0
+    GERR=1
+    GMESSAGE=mess(61,199,1)
+    OK=0
+    Return
+Endif
+Return
+
+############################################ INIMOD
+
+$INIMOD
+[F:ZNH]UPDUSR=GUSER
+[F:ZNH]UPDDAT=date$
+Return
+
+############################################ MODIF
+
+$MODIF
+Gosub MODIF From TABLEAUX
+Return
+
+############################################ INIMOD_LIG
+
+$INIMOD_LIG
+[F:ZNL]ZNHNUM = [M:ZNG0]ZNHNUM
+Return
+
+############################################ ANNULE
+
+$ANNULE
+Gosub ANNULE From TABLEAUX
+Return
+
+############################################ ABANDON
+
+$ABANDON
+Actzo [M:ZNG0]ZNHNUM
+Return
+
+############################################ CTL_INTER_SITE
+
+Subprog CTL_INTER_SITE(PBPRNUM)
+Value Char PBPRNUM()
+
+Read [F:BPR]BPR0=PBPRNUM
+If fstat
+    GMESSAGE="Erreur de lecture du tiers."
+    mkstat=2
+Elsif [F:BPR]BETFCY=2
+    If zoncou="ZNHBPC"
+        GMESSAGE="Tiers inter-site interdit."
+        mkstat=2
+    Elsif GZNEGINFCY="" or GZNEGAMBPC="" or GZNEGAMSAL=""
+        GMESSAGE="Paramètres Négoce inter-sites non renseignés."
+        mkstat=2
+    Else
+        # Recherche de la section de l'axe 1 du fournisseur inter-site
+        Read [F:FCY]FCY0=PBPRNUM
+        If fstat
+            GMESSAGE="Erreur de lecture du site "+PBPRNUM+"."
+            mkstat=2
+            End
+        Elsif [F:FCY]CCE(0)=""
+            GMESSAGE="La section de l'axe 1 du site "+PBPRNUM+" n'est pas renseignée."
+            mkstat=2
+            End
+        Else
+            [M:ZNG1]ZNHPAX1 = [F:FCY]CCE(0)
+        Endif
+        # Recherche de la section de l'axe 1 du site pivot
+        Read [F:FCY]FCY0=GZNEGINFCY
+        If fstat
+            GMESSAGE="Erreur de lecture du site "+GZNEGINFCY+"."
+            mkstat=2
+            End
+        Elsif [F:FCY]CCE(0)=""
+            GMESSAGE="La section de l'axe 1 du site "+GZNEGINFCY+" n'est pas renseignée."
+            mkstat=2
+            End
+        Else
+            [M:ZNG1]ZNHISAX1 = [F:FCY]CCE(0)
+        Endif
+    Endif
+Endif
+End
+
+############################################ INIT_TAB_ANA
+
+$INIT_TAB_ANA
+Local Integer WNUMLIG
+For [F:DIE]DIE0
+    [M:ZNG1]DIE(WNUMLIG) = [F:DIE]DIE
+    [M:ZNG1]NAMDIE(WNUMLIG) = [F:DIE]DES
+    WNUMLIG += 1
+Next
+[M:ZNG1]NBAXE = WNUMLIG
+Affzo [M:ZNG1]NBAXE
+Return
+
+############################################
+#### ACTIONS CHAMPS
+############################################
+
+############################################ ZNG0
+
+Subprog C_ZNHNUM(VALEUR)
+Variable Char    VALEUR()
+Read [F:ZNH]ZNH0=VALEUR
+If fstat
+    GMESSAGE="Document inconnu."
+    mkstat=2
+Endif
+End
+
+Subprog AM_ZNHFCY(VALEUR)
+Variable Char    VALEUR()
+Read [F:FCY]FCY0=VALEUR
+If fstat=0
+    [M:ZNG1]ZNHCCE(0) = [F:FCY]CCE(0)
+    Affzo [M:ZNG1]ZNHCCE(0)
+Endif
+[M:ZNG0]ZSALFCY = VALEUR
+Affzo [M:ZNG0]ZSALFCY
+End
+
+############################################ ZNG1
+
+Subprog AS_ZNHBPS(VALEUR)
+Variable Char    VALEUR()
+If [M:ZNG2]NBLIG>0
+    mkstat=2
+Endif
+End
+
+Subprog C_ZNHBPS(VALEUR)
+Variable Char    VALEUR()
+Call CTL_INTER_SITE(VALEUR)
+#If mkstat<>2
+#    If [M:ZNG1]ZNHBPC<>""
+#        If [M:ZNG1]ZNHBPC=VALEUR
+#            GMESSAGE="Fournisseur identique au client impossible."
+#            mkstat=2
+#        Endif
+#    Endif
+#Endif
+End
+
+Subprog AM_ZNHBPS(VALEUR)
+Variable Char    VALEUR()
+Read [F:BPR]BPR0=VALEUR
+If fstat=0
+    [M:ZNG1]ZNHPCUR   = [F:BPR]CUR
+    Read [F:BPA]BPA0=1;VALEUR;[F:BPR]BPAADD
+    If fstat=0
+        [M:ZNG1]ZNHPBPA    = [F:BPA]BPAADD
+        [M:ZNG1]ZNHPBPADES = [F:BPA]BPADES
+        [M:ZNG1]ZNHPCRY    = [F:BPA]CRY
+        [M:ZNG1]ZNHPADL(0) = [F:BPA]BPAADDLIG(0)
+        [M:ZNG1]ZNHPADL(1) = [F:BPA]BPAADDLIG(1)
+        [M:ZNG1]ZNHPADL(2) = [F:BPA]BPAADDLIG(2)
+        [M:ZNG1]ZNHPPOSCOD = [F:BPA]POSCOD
+        [M:ZNG1]ZNHPCTY    = [F:BPA]CTY
+        [M:ZNG1]ZNHPMDL    = [F:BPA]ZMLIV
+    Endif
+Endif
+[M:ZNG1]ZNHBETFCY = max([F:BPR]BETFCY,1) : # Il peut y avoir des tiers avec BETFCY=0 !!!!
+Affzo [M:ZNG1]5
+End
+
+Subprog AS_ZNHPBPA(VALEUR)
+Variable Char    VALEUR()
+If [M:ZNG2]NBLIG>0
+    mkstat=2
+Endif
+End
+
+Subprog C_ZNHPBPA(VALEUR)
+Variable Char    VALEUR()
+Read [F:BPA]BPA0=1;[M:ZNG1]ZNHBPS;VALEUR
+If fstat
+    GMESSAGE="Adresse inconnue."
+    mkstat=2
+    End
+Endif
+If VALEUR<>"" and [M:ZNG1]ZNHSBPA<>""
+    If VALEUR=[M:ZNG1]ZNHSBPA and [M:ZNG1]ZNHBPS=[M:ZNG1]ZNHBPC
+        GMESSAGE="Même adresse sur même tiers interdit. Recommencez."
+        mkstat=2
+        End
+    Endif
+Endif
+End
+
+Subprog AM_ZNHPBPA(VALEUR)
+Variable Char    VALEUR()
+Read [F:BPA]BPA0=1;[M:ZNG1]ZNHBPS;VALEUR
+If fstat=0
+    [M:ZNG1]ZNHPCRY = [F:BPA]CRY
+    [M:ZNG1]ZNHPBPADES = [F:BPA]BPADES
+    [M:ZNG1]ZNHPADL(0) = [F:BPA]BPAADDLIG(0)
+    [M:ZNG1]ZNHPADL(1) = [F:BPA]BPAADDLIG(1)
+    [M:ZNG1]ZNHPADL(2) = [F:BPA]BPAADDLIG(2)
+    [M:ZNG1]ZNHPPOSCOD = [F:BPA]POSCOD
+    [M:ZNG1]ZNHPCTY = [F:BPA]CTY
+    [M:ZNG1]ZNHPMDL = [F:BPA]ZMLIV
+Endif
+Affzo [M:ZNG1]5
+End
+
+Subprog AS_ZNHPENLDAT(VALEUR)
+Variable Date    VALEUR
+If [M:ZNG2]NBLIG>0
+    mkstat=2
+Endif
+End
+
+Subprog C_ZNHPENLDAT(VALEUR)
+Variable Date    VALEUR
+If [M:ZNG1]ZNHSDLVDAT<>[0/0/0]
+    If VALEUR>[M:ZNG1]ZNHSDLVDAT
+        GMESSAGE="La date d'enlèvement doit toujours précéder la date de livraison."
+        mkstat=2
+    Endif
+Endif
+End
+
+Subprog AS_ZNHPMDL(VALEUR)
+Variable Char    VALEUR()
+If [M:ZNG2]NBLIG>0
+    mkstat=2
+Endif
+End
+
+Subprog IB_ZNHPPTHNUM
+If [M:ZNG1]ZNHPPTHNUM=""
+    Raz GBOUT2
+    Raz GBOUT3
+    Raz GBOUT4
+Elsif left$([M:ZNG1]ZNHPPTHNUM,1)<>"$"
+    Raz GBOUT3
+    Raz GBOUT4
+Else
+    Raz GBOUT2
+    If [M:ZNG1]ZNHBLIS1<>""
+        GBOUT3="Livraison IS "+[M:ZNG1]ZNHBLIS1
+    Else
+        Raz GBOUT3
+    Endif
+    If [M:ZNG1]ZNHBLIS2<>""
+        GBOUT4="Livraison IS "+[M:ZNG1]ZNHBLIS2
+    Else
+        Raz GBOUT4
+    Endif
+Endif
+End
+
+Subprog AS_ZNHBPC(VALEUR)
+Variable Char    VALEUR()
+If [M:ZNG2]NBLIG>0
+    mkstat=2
+Endif
+End
+
+Subprog C_ZNHBPC(VALEUR)
+Variable Char    VALEUR()
+Call CTL_INTER_SITE(VALEUR)
+If mkstat=2 : End : Endif
+#If [M:ZNG1]ZNHBPS<>""
+#    If [M:ZNG1]ZNHBPS=VALEUR
+#        GMESSAGE="Client identique au fournisseur impossible."
+#        mkstat=2
+#    Endif
+#Endif
+#If mkstat=2 : End : Endif
+## Controle échéance avec message selon paramètre utilisateur
+## Section recopiée du SPEBPC et existante aussi dans SPEZBE
+If clalev([F:AUS])=0 : Local File AUTILIS : Endif
+Read [F:AUS]CODUSR=GUSER
+If fstat=0
+    If [F:AUS]ZCTLENC=2
+        # Controle dépassement échéance
+        If clalev([F:DUD])=0 : Local File GACCDUDATE : Endif
+        If clalev([F:SIH])=0 : Local File SINVOICE   : Endif
+        Local Integer ZOKCLIENT
+        ZOKCLIENT=2
+        For [F:DUD]DUD4 Where [F:DUD]BPR=VALEUR & [F:DUD]TYP="FAC"
+            Read [F:SIH]SIH0=[F:DUD]NUM
+            If fstat=0
+                If [F:SIH]STA=3
+                    If [F:DUD]DUDDAT<date$ & [F:DUD]AMTCUR>[F:DUD]PAYCUR+[F:DUD]TMPCUR
+                        ZOKCLIENT=1
+                        Break
+                    Endif
+                Endif
+            Endif
+        Next
+        If ZOKCLIENT=1
+            Call MESSAGE("Au moins une facture est en retard de règlement.") From GESECRAN
+        Endif
+    Endif
+Endif
+End
+
+Subprog AM_ZNHBPC(VALEUR)
+Variable Char    VALEUR()
+Read [F:BPR]BPR0=VALEUR
+If fstat=0
+    [M:ZNG1]ZNHSCUR = [F:BPR]CUR
+    Filter [F:BPD] Where BPCNUM=VALEUR
+    Read [F:BPD]BPD0 First
+    If fstat=0
+        [M:ZNG1]ZNHSMDL = [F:BPD]MDL
+        Read [F:BPA]BPA0=1;VALEUR;[F:BPD]BPAADD
+        If fstat=0
+            [M:ZNG1]ZNHSBPA = [F:BPA]BPAADD
+            [M:ZNG1]ZNHSBPADES = [F:BPA]BPADES
+            [M:ZNG1]ZNHSCRY = [F:BPA]CRY
+            [M:ZNG1]ZNHSADL(0) = [F:BPA]BPAADDLIG(0)
+            [M:ZNG1]ZNHSADL(1) = [F:BPA]BPAADDLIG(1)
+            [M:ZNG1]ZNHSADL(2) = [F:BPA]BPAADDLIG(2)
+            [M:ZNG1]ZNHSPOSCOD = [F:BPA]POSCOD
+            [M:ZNG1]ZNHSCTY = [F:BPA]CTY
+        Endif
+    Endif
+    Filter [F:BPD]
+Endif
+Affzo [M:ZNG1]10
+# Permet de gérer le filtre sur BPDLVCUST pour le controle de l'adresse de livraison
+GBPCNUM=VALEUR
+End
+
+Subprog AS_ZNHSBPA(VALEUR)
+Variable Char    VALEUR()
+If [M:ZNG2]NBLIG>0
+    mkstat=2
+Endif
+End
+
+Subprog C_ZNHSBPA(VALEUR)
+Variable Char    VALEUR()
+Read [F:BPA]BPA0=1;[M:ZNG1]ZNHBPC;VALEUR
+If fstat
+    GMESSAGE="Adresse inconnue."
+    mkstat=2
+    End
+Endif
+If VALEUR<>"" and [M:ZNG1]ZNHPBPA<>""
+    If VALEUR=[M:ZNG1]ZNHPBPA and [M:ZNG1]ZNHBPS=[M:ZNG1]ZNHBPC
+        GMESSAGE="Même adresse sur même tiers interdit. Recommencez."
+        mkstat=2
+        End
+    Endif
+Endif
+End
+
+Subprog AM_ZNHSBPA(VALEUR)
+Variable Char    VALEUR()
+Read [F:BPD]BPD0=[M:ZNG1]ZNHBPC;VALEUR
+If fstat=0
+    [M:ZNG1]ZNHSMDL = [F:BPD]MDL
+Endif
+Read [F:BPA]BPA0=1;[M:ZNG1]ZNHBPC;VALEUR
+If fstat=0
+    [M:ZNG1]ZNHSCRY = [F:BPA]CRY
+    [M:ZNG1]ZNHSBPADES = [F:BPA]BPADES
+    [M:ZNG1]ZNHSADL(0) = [F:BPA]BPAADDLIG(0)
+    [M:ZNG1]ZNHSADL(1) = [F:BPA]BPAADDLIG(1)
+    [M:ZNG1]ZNHSADL(2) = [F:BPA]BPAADDLIG(2)
+    [M:ZNG1]ZNHSPOSCOD = [F:BPA]POSCOD
+    [M:ZNG1]ZNHSCTY = [F:BPA]CTY
+Endif
+Affzo [M:ZNG1]10
+End
+
+Subprog AS_ZNHSDLVDAT(VALEUR)
+Variable Date    VALEUR
+If [M:ZNG2]NBLIG>0
+    mkstat=2
+Endif
+End
+
+Subprog C_ZNHSDLVDAT(VALEUR)
+Variable Date    VALEUR
+If [M:ZNG1]ZNHPENLDAT<>[0/0/0]
+    If VALEUR<[M:ZNG1]ZNHPENLDAT
+        GMESSAGE="La date de livraison doit toujours être au-delà de la date d'enlèvement."
+        mkstat=2
+    Endif
+Endif
+End
+
+Subprog AS_ZNHSMDL(VALEUR)
+Variable Char    VALEUR()
+If [M:ZNG2]NBLIG>0
+    mkstat=2
+Endif
+End
+
+Subprog IB_ZNHSSDHNUM
+Raz GBOUTS
+If [M:ZNG1]ZNHSSDHNUM=""
+    Raz GBOUT1
+Endif
+End
+
+Subprog IB_ZNHSPROF
+Raz GBOUTS
+If [M:ZNG1]ZNHSPROF=""
+    Raz GBOUT1
+Endif
+End
+
+Subprog C_ZNHBPT(VALEUR)
+Variable Char    VALEUR()
+If VALEUR<>""
+    Call CTL_INTER_SITE(VALEUR)
+Endif
+End
+
+Subprog AM_ZNHBPT(VALEUR)
+Variable Char    VALEUR()
+If VALEUR=""
+    Effzo [M:ZNG1]15
+Else
+    Read [F:BPR]BPR0=VALEUR
+    If fstat=0
+        [M:ZNG1]ZNHTBPA = [F:BPR]BPAADD
+        Read [F:BPA]BPA0=1;VALEUR;[F:BPR]BPAADD
+        If fstat=0
+            [M:ZNG1]ZNHTBPADES = [F:BPA]BPADES
+        Endif
+        Affzo [M:ZNG1]ZNHTBPA, ZNHTBPADES
+    Endif
+Endif
+End
+
+Subprog AS_ZNHTBPA(VALEUR)
+Variable Char    VALEUR()
+If [M:ZNG1]ZNHBPT=""
+    mkstat=1
+Endif
+End
+
+Subprog AM_ZNHTBPA(VALEUR)
+Variable Char    VALEUR()
+Read [F:BPA]BPA0=1;[M:ZNG1]ZNHBPT;VALEUR
+If fstat=0
+    [M:ZNG1]ZNHTBPADES = [F:BPA]BPADES
+    Affzo [M:ZNG1]ZNHTBPADES
+Endif
+End
+
+Subprog AS_ZNHTPRI(VALEUR)
+Variable Decimal VALEUR
+If [M:ZNG1]ZNHBPT=""
+    mkstat=1
+Endif
+End
+
+Subprog IB_ZNHTPTHNUM
+Raz GBOUTS
+If [M:ZNG1]ZNHTPTHNUM=""
+    Raz GBOUT1
+Endif
+End
+
+############################################ ZNG2
+
+Subprog AVANT_NBLIG
+Local Integer WNOL : WNOL=nolign-1
+# Totaux en bas d'écran
+[M:ZNG2]ZTOTQTY -= [M:ZNG2]ZNLQTY(WNOL)
+[M:ZNG2]ZTOTAMTACH -= ([M:ZNG2]ZNLQTY(WNOL)*[M:ZNG2]ZNLPRIACH(WNOL))
+[M:ZNG2]ZTOTAMTVEN -= ([M:ZNG2]ZNLQTY(WNOL)*[M:ZNG2]ZNLPRIVEN(WNOL))
+End
+
+Subprog APRES_NBLIG
+Local Integer WNOL : WNOL=nolign-1
+# Totaux en bas d'écran
+[M:ZNG2]ZTOTQTY += [M:ZNG2]ZNLQTY(WNOL)
+[M:ZNG2]ZTOTAMTACH += ([M:ZNG2]ZNLQTY(WNOL)*[M:ZNG2]ZNLPRIACH(WNOL))
+[M:ZNG2]ZTOTAMTVEN += ([M:ZNG2]ZNLQTY(WNOL)*[M:ZNG2]ZNLPRIVEN(WNOL))
+Affzo [M:ZNG2]10
+End
+
+Subprog AS_ZNLITMREF(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL=nolign-1
+# Ne pas pouvoir modifier un code article déjà saisi
+If [M:ZNG2]ZNLITMREF(WNOL)<>""
+    mkstat=2
+Endif
+End
+
+Subprog C_ZNLITMREF(VALEUR)
+Variable Char    VALEUR()
+End
+
+Subprog AM_ZNLITMREF(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL=nolign-1
+Read [F:ITM]ITM0=VALEUR
+If fstat=0
+    Call CHARGE_DEFITMDES("DES1AXX",GLANGUE,VALEUR,[M:ZNG2]ZNLITMDES(WNOL),"[F:ITM]") From TRTX3
+    #[M:ZNG2]ZNLITMDES(WNOL) = [F:ITM]ITMDES1
+    [M:ZNG2]ZNLUOM(WNOL) = [F:ITM]STU
+    Affzo [M:ZNG2]ZNLITMDES(WNOL), ZNLUOM(WNOL)
+Endif
+End
+
+Subprog AM_ZNLQTY(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL=nolign-1
+If [M:ZNG2]CREFLG(WNOL)>0
+    Local Integer WREP : WREP=1
+    Call OUINON(mess(21,191,1),WREP) From GESECRAN
+    If WREP=1
+        End
+    Endif
+Endif
+If [M:ZNG1]ZNHBETFCY=1
+    Call RECH_TARIF_ACHAT([M:ZNG1]ZNHBPS,[M:ZNG1]ZNHPMDL,[M:ZNG1]ZNHPENLDAT,[M:ZNG0]ZNHFCY,[M:ZNG2]ZNLITMREF(WNOL),[M:ZNG2]ZNLUOM(WNOL),1,VALEUR,[M:ZNG2]ZNLPRIACH(WNOL))
+Else
+    Read [F:BPD]BPD0=[M:ZNG1]ZNHBPC;[M:ZNG1]ZNHSBPA
+    If fstat
+        Raz [F:BPD]
+    Endif
+    # Tarif vente inter-site
+    Call RECH_TARIF_VENTE([M:ZNG0]ZNHFCY,"","",[M:ZNG1]ZNHPENLDAT,GZNEGINFCY,[F:BPD]ZDEPT,[M:ZNG2]ZNLITMREF(WNOL),[M:ZNG2]ZNLUOM(WNOL),VALEUR,2,[M:ZNG2]ZNLPRIVENIS(WNOL))
+    Read [F:BPD]BPD0=[M:ZNG1]ZNHBPC;[M:ZNG1]ZNHSBPA
+    If fstat
+        Raz [F:BPD]
+    Endif
+    # Tarif achat inter-site
+    Call RECH_TARIF_VENTE(GZNEGINFCY,"","",[M:ZNG1]ZNHPENLDAT,[M:ZNG1]ZNHBPS,[F:BPD]ZDEPT,[M:ZNG2]ZNLITMREF(WNOL),[M:ZNG2]ZNLUOM(WNOL),VALEUR,2,[M:ZNG2]ZNLPRIACHIS(WNOL))
+Endif
+Call RECH_TARIF_VENTE([M:ZNG1]ZNHBPC,[M:ZNG1]ZNHSBPA,[M:ZNG1]ZNHSMDL,[M:ZNG1]ZNHPENLDAT,[M:ZNG0]ZNHFCY,"",[M:ZNG2]ZNLITMREF(WNOL),[M:ZNG2]ZNLUOM(WNOL),VALEUR,1,[M:ZNG2]ZNLPRIVEN(WNOL))
+Default Mask [M:ZNG2]
+nolign=WNOL+1
+Affzo [M:ZNG2]ZNLPRIACH(WNOL), ZNLPRIVEN(WNOL), ZNLPRIACHIS(WNOL), ZNLPRIVENIS(WNOL)
+If [M:ZNG1]ZNHBETFCY=2 and ([M:ZNG2]ZNLPRIACHIS(WNOL)=0 or [M:ZNG2]ZNLPRIVENIS(WNOL)=0)
+    Call ERREUR("Les tarifs inter-site doivent être renseignés.") From GESECRAN
+    mkstat=2
+Endif
+End
+
+Subprog AS_ZNLPRIACH(VALEUR)
+Variable Decimal VALEUR
+If [M:ZNG1]ZNHBETFCY=2
+    mkstat=2
+Endif
+End
+
+#################################################### RECH_TARIF_VENTE
+
+Subprog RECH_TARIF_VENTE(WCLIENT,WBPA,WMDL,WDATE,WSITE,WZDEPT,WARTICLE,WUNITE,WQUANTITE,WBETFCY,WPRIX)
+Value Char WCLIENT()
+Value Char WBPA()
+Value Char WMDL()
+Value Date WDATE
+Value Char WSITE()
+Value Char WZDEPT()
+Value Char WARTICLE()
+Value Char WUNITE()
+Value Decimal WQUANTITE
+Value Integer WBETFCY
+Variable Decimal WPRIX
+
+Read [F:BPR]BPR0=WCLIENT
+If fstat
+    Raz [F:BPR]
+Endif
+Read [F:BPC]BPC0=WCLIENT
+If fstat
+    Raz [F:BPC]
+Endif
+Read [F:BPD]BPD0=WCLIENT;WBPA
+If fstat
+    Raz [F:BPD]
+Endif
+
+If clalev([M:SOH0])=0 : Local Mask SOH0 [SOH0] : Raz [M:SOH0] : Endif
+If clalev([M:SOH1])=0 : Local Mask SOH1 [SOH1] : Raz [M:SOH1] : Endif
+If clalev([M:SOH2])=0 : Local Mask SOH2 [SOH2] : Raz [M:SOH2] : Endif
+If clalev([M:SOH3])=0 : Local Mask SOH3 [SOH3] : Raz [M:SOH3] : Endif
+If clalev([M:SOH4])=0 : Local Mask SOH4 [SOH4] : Raz [M:SOH4] : Endif
+Default Mask [SOH4]
+Default Mask [SOH3]
+Default Mask [SOH2]
+Default Mask [SOH1]
+Default Mask [SOH0]
+
+Gosub SIM_SPC_GLOB From TRTPRICE
+Call TARIFCHGT(5) From TRTPRICE
+Call COLREM("C",1,"") From TRTPRICE
+
+Global Integer MGEFFAC
+Global Char GPNTITMREF(15)
+Local Char VAT(3)(0..2)
+GPNTITMREF=""
+MGEFFAC=1
+
+[M:SOH0]BPCORD=WCLIENT
+[M:SOH0]ORDDAT=WDATE
+[M:SOH0]CUR=[F:BPR]CUR
+[M:SOH0]SALFCY=WSITE
+[M:SOH1]BETFCY=WBETFCY
+[M:SOH1]PRITYP=1
+[M:SOH1]ZDEPT=WZDEPT
+[M:SOH2]DEMDLVDAT=WDATE
+[M:SOH2]MDL = WMDL
+[M:SOH4]DDEMDLVDAT(0)=WDATE
+[M:SOH4]ITMREF(0)=WARTICLE
+[M:SOH4]DSTOFCY(0)=WSITE
+Call ALITAXEV([F:BPC]VACBPR,[F:ITM]VACITM,VAT) From TRTX3
+[M:SOH4]VAT1(0)=VAT(0)
+[M:SOH4]VAT2(0)=VAT(1)
+[M:SOH4]VAT3(0)=VAT(2)
+[M:SOH4]SAU(0)=WUNITE
+[M:SOH4]QTY(0)=WQUANTITE
+Default Mask [M:SOH4]
+Default Mask [M:SOH3]
+Default Mask [M:SOH2]
+Default Mask [M:SOH1]
+Default Mask [M:SOH0]
+nolign=1
+
+Call RECH_TARIF(1,[M:SOH4]ITMREF(0),0,[M:SOH4]QTY(0),"SOH",[M:SOH4]GROPRI(0)) From TRTVENTAR
+Call CLCNETPRI([M:SOH4]QTY(0),[M:SOH0]CUR,0) From TRTVENPRI
+WPRIX = [M:SOH4]GROPRI
+End
+
+#################################################### RECH_TARIF_ACHAT
+
+Subprog RECH_TARIF_ACHAT(WFOURNISSEUR,WMDL,WDATE,WSITE,WARTICLE,WUNITE,WTYPPAL,WQUANTITE,WPRIX)
+Value Char WFOURNISSEUR()
+Value Char WMDL()
+Value Date WDATE
+Value Char WSITE()
+Value Char WARTICLE()
+Value Char WUNITE()
+Value Integer WTYPPAL
+Value Decimal WQUANTITE
+Variable Decimal WPRIX
+
+Local Char VAT(GLONVAT)(3)
+
+Read [F:BPS]BPS0=WFOURNISSEUR
+If fstat>1
+    Return
+Endif
+Read [F:BPR]BPR0=WFOURNISSEUR
+If fstat>1
+    Return
+Endif
+Read [F:ITM]ITM0=WARTICLE
+If fstat>1
+    Return
+Endif
+
+Call ALITAXE([F:BPS]VACBPR,[F:ITM]VACITM,VAT) From TRTX3
+
+#------------------------------- Recherche du tarif d'achat
+If clalev([M:POH0])=0 : Local Mask POH0 : Raz [M:POH0] : Endif
+If clalev([M:POH1])=0 : Local Mask POH1 : Raz [M:POH1] : Endif
+If clalev([M:POH2])=0 : Local Mask POH2 : Raz [M:POH2] : Endif
+If clalev([M:POH3])=0 : Local Mask POH3 : Raz [M:POH3] : Endif
+
+Call TARIFCHGT(6) From TRTPRICE
+
+nolign=1
+[M:POH0]POHFCY   = WSITE
+[M:POH0]BETCPY   = 1
+[M:POH0]BETFCY   = 1
+[M:POH0]ORDDAT   = WDATE
+[M:POH0]BPSNUM   = WFOURNISSEUR
+[M:POH0]LAN      = [F:BPR]LAN
+#----- Chargement zones provenant du BPSUPPLIER -----#
+If dim([M:POH0]TSSCOD)>0
+   For I=0 To dim([M:POH0]TSSCOD)-1
+       [M:POH0]TSSCOD(I)=[F:BPS]TSSCOD(I)
+   Next I
+Endif
+If [F:BPS]BPRPAY="" [M:POH1]BPRPAY=[F:BPS]BPSNUM
+               Else [M:POH1]BPRPAY=[F:BPS]BPRPAY    : Endif
+If [F:BPS]BPSINV="" [M:POH1]BPSINV=[F:BPS]BPSNUM
+               Else [M:POH1]BPSINV=[F:BPS]BPSINV    : Endif
+[M:POH0]BPRNAM = [F:BPS]BPSNAM
+#----- Condition de paiement du tiers payé -----#
+If GPAYTERM=1 & [M:POH1]BPRPAY<>[F:BPS]BPSNUM
+  Read [BPS] BPS0=[M:POH1]BPRPAY
+  If !fstat
+    [M:POH1]PTE = [F:BPS]PTE
+    #----- Relecture du fournisseur -----#
+    Read [BPS]BPS0=WFOURNISSEUR : If fstat Raz [F:BPS] : Endif
+  Endif
+Endif
+[M:POH1]CUR          = [F:BPR]CUR
+[M:POH2]WCUR         = [F:BPR]CUR
+[M:POH2]WCUR1        = [F:BPR]CUR
+#[M:POH2]WCUR2        = [F:BPR]CUR
+#[M:POH2]WCUR3        = [F:BPR]CUR
+[M:POH3]WCUR         = [F:BPR]CUR
+#[M:POH3]WCUR1        = [F:BPR]CUR
+#[M:POH3]WCUR2        = [F:BPR]CUR
+[M:POH1]PTE          = [F:BPS]PTE
+[M:POH1]MDL          = WMDL
+[M:POH1]BPTNUM       = [F:BPS]BPTNUM
+[M:POH1]CHGTYP       = [F:BPS]CHGTYP
+[M:POH1]VACBPR       = [F:BPS]VACBPR
+[M:POH1]CHGCOE       = 1
+[M:POH1]NBAXE        = 2
+[M:POH2]ITMREF(0)    = WARTICLE
+[M:POH2]UOM(0)       = WUNITE
+[M:POH2]PUU(0)       = WUNITE
+[M:POH2]QTYUOM(0)    = WQUANTITE
+[M:POH2]QTYPUU(0)    = WQUANTITE
+[M:POH2]QTYSTU(0)    = WQUANTITE
+[M:POH2]UOMPUUCOE(0) = WQUANTITE
+[M:POH2]ZTYPPAL(0)   = WTYPPAL
+
+#----- Lecture fichiers article, article-site et article-fourn si nécessaire -----#
+If [F:ITM]ITMREF<>WARTICLE
+  Read [ITM] ITM0=WARTICLE : If fstat Raz [F:ITM] : Endif
+Endif
+If [F:ITF]ITMREF<>WARTICLE | [F:ITF]STOFCY<>WSITE
+  Read [ITF] ITF0=WARTICLE;WSITE : If fstat Raz [F:ITF] : Endif
+Endif
+If [F:ITP]ITMREF<>WARTICLE | [F:ITP]BPSNUM<>WFOURNISSEUR
+  Read [ITP] ITP0=WARTICLE;WFOURNISSEUR : If fstat Raz [F:ITP] : Endif
+Endif
+#---------------------------------------------------------------------------------#
+If [F:ITM]BUY<>"" [M:POH2]LINBUY(0)=[F:ITM]BUY : Endif
+If [F:ITF]BUY<>"" [M:POH2]LINBUY(0)=[F:ITF]BUY : Endif
+[M:POH2]STOMGTCOD(0)=[F:ITM]STOMGTCOD
+If [F:ITF]QUAFLG>1 [M:POH2]QUAFLG(0)=2  Else [M:POH2]QUAFLG(0)=1 : Endif
+If dim([M:POH2]TSICOD1(0))>0 [M:POH2]TSICOD1(0)=[F:ITM]TSICOD(0) : Endif
+If dim([M:POH2]TSICOD2(0))>0 [M:POH2]TSICOD2(0)=[F:ITM]TSICOD(1) : Endif
+If dim([M:POH2]TSICOD3(0))>0 [M:POH2]TSICOD3(0)=[F:ITM]TSICOD(2) : Endif
+If dim([M:POH2]TSICOD4(0))>0 [M:POH2]TSICOD4(0)=[F:ITM]TSICOD(3) : Endif
+If dim([M:POH2]TSICOD5(0))>0 [M:POH2]TSICOD5(0)=[F:ITM]TSICOD(4) : Endif
+[M:POH2]PUU(0)    = WUNITE
+[M:POH2]STU(0)    = WUNITE
+[M:POH2]LINTEX(0) = ""
+If [F:ITP]ITMREF<>""
+    If [F:ITP]QUAFLG>1
+        [M:POH2]QUAFLG(0)=2
+    Else
+        [M:POH2]QUAFLG(0)=1
+    Endif
+    [M:POH2]PURMINQTY(0)=[F:ITP]PURMINQTY
+Endif
+If GACTDEB=2
+   If [F:ITP]EECINCRAT<>0
+       [M:POH2]EECINCRAT(0)=[F:ITP]EECINCRAT
+    Endif
+Endif
+[M:POH2]UOMFLG(0)    = 1
+[M:POH2]VAT1(0)      = VAT(0)
+[M:POH2]VAT2(0)      = VAT(1)
+[M:POH2]VAT3(0)      = VAT(2)
+[M:POH2]PRHFCY(0)    = WSITE
+[M:POH2]RETQTYSTU(0) = 0
+[M:POH2]LINFLG(0)    = 0
+GPUU                 = [M:POH2]PUU(0)
+MODULE = 6 : PLITYP=1
+OK=1 : GOK=1 : GCUR = [F:BPR]CUR : GPLITYP=1 : GPLINBR=nbrecord([F:PPC]) : GPIO=50 : # GPLI="TFRS"
+Default Mask [M:POH2]
+
+Call RECH_TARIF("POH",0) From TRTACHTAR1
+WPRIX=[M:POH2]GROPRI(0)
+End
+
+############################################ PBCREATFICTXT
+
+$PBCREATFICTXT
+WERR=errn
+Resume

@@ -1,0 +1,119 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+###########################################################################################################
+# Société              : EPALIA                                                                           #
+# Auteur               : Jérôme BEAUFILS                                                                  #
+# Date de création     : 26/09/2019                                                                       #
+# Date de modification : 26/09/2019                                                                       #
+# Nom du traitement    : SPECREATEDEP                                                                     #
+###########################################################################################################
+# Ce traitement permet de créer et d'affecter des dépôts aux clients chargeur qui n'en possède pas        #
+# Principe :                                                                                              #
+# Le traitement se fait en 2 temps.                                                                       #
+# Dans une première passe, on récupère tous les dépôts :                                                  #
+# - Actif                                                                                                 #
+# - Visible collecte                                                                                      #
+# - ne possédant pas de code dépôt                                                                        #
+# - Le client chargeur appartient à un chargeur non synchronisé avec EPALIS                               #
+# - Le code client est égal au code de regroupement                                                       #
+# Pour cela on va utiliser la vue ZRECUPCLT (ATTENTION, le dernier critère n'est pas compris dans la vue  #
+# Pour chaque dépôt de la vue, on va créer une fiche dépôt avec les informations du client chargeur       #
+# Une fois que c'est fait on reparcourt la vue ZRECUPCLT avec le critère Code client <> code regroupement #
+# On récupère alors pour chaque enregistrement le code dépôt de l'enregistrement dont le code client      #
+# est égal au code de regroupement                                                                        #
+###########################################################################################################
+# Ouverture des tables et des vues de travail
+If clalev([F:ZRCL])=0  : Local File ZRECUPCLT     [F:ZRCL]  : Endif
+If clalev([F:ZDPO])=0  : Local File ZDEPOT        [F:ZDPO]  : Endif
+If clalev([F:ZAI])=0   : Local File ZADREPI       [F:ZAI]   : Endif
+If clalev([F:ZAI2])=0  : Local File ZADREPI       [F:ZAI2]  : Endif
+#Déclaration des variables de travail
+Local Integer WERR : WERR = 0
+Local Integer INTERRUPT
+Local Decimal NOMBRE
+Local Char    TEXTE(50)
+Local Integer WNUMLIG
+Local Integer WSTAT
+Local Char    WSEQ(15)
+#On va effectuer les modifications au travers d'une transaction
+Trbegin [F:ZDPO],[F:ZAI],[F:ZAI2]
+
+#--------------------------- ETAPE N°1 ---------------------------
+#On commence par compter le nombre de dépôt à créer
+Filter[F:ZRCL] Where [F:ZRCL]ZCODCLT=[F:ZRCL]ZCODCLTREG
+NOMBRE = rowcount([F:ZRCL])
+Filter[F:ZRCL]
+#On va parcourir l'ensemble de la vue pour les enregistrements dont le code client est égal au code de regroupement
+TEXTE = "Veuillez patienter..."
+Call OUVRE_BOITE(TEXTE,NOMBRE) From GESECRAN
+WNUMLIG = 1
+For[F:ZRCL]ZRCL0 Where [F:ZRCL]ZCODCLT=[F:ZRCL]ZCODCLTREG
+  Call NUMERO("ZDEP","",date$,"",WSEQ,WSTAT) From SUBANM
+  If(WSTAT=0)Then
+    Raz[F:ZDPO]
+    [F:ZDPO] = [F:ZRCL]
+    [F:ZDPO]ZDEPNUM = WSEQ
+    [F:ZDPO]ZDEPNAM = [F:ZRCL]ZNOMCLT
+    Write[F:ZDPO]
+    If(fstat=0)Then
+      #On va maintenant renseigner le code du dépôt que l'on vient de créer
+      Read[F:ZAI]ZAI0=[F:ZRCL]ZCODCHG;[F:ZRCL]ZCODCLT
+      If(fstat=0)Then
+        [F:ZAI]ZDEPOTCLT = WSEQ
+        Rewrite[F:ZAI]
+        If(fstat<>0)Then
+          WERR = 1
+        Endif
+      Else
+        WERR = 2
+      Endif
+    Else
+      WERR = 3
+    Endif
+  Else
+    WERR = 4
+  Endif
+  TEXTE = "Traitement de l'enregistrement N°"
+  Call AFF_BOITE(TEXTE+num$(WNUMLIG) + "/" + num$(NOMBRE),WNUMLIG,INTERRUPT) From GESECRAN
+  WNUMLIG += 1
+Next
+Call FERME_BOITE From GESECRAN
+#--------------------------- ETAPE N°2 ---------------------------
+#On commence par récupérer le nombre d'enregsitrement à traiter
+Filter[F:ZRCL] Where [F:ZRCL]ZCODCLT<>[F:ZRCL]ZCODCLTREG
+NOMBRE = rowcount([F:ZRCL])
+Filter[F:ZRCL]
+#On va parcourir l'ensemble de la vue pour les enregistrements dont le code client est différent du code de regroupement
+TEXTE = "Veuillez patienter..."
+Call OUVRE_BOITE(TEXTE,NOMBRE) From GESECRAN
+WNUMLIG = 1
+For[F:ZRCL]ZRCL0 Where [F:ZRCL]ZCODCLT<>[F:ZRCL]ZCODCLTREG
+  Read[F:ZAI]ZAI0=[F:ZRCL]ZCODCHG;[F:ZRCL]ZCODCLTREG
+  If(fstat=0)Then
+    Read[F:ZAI2]ZAI0=[F:ZRCL]ZCODCHG;[F:ZRCL]ZCODCLT
+    If(fstat=0)Then
+      [F:ZAI2]ZDEPOTCLT = [F:ZAI]ZDEPOTCLT
+      Rewrite[F:ZAI2]
+      If(fstat<>0)Then
+        WERR = 5
+      Endif
+    Else
+      WERR = 6
+    Endif
+  Else
+    WERR = 7
+  Endif
+  TEXTE = "Traitement de l'enregistrement N°"
+  Call AFF_BOITE(TEXTE+num$(WNUMLIG) + "/" + num$(NOMBRE),WNUMLIG,INTERRUPT) From GESECRAN
+  WNUMLIG += 1
+Next
+Call FERME_BOITE From GESECRAN
+
+#WERR = 1
+If(WERR=0)Then
+  Commit
+  Call MESSAGE("Traitement terminé avec succès") From GESECRAN
+Else
+  Rollback
+  Call ERREUR("Traitement annulé car il existe des erreurs. [Erreur n°" + num$(WERR) + "]") From GESECRAN
+Endif
+

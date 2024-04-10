@@ -1,0 +1,82 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+# Création du traitement ZCREATEHABFUNC
+#Ce traitement sert à créer les habilitation fonctionnelles pour les fonctions de la collecte multi chargeur
+If clalev([F:AFP])=0  : Local File AFCTPRF [F:AFP]  : Endif
+If clalev([F:AFP2])=0 : Local File AFCTPRF [F:AFP2] : Endif
+If clalev([F:AFP3])=0 : Local File AFCTPRF [F:AFP3] : Endif
+Local Char WFONCTION(40)
+Local Integer WNBADD : WNBADD = 0
+
+Call TEMPON("Veuillez patienter...") From GESECRAN
+#Nous allons ajouter les habilitation fonctionnelles sur tous les profils fonction qui ont la fontion ZACTEPI
+For [F:AFP2]AFP0 Where [F:AFP2]FNC="ZACTEPI"
+  #On commence par regarder si l'enregistrement n'existe pas déjà
+  #On commence par rajouter l'habilitation pour la fonction GESZDEP
+  WFONCTION = "GESZDEP"
+  Read[F:AFP]AFP0=[F:AFP2]PRFCOD;WFONCTION;""
+  If(fstat<>0)Then
+    #On va créer l'habilitation
+    Raz[F:AFP]
+    [F:AFP]PRFCOD = [F:AFP2]PRFCOD
+    [F:AFP]FNC    = WFONCTION
+    [F:AFP]ACS    = 2
+    [F:AFP]OPT    = ""
+    Write[F:AFP]
+    If(fstat=0)Then
+      WNBADD += 1
+    Endif
+  Endif
+  #On ajouter l'habilitation pour la fonction GESZCHA
+  WFONCTION = "GESZCHA"
+  Read[F:AFP]AFP0=[F:AFP2]PRFCOD;WFONCTION;""
+  If(fstat<>0)Then
+    #On va créer l'habilitation
+    Raz[F:AFP]
+    [F:AFP]PRFCOD = [F:AFP2]PRFCOD
+    [F:AFP]FNC    = WFONCTION
+    [F:AFP]ACS    = 2
+    [F:AFP]OPT    = "M"
+    Write[F:AFP]
+    If(fstat=0)Then
+      WNBADD += 1
+    Endif
+  Endif
+  #On ajouter l'habilitation pour la fonction GESZCMC
+  WFONCTION = "GESZCMC"
+  Read[F:AFP]AFP0=[F:AFP2]PRFCOD;WFONCTION;""
+  If(fstat<>0)Then
+    #On va créer l'habilitation
+    #Pour cette fonction, on va récupérer le type de regroupement et le regroupement de la fonction GESSOH
+    For[F:AFP3]AFP0 Where [F:AFP3]PRFCOD=[F:AFP2]PRFCOD and [F:AFP3]FNC="GESSOH"
+      Raz[F:AFP]
+      [F:AFP]PRFCOD    = [F:AFP2]PRFCOD
+      [F:AFP]FNC       = WFONCTION
+      [F:AFP]ACS       = 2
+      [F:AFP]OPT       = "CMS"
+      [F:AFP]FCYGRUCOD = [F:AFP3]FCYGRUCOD
+      [F:AFP]FCYGRU    = [F:AFP3]FCYGRU
+      Write[F:AFP]
+      If(fstat=0)Then
+        WNBADD += 1
+      Endif
+    Next
+  Endif
+  #On ajouter l'habilitation pour la fonction Z2ACTEPI2
+  WFONCTION = "Z2ACTEPI2"
+  Read[F:AFP]AFP0=[F:AFP2]PRFCOD;WFONCTION;""
+  If(fstat<>0)Then
+    #On va créer l'habilitation
+    Raz[F:AFP]
+    [F:AFP]PRFCOD = [F:AFP2]PRFCOD
+    [F:AFP]FNC    = WFONCTION
+    [F:AFP]ACS    = 2
+    [F:AFP]OPT    = "CMS"
+    Write[F:AFP]
+    If(fstat=0)Then
+      WNBADD += 1
+    Endif
+  Endif
+Next
+Call TEMPOFF From GESECRAN
+Infbox "Le traitement à ajouter : " + num$(WNBADD) + " enregistrement(s) dans la table des habilitations (AFCTPRF)"
+

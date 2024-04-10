@@ -1,0 +1,112 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### SPEZDEC
+##################################################### créé le 03/09/2019
+##################################################### modifié le 03/09/2019
+
+$ACTION
+#infbox ACTION
+Case ACTION
+  When "OUVRE" : Gosub OUVRE
+  When "DEBUT" : Gosub DEBUT
+Endcase
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           LABELS                                                  #
+#---------------------------------------------------------------------------------------------------#
+
+######################################################################### OUVRE
+$OUVRE
+#If clalev([F:ZSCOL])=0 : Local File ZSPECOL [ZSCOL] : Endif
+Return
+
+######################################################################### DEBUT
+$DEBUT
+Local Char WZACTNUM(30) : WZACTNUM = PARAM(1)
+If(WZACTNUM="")Then
+  #Il n'y a pas d'action, on sort tout de suite
+  FIN = 1
+Else
+  Effzo [M:ZDCE]
+  Raz [M:ZDCE]NBLIG1
+  Raz [M:ZDCE]NBLIG2
+  Raz [M:ZDCE]NBLIG3
+  Raz [M:ZDCE]NBLIG4
+  Local Char REQUETE(255)(5)
+  #On va mettre à jour les différents tableaux
+  #On commence par récupérer le stock généré par l'action
+  REQUETE(0)="DECLARE @NUMACTION varchar(30) = '" + WZACTNUM + "'; "
+  REQUETE(1)="select ZBPCORD_0,ZFCY_0,ZITMREF_0,ZTYPAL_0,SUM(ZQTY_0) as ZQTY_0 "
+  REQUETE(2)="from ZZSTOCK where ZSEQ_0 in "
+  REQUETE(3)="(select distinct ZSEQ_0 from ZZSTOCK where ZORIGIN_0=@NUMACTION union select distinct ZSEQ_0 from ZZSTOCKARCH where ZORIGIN_0=@NUMACTION) "
+  REQUETE(4)="group by ZBPCORD_0,ZFCY_0,ZITMREF_0,ZTYPAL_0"
+  For (Char ZBPCORD(30),Char ZFCY(10),Char ZITMREF(30),Integer ZTYPAL,Decimal ZQTY) From "5" Sql REQUETE As [XXX]
+    [M:ZDCE]Z1ZBPCORD([M:ZDCE]NBLIG1)  = [F:XXX]ZBPCORD
+    [M:ZDCE]Z1ZFCY([M:ZDCE]NBLIG1)     = [F:XXX]ZFCY
+    [M:ZDCE]Z1ZITMREF([M:ZDCE]NBLIG1)  = [F:XXX]ZITMREF
+    [M:ZDCE]Z1ZTYPPAL([M:ZDCE]NBLIG1)  = [F:XXX]ZTYPAL
+    [M:ZDCE]Z1ZQTY([M:ZDCE]NBLIG1)     = [F:XXX]ZQTY
+    [M:ZDCE]NBLIG1 += 1
+  Next
+  #On met à jour le tableau du stock archivé généré par l'action
+  REQUETE(0)="DECLARE @NUMACTION varchar(30) = '" + WZACTNUM + "'; "
+  REQUETE(1)="select ZBPCORD_0,ZFCY_0,ZITMREF_0,ZTYPAL_0,SUM(ZQTY_0) as ZQTY_0 "
+  REQUETE(2)="from ZZSTOCKARCH where ZSEQ_0 in "
+  REQUETE(3)="(select distinct ZSEQ_0 from ZZSTOCK where ZORIGIN_0=@NUMACTION union select distinct ZSEQ_0 from ZZSTOCKARCH where ZORIGIN_0=@NUMACTION) "
+  REQUETE(4)="group by ZBPCORD_0,ZFCY_0,ZITMREF_0,ZTYPAL_0"
+  For (Char ZBPCORD(30),Char ZFCY(10),Char ZITMREF(30),Integer ZTYPAL,Decimal ZQTY) From "5" Sql REQUETE As [XXX]
+    [M:ZDCE]Z2ZBPCORD([M:ZDCE]NBLIG2)  = [F:XXX]ZBPCORD
+    [M:ZDCE]Z2ZFCY([M:ZDCE]NBLIG2)     = [F:XXX]ZFCY
+    [M:ZDCE]Z2ZITMREF([M:ZDCE]NBLIG2)  = [F:XXX]ZITMREF
+    [M:ZDCE]Z2ZTYPPAL([M:ZDCE]NBLIG2)  = [F:XXX]ZTYPAL
+    [M:ZDCE]Z2ZQTY([M:ZDCE]NBLIG2)     = [F:XXX]ZQTY
+    [M:ZDCE]NBLIG2 += 1
+  Next
+  #On met à jour le tableau de l'historique des lignes
+  REQUETE(0)="DECLARE @NUMACTION varchar(30) = '" + WZACTNUM + "'; "
+  REQUETE(1)="select ZACTG_0,ZACTNUM_0,ZDATACT_0,ZFCY_0,ZITMREF_0,ZTYPAL_0,SUM(ZQTY_0) as ZQTY_0 "
+  REQUETE(2)="from ZZHISTOLIGNE where ZSEQ_0 in "
+  REQUETE(3)="(select distinct ZSEQ_0 from ZZSTOCK where ZORIGIN_0=@NUMACTION union select distinct ZSEQ_0 from ZZSTOCKARCH where ZORIGIN_0=@NUMACTION) "
+  REQUETE(4)="group by ZACTG_0,ZACTNUM_0,ZDATACT_0,ZFCY_0,ZITMREF_0,ZTYPAL_0"
+  For (Integer ZACTG,Char ZACTNUM(30),Date ZDATACT,Char ZFCY(10),Char ZITMREF(30),Integer ZTYPAL,Decimal ZQTY) From "5" Sql REQUETE As [XXX]
+    [M:ZDCE]Z3ZACTG([M:ZDCE]NBLIG3)    = [F:XXX]ZACTG
+    [M:ZDCE]Z3ZACTNUM([M:ZDCE]NBLIG3)  = [F:XXX]ZACTNUM
+    [M:ZDCE]Z3ZDATACT([M:ZDCE]NBLIG3)  = [F:XXX]ZDATACT
+    [M:ZDCE]Z3ZFCY([M:ZDCE]NBLIG3)     = [F:XXX]ZFCY
+    [M:ZDCE]Z3ZITMREF([M:ZDCE]NBLIG3)  = [F:XXX]ZITMREF
+    [M:ZDCE]Z3ZTYPPAL([M:ZDCE]NBLIG3)  = [F:XXX]ZTYPAL
+    [M:ZDCE]Z3ZQTY([M:ZDCE]NBLIG3)     = [F:XXX]ZQTY
+    [M:ZDCE]NBLIG3 += 1
+  Next
+  #On met à jour le tableau des pièces générées
+  REQUETE(0)="DECLARE @NUMACTION varchar(30) = '" + WZACTNUM + "'; "
+  REQUETE(1)="select distinct ZACTG_0,ZTYPPIECE_0,ZNUMPIECE_0 "
+  REQUETE(2)="from ZZHISTOFAC where ZSEQ_0 in "
+  REQUETE(3)="(select distinct ZSEQ_0 from ZZSTOCK where ZORIGIN_0=@NUMACTION union select distinct ZSEQ_0 from ZZSTOCKARCH where ZORIGIN_0=@NUMACTION)"
+  REQUETE(4)=""
+  For (Integer ZACTG,Integer ZTYPPIECE,Char ZNUMPIECE(30)) From "5" Sql REQUETE As [XXX]
+    [M:ZDCE]Z4ZACTG([M:ZDCE]NBLIG4)     = [F:XXX]ZACTG
+    [M:ZDCE]Z4ZTYPPIECE([M:ZDCE]NBLIG4) = [F:XXX]ZTYPPIECE
+    [M:ZDCE]Z4ZNUMPIECE([M:ZDCE]NBLIG4) = [F:XXX]ZNUMPIECE
+    If([F:XXX]ZTYPPIECE=4)Then
+      #On est sur une livraison
+      [M:ZDCE]Z4ZOBJ([M:ZDCE]NBLIG4) = "SDH"
+    Else
+      #On est sur une réception
+      [M:ZDCE]Z4ZOBJ([M:ZDCE]NBLIG4) = "PTH"
+    Endif
+    [M:ZDCE]NBLIG4 += 1
+  Next
+  Affzo [M:ZDCE]
+Endif
+Return
+
+######################################################################################
+## Etiquette ajoutée par le superviseur (écran ZDETCOLL) 04/09/2019 12:12:15 (JBS)
+######################################################################################
+Subprog IB_Z4ZNUMPIECE
+End
+
+
+######################################################################################
+

@@ -1,0 +1,45 @@
+#<AdxTL>@(#)3.0.0.0 $Revision$
+##################################################### ZSELCLTLIV
+##################################################### créé le 04/04/15
+##################################################### modifié le 04/04/15
+
+###################################################################################### ACTION
+$ACTION
+#Infbox ACTION
+Case ACTION
+ When "SEL_TABLE" : Gosub SEL_TABLE
+ When Default
+Endcase
+Return
+
+###################################################################################### SEL_TABLE
+$SEL_TABLE
+#PARAM(1) est le code du client
+#Infbox "Paramètre n°1 : " + PARAM(1)
+  #Ouverture du fichier
+  If clalev([F:ZDCE])=0 : Local File ZDEPCHARGEPI [ZDCE] : Endif
+  #On va récupérer les dépots du code clients
+  #passés en paramètre
+  Local Char WCODCLT : WCODCLT = PARAM(1)
+  Default File [ZDCE]
+  #On défini le nombre de colonne de la fenêtre de sélection
+  NBCOL = 3
+  #On défini le nom de chaque colonne
+  TIT(1) = "Tiers"
+  TIT(2) = "Raison sociale"
+  TIT(3) = "Intitulé court"
+  #On défini les champs à afficher
+  COL(1) = "CODDEPCHARG"
+  COL(2) = "BPCNAM"
+  COL(3) = "BPCSHO"
+  #On indique le titre de la sélection
+  TIT(0) = "Sélection du client du chargeur " + PARAM(1)
+  #On indique au système de gérer les pages
+  DEFPAG = 1
+  #Critère de sélection
+  CRITERE = "[F:ZDCE]CODCHARG='" + WCODCLT + "'"
+  #Trier
+  ORDRE = "CODDEPCHARG"
+  #Ordre Croissant
+  SENS = 1
+Return

@@ -1,0 +1,519 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+# Superviseur
+# Gestion du masque ZTMC0
+
+$_AFF
+If GIMPORT
+ Gosub AFF From GSAISIE
+Else
+ If GMESSAGE <>""
+  Gosub ERR From GSAISIE
+ Else
+  Raz GERR , GZNUM
+ Endif
+Endif
+Return
+
+$HORODAT
+Local Date    A_DATE
+Local Char    A_HEURE(10) , A_USER(10)
+Local Char    A_STAMP(15)
+A_DATE  = [02/12/2019]
+A_HEURE = "14:19:49"
+A_USER  = "JBS"
+A_STAMP = "20191202141949"
+Return
+
+$TITRES
+Return
+
+$CHG_FMT
+Case zoncou
+ When "NBLIG"
+  If [M]NBLIG=0
+  Endif
+ When "NBLIGE"
+  If [M]NBLIGE=0
+  Endif
+Endcase
+Return
+
+$VISU
+Local Integer A_REPONSE
+Global Integer GPRE_VIEW
+If dim(A_WINDPREV)<=0 : Local Char A_WINDPREV(30) : Endif
+Local Mask ZTMC0 [ZTMC0]
+Gosub HORODAT
+Local Inpbox "ZTMC0" From GFONCTION At A_STAMP With A_WINDPREV Mask [ZTMC0] As [SIM_]
+Grizo [ZTMC0]5
+Grizo [ZTMC0]10
+Grizo [ZTMC0]15
+Boxact [SIM_]
+Gosub TITRES
+Boxinp [SIM_] Using A_REPONSE
+Close Local Inpbox [SIM_]
+Close Local Mask [ZTMC0]
+Kill GPRE_VIEW
+Return
+
+$HARDCOP
+Local Integer X1(0..14),X2(0..14),Y1(0..14),Y2(0..14)
+X1(0)=1 : X2(0)=103 : Y1(0)=1 : Y2(0)=3
+X1(1)=1 : X2(1)=103 : Y1(1)=4 : Y2(1)=14
+X1(2)=1 : X2(2)=103 : Y1(2)=15 : Y2(2)=25
+Return
+
+$ON_USR
+Onevent BEFORE_INPUT Call AS_USR(zc) From W1ZTMC0
+Onevent CONTROL Call C_USR(zc) From W1ZTMC0
+Onevent AFTER_CHANGE Gosub AMM_USR From W1ZTMC0
+Onevent INIT_AREA Call D_USR(zc) From W1ZTMC0
+Return
+
+Subprog D_USR(VALEUR)
+Variable Char    VALEUR()
+If varinit([M]USR,indice)=0
+ VALEUR = GUSER
+Endif
+Gosub _AFF
+End
+
+Subprog AS_USR(VALEUR)
+Variable Char    VALEUR()
+Local Integer INDIC : INDIC = indice
+Raz mkstat
+Call TEXTE(485,GBOUT1) From OBJDIV
+Call TEXTE(6028,GBOUTS) From OBJDIV
+Call TEXTE(12276,GBOUTP) From OBJDIV
+Call TEXTE(16134,GBOUTA) From OBJDIV
+## Action SPE
+Call AS_USR(VALEUR) From SPEZTMC
+If mkstat=2
+ [M]USR(INDIC) = VALEUR
+ Affzo USR(INDIC) : mkstat = 2
+Endif
+Onkey 129 Titled GBOUT1 Call B1_USR(zc) From W1ZTMC0
+Onkey   2 Titled GBOUTS Call S_USR(zc) From W1ZTMC0
+Onkey 144 Titled GBOUTP Call P_USR(zc) From W1ZTMC0
+Onkey 146 Titled GBOUTA Call SA_USR(zc) From W1ZTMC0
+Gosub _AFF
+End
+
+Subprog C_USR(VALEUR)
+Variable Char    VALEUR()
+## Action %OBLIG
+If vireblc(VALEUR,2)=""
+ mkstat = 1 : GMESSAGE = mess(10,123,1)
+Endif
+If mkstat : GERR = 1 : GZONE = "USR" : GZNUM = 1259 : Endif
+If !mkstat
+ ## Action %CNTOBJ
+ Call CONTSEL("AUS","",VALEUR,"",mkstat) From CONTOBJ
+ If mkstat : GERR = 1 : GZONE = "USR" : GZNUM = 1259 : Endif
+Endif
+Gosub _AFF
+End
+
+$AMM_USR
+Call AM_USR(zc)
+If !mkstat & GOBJET
+ zoncou = "USR" : Gosub APRES_MODIF From =GPROGRAMME
+Endif
+Return
+
+Subprog AM_USR(VALEUR)
+Variable Char    VALEUR()
+If !mkstat & evalue("dim("+clanam([M])+"ZUSR)")>indice
+ [M]USR(indice) = VALEUR
+ Affzo ZUSR(indice)
+Endif
+Gosub _AFF
+End
+
+Subprog S_USR(VALEUR)
+Variable Char    VALEUR()
+Local Char PARMSK(250)(1..16)
+PARMSK(1) = "AUS"
+PARMSK(2) = ""
+Call S_TAB_CHAR(VALEUR,PARMSK,"SELOBJ","SELOBJ","") From GACTION
+Gosub _AFF
+End
+
+Subprog B1_USR(VALEUR)
+Variable Char    VALEUR()
+Call OBJET("AUS",VALEUR,"") From GOBJET
+Gosub _AFF
+End
+
+Subprog SA_USR(VALEUR)
+Variable Char    VALEUR()
+Local Char PARMSK(250)(1..16) , SAVACT(20)
+SAVACT = GACTION : GACTION = "SELOBJAW"
+PARMSK(1) = "AUS"
+Call SAISIE_CHAR(VALEUR,PARMSK,"DSELOBJAW","SELOBJAW","XWDSELOBJAW") From GSAISIE
+GACTION = SAVACT
+Gosub _AFF
+End
+
+Subprog P_USR(VALEUR)
+Variable Char    VALEUR()
+Local Char PAROBJ(250)
+PAROBJ = ""
+Call VISU("AUS",VALEUR,PAROBJ) From SUBAOP
+Gosub _AFF
+End
+
+$ON_ZUSR
+Onevent BEFORE_AREA Gosub AV_ZUSR From W1ZTMC0
+Return
+
+$AV_ZUSR
+Call LECTEXTRA(zc,"AUTILIS","INTUSR",num$([M]USR(indice)),"") From ATEXTRA
+Gosub _AFF
+Return
+
+$ON_ZCMCNUM
+Return
+
+$ON_ZCODCHARG
+Return
+
+$ON_TRIAFAIRE
+Onevent INIT_AREA Call D_TRIAFAIRE(zc) From W1ZTMC0
+Return
+
+Subprog D_TRIAFAIRE(VALEUR)
+Variable Integer VALEUR
+If varinit([M]TRIAFAIRE,indice)=0
+ VALEUR = 1
+Endif
+Gosub _AFF
+End
+
+$ON_DATETRI
+Onevent BEFORE_INPUT Call AS_DATETRI(zc) From W1ZTMC0
+Onevent CONTROL Call C_DATETRI(zc) From W1ZTMC0
+Onevent BEFORE_AREA Gosub AV_DATETRI From W1ZTMC0
+Return
+
+$AV_DATETRI
+Chgfmt [M]DATETRI(indice) With "D:"+GFMDAT
+Gosub _AFF
+Return
+
+Subprog AS_DATETRI(VALEUR)
+Variable Date    VALEUR
+Local Integer INDIC : INDIC = indice
+Raz mkstat
+## Action SPE
+Call AS_DATETRI(VALEUR) From SPEZTMC
+If mkstat=2
+ [M]DATETRI(INDIC) = VALEUR
+ Affzo DATETRI(INDIC) : mkstat = 2
+Endif
+Gosub _AFF
+End
+
+Subprog C_DATETRI(VALEUR)
+Variable Date    VALEUR
+## Action %OBLIG
+If VALEUR=[0/0/0]
+ mkstat = 1 : GMESSAGE = mess(10,123,1)
+Endif
+If mkstat : GERR = 1 : GZONE = "DATETRI" : GZNUM = 102923 : Endif
+Gosub _AFF
+End
+
+$ON_ITMREFTRI
+Onevent AFTER_CHANGE Gosub AMM_ITMREFTRI From W1ZTMC0
+Return
+
+$AMM_ITMREFTRI
+Call AM_ITMREFTRI(zc)
+If !mkstat & GOBJET
+ zoncou = "ITMREFTRI" : Gosub APRES_MODIF From =GPROGRAMME
+Endif
+Return
+
+Subprog AM_ITMREFTRI(VALEUR)
+Variable Char    VALEUR()
+## Action SPE
+Call AM_ITMREFTRI(VALEUR) From SPEZTMC
+If mkstat : GERR = 1 : GZONE = "ITMREFTRI" : GZNUM = 105233 : Endif
+Gosub _AFF
+End
+
+$ON_BTSEARCH
+Onevent INIT_AREA Call D_BTSEARCH(zc) From W1ZTMC0
+Return
+
+Subprog D_BTSEARCH(VALEUR)
+Variable Char    VALEUR()
+If varinit([M]BTSEARCH,indice)=0
+ VALEUR = 21
+Endif
+Gosub _AFF
+End
+
+$ON_YZCMCNUM
+Return
+
+$ON_ITMREF
+Return
+
+$ON_QTYOK
+Onevent BEFORE_AREA Gosub AV_QTYOK From W1ZTMC0
+Return
+
+$AV_QTYOK
+If !GWEBSERV
+ ## Action FMTQTY
+ GUNTFMT="15F" : GUNTFMT = GUNTFMT1(max(find("",GUNITE(1..GNBUNT)),1))
+Endif
+Gosub _AFF
+Return
+
+$ON_QTYKC
+Onevent BEFORE_AREA Gosub AV_QTYKC From W1ZTMC0
+Return
+
+$AV_QTYKC
+If !GWEBSERV
+ ## Action FMTQTY
+ GUNTFMT="15F" : GUNTFMT = GUNTFMT1(max(find("",GUNITE(1..GNBUNT)),1))
+Endif
+Gosub _AFF
+Return
+
+$ON_QTYHS
+Onevent BEFORE_AREA Gosub AV_QTYHS From W1ZTMC0
+Return
+
+$AV_QTYHS
+If !GWEBSERV
+ ## Action FMTQTY
+ GUNTFMT="15F" : GUNTFMT = GUNTFMT1(max(find("",GUNITE(1..GNBUNT)),1))
+Endif
+Gosub _AFF
+Return
+
+$ON_QTY
+Onevent BEFORE_AREA Gosub AV_QTY From W1ZTMC0
+Return
+
+$AV_QTY
+If !GWEBSERV
+ ## Action FMTQTY
+ GUNTFMT="15F" : GUNTFMT = GUNTFMT1(max(find("",GUNITE(1..GNBUNT)),1))
+Endif
+Gosub _AFF
+Return
+
+$ON_EZCMCNUM
+Return
+
+$ON_EITMREF
+Return
+
+$ON_ZEITMREF
+Onevent BEFORE_AREA Gosub AV_ZEITMREF From W1ZTMC0
+Return
+
+$AV_ZEITMREF
+Call LECTEXTRA(zc,"ITMMASTER","DES1AXX",num$([M]EITMREF(indice)),"") From ATEXTRA
+Gosub _AFF
+Return
+
+$ON_EQTYOK
+Onevent BEFORE_AREA Gosub AV_EQTYOK From W1ZTMC0
+Onevent BEFORE_INPUT Call AS_EQTYOK(zc) From W1ZTMC0
+Onevent CONTROL Call C_EQTYOK(zc) From W1ZTMC0
+Onevent AFTER_CHANGE Gosub AMM_EQTYOK From W1ZTMC0
+Return
+
+$AV_EQTYOK
+If !GWEBSERV
+ ## Action FMTQTY
+ GUNTFMT="15F" : GUNTFMT = GUNTFMT1(max(find("",GUNITE(1..GNBUNT)),1))
+Endif
+Chgfmt [M]EQTYOK(indice) With "Nz:"+GUNTFMT
+Gosub _AFF
+Return
+
+Subprog AS_EQTYOK(VALEUR)
+Variable Decimal VALEUR
+Local Integer INDIC : INDIC = indice
+Raz mkstat
+## Action SPE
+Call AS_EQTYOK(VALEUR) From SPEZTMC
+If mkstat=2
+ [M]EQTYOK(INDIC) = VALEUR
+ Affzo EQTYOK(INDIC) : mkstat = 2
+Endif
+Gosub _AFF
+End
+
+Subprog C_EQTYOK(VALEUR)
+Variable Decimal VALEUR
+## Action SPE
+Call C_EQTYOK(VALEUR) From SPEZTMC
+If mkstat : GERR = 1 : GZONE = "EQTYOK" : GZNUM = 104874 : Endif
+Gosub _AFF
+End
+
+$AMM_EQTYOK
+Call AM_EQTYOK(zc)
+If !mkstat & GOBJET
+ zoncou = "EQTYOK" : Gosub APRES_MODIF From =GPROGRAMME
+Endif
+Return
+
+Subprog AM_EQTYOK(VALEUR)
+Variable Decimal VALEUR
+## Action SPE
+Call AM_EQTYOK(VALEUR) From SPEZTMC
+If mkstat : GERR = 1 : GZONE = "EQTYOK" : GZNUM = 104874 : Endif
+Gosub _AFF
+End
+
+$ON_EQTYKC
+Onevent BEFORE_AREA Gosub AV_EQTYKC From W1ZTMC0
+Onevent BEFORE_INPUT Call AS_EQTYKC(zc) From W1ZTMC0
+Onevent CONTROL Call C_EQTYKC(zc) From W1ZTMC0
+Onevent AFTER_CHANGE Gosub AMM_EQTYKC From W1ZTMC0
+Return
+
+$AV_EQTYKC
+If !GWEBSERV
+ ## Action FMTQTY
+ GUNTFMT="15F" : GUNTFMT = GUNTFMT1(max(find("",GUNITE(1..GNBUNT)),1))
+Endif
+Chgfmt [M]EQTYKC(indice) With "Nz:"+GUNTFMT
+Gosub _AFF
+Return
+
+Subprog AS_EQTYKC(VALEUR)
+Variable Decimal VALEUR
+Local Integer INDIC : INDIC = indice
+Raz mkstat
+## Action SPE
+Call AS_EQTYKC(VALEUR) From SPEZTMC
+If mkstat=2
+ [M]EQTYKC(INDIC) = VALEUR
+ Affzo EQTYKC(INDIC) : mkstat = 2
+Endif
+Gosub _AFF
+End
+
+Subprog C_EQTYKC(VALEUR)
+Variable Decimal VALEUR
+## Action SPE
+Call C_EQTYKC(VALEUR) From SPEZTMC
+If mkstat : GERR = 1 : GZONE = "EQTYKC" : GZNUM = 103034 : Endif
+Gosub _AFF
+End
+
+$AMM_EQTYKC
+Call AM_EQTYKC(zc)
+If !mkstat & GOBJET
+ zoncou = "EQTYKC" : Gosub APRES_MODIF From =GPROGRAMME
+Endif
+Return
+
+Subprog AM_EQTYKC(VALEUR)
+Variable Decimal VALEUR
+## Action SPE
+Call AM_EQTYKC(VALEUR) From SPEZTMC
+If mkstat : GERR = 1 : GZONE = "EQTYKC" : GZNUM = 103034 : Endif
+Gosub _AFF
+End
+
+$ON_EQTYHS
+Onevent BEFORE_AREA Gosub AV_EQTYHS From W1ZTMC0
+Onevent BEFORE_INPUT Call AS_EQTYHS(zc) From W1ZTMC0
+Onevent CONTROL Call C_EQTYHS(zc) From W1ZTMC0
+Onevent AFTER_CHANGE Gosub AMM_EQTYHS From W1ZTMC0
+Return
+
+$AV_EQTYHS
+If !GWEBSERV
+ ## Action FMTQTY
+ GUNTFMT="15F" : GUNTFMT = GUNTFMT1(max(find("",GUNITE(1..GNBUNT)),1))
+Endif
+Chgfmt [M]EQTYHS(indice) With "Nz:"+GUNTFMT
+Gosub _AFF
+Return
+
+Subprog AS_EQTYHS(VALEUR)
+Variable Decimal VALEUR
+Local Integer INDIC : INDIC = indice
+Raz mkstat
+## Action SPE
+Call AS_EQTYHS(VALEUR) From SPEZTMC
+If mkstat=2
+ [M]EQTYHS(INDIC) = VALEUR
+ Affzo EQTYHS(INDIC) : mkstat = 2
+Endif
+Gosub _AFF
+End
+
+Subprog C_EQTYHS(VALEUR)
+Variable Decimal VALEUR
+## Action SPE
+Call C_EQTYHS(VALEUR) From SPEZTMC
+If mkstat : GERR = 1 : GZONE = "EQTYHS" : GZNUM = 101712 : Endif
+Gosub _AFF
+End
+
+$AMM_EQTYHS
+Call AM_EQTYHS(zc)
+If !mkstat & GOBJET
+ zoncou = "EQTYHS" : Gosub APRES_MODIF From =GPROGRAMME
+Endif
+Return
+
+Subprog AM_EQTYHS(VALEUR)
+Variable Decimal VALEUR
+## Action SPE
+Call AM_EQTYHS(VALEUR) From SPEZTMC
+If mkstat : GERR = 1 : GZONE = "EQTYHS" : GZNUM = 101712 : Endif
+Gosub _AFF
+End
+
+$ON_EQTY
+Onevent BEFORE_AREA Gosub AV_EQTY From W1ZTMC0
+Return
+
+$AV_EQTY
+If !GWEBSERV
+ ## Action FMTQTY
+ GUNTFMT="15F" : GUNTFMT = GUNTFMT1(max(find("",GUNITE(1..GNBUNT)),1))
+Endif
+Chgfmt [M]EQTY(indice) With "NPz:"+GUNTFMT
+Gosub _AFF
+Return
+
+$CHG_STY
+For nolign=1 To [M:ZTMC0]NBLIGE
+ If EQTYOK(nolign-1)>0
+  Chgstl [M:ZTMC0]EQTYOK(nolign-1) With "ZOKDIS"
+ Else
+  Chgstl [M:ZTMC0]EQTYOK(nolign-1) With ""
+ Endif
+ If EQTYKC(nolign-1)>0
+  Chgstl [M:ZTMC0]EQTYKC(nolign-1) With "ZKCDIS"
+ Else
+  Chgstl [M:ZTMC0]EQTYKC(nolign-1) With ""
+ Endif
+ If EQTYHS(nolign-1)>0
+  Chgstl [M:ZTMC0]EQTYHS(nolign-1) With "ZHSDIS"
+ Else
+  Chgstl [M:ZTMC0]EQTYHS(nolign-1) With ""
+ Endif
+ If QTY(nolign-1)>0
+  Chgstl [M:ZTMC0]EQTY(nolign-1) With "ZTOTPAL"
+ Else
+  Chgstl [M:ZTMC0]EQTY(nolign-1) With ""
+ Endif
+Next nolign
+Return

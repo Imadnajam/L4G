@@ -1,0 +1,320 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+#################################################### ZIMPICR
+#################################################### 04/09/2018
+
+#################################################### DEBUT
+
+$DEBUT
+Local Char WREP(250), WREPORI(250), WFICTST(250), WMESS(250), WLISFIC(250)(0..199)
+Local Char WFICORI(250), WFICFIN(250)
+Local Clbfile ZLIGFIC(7)
+Local Char WNUMANA(30)
+Local Char WITMREF(GLONITM), WEMPDEP(GLONLOC), WEMPFIN(GLONLOC), WLOT(GLONLOT), WHORODAT(20)
+Local Char WSTATUT(3), WFCY(GLONFCY), WUOM(GLONUOM), WDATE(10), WLOCTYP(GLONTLO)
+Local Integer WERR, WERR2, WNUMFIC, WENT, WLIGNE, WERRL
+
+#Déclaration d'un tableau de 20 chaines de 80 caractères où l'on stockera les mots clés à retrouver
+Global Char WMOTCLE(80)(20)
+#Déclaration d'un tableau de 20 chaines de 80 caractères où l'on stockera les valeurs des clés à retrouver
+Global Char WVALCLE(80)(20)
+Global Integer WFINLIGNE
+Global Char WCLE(30), WSAU(5), WNOMFIC(250)
+
+WMOTCLE(0)  = "_BON_X3"
+WMOTCLE(1)  = "_DATE_RECEPTION_YYYYMMDD"
+WMOTCLE(2)  = "_DATE_DE_TRI_YYYYMMDD"
+WMOTCLE(3)  = "_TYPE_LIGNE"
+WMOTCLE(4)  = "_CODE_ARTICLE"
+WMOTCLE(5)  = "_DESIGNATION"
+WMOTCLE(6)  = "_TOTAL_LIGNE"
+WMOTCLE(7)  = "_OK"
+WMOTCLE(8)  = "_KC"
+WMOTCLE(9)  = "_HS"
+WCLE = func ZWSEPALIS.SPE_GET_COMPTEUR()
+WSAU = "UN"
+WNOMFIC = ""
+
+If clalev([F:ZIR])=0 : Local File ZIARESULT : Endif
+If clalev([F:ZII])=0 : Local File ZIMPICR : Endif
+If clalev([F:SOH])=0 : Local File SORDER : Endif
+
+# Contrôle extension fichiers ICR
+If GZEXTICR=""
+    WMESS = "Extension ICR non renseignée."
+    Gosub ENVOI_ERREUR
+    Return
+Endif
+
+WREP=[F:ZIA]ZIAREPERT
+If right$(WREP,len(WREP))<>"\"
+    WREP += "\"
+Endif
+WERR=0
+WFICTST = WREP+"TEST_"+GUSER+"_"+format$("D:YYYYMMDDhhmmss",date$)+".TEST"
+Onerrgo PBCREATFIC
+Openo WFICTST,0 Using [ZTST]
+Openo Using [ZTST]
+If WERR>0
+    Case WERR
+     When 20
+        WMESS = "Répertoire ICR inexistant. Arrêt du traitement."
+     When 27
+        WMESS = "Accès impossible (permission refusée) au répertoire ICR. Arrêt du traitement."
+     When 44
+        WMESS = "Problème de place disque sur le répertoire ICR. Arrêt du traitement."
+     When Default
+        WMESS = "Problème système rencontré lors de la vérification d'accès au répertoire ICR ("+errmes$(WERR)+"). Arrêt du traitement."
+    Endcase
+    Gosub ENVOI_ERREUR
+    Return
+Endif
+Onerrgo
+WERR=0
+Onerrgo PBCREATFIC
+Call EFFACE(WFICTST,WERR) From ORDSYS
+Onerrgo
+If WERR>0
+  Call SPE_SET_MES_LOG("Erreur - ZIMPICR [1] - Ligne "+num$(WERRL) + " / " + errmes$(WERR))
+  Gosub ENVOI_ERREUR
+  Return
+Endif
+
+# Controle existence sous-répertoire ORIGINE Logiflex
+WREPORI=[F:ZIA]ZIAREPERT
+If right$(WREPORI,len(WREPORI))<>"\"
+    WREPORI += "\"
+Endif
+WREPORI += "ORIGINE\"
+WERR=0
+WFICTST = WREPORI+"TEST_"+GUSER+"_"+format$("D:YYYYMMDDhhmmss",date$)+".TEST"
+Onerrgo PBCREATFIC
+Openo WFICTST,0 Using [ZTST]
+Openo Using [ZTST]
+If WERR>0
+    Case WERR
+     When 20
+        WMESS = "Répertoire Origine ICR inexistant. Arrêt du traitement."
+     When 27
+        WMESS = "Accès impossible (permission refusée) au répertoire Origine ICR. Arrêt du traitement."
+     When 44
+        WMESS = "Problème de place disque sur le répertoire Origine ICR. Arrêt du traitement."
+     When Default
+        WMESS = "Problème système rencontré lors de la vérification d'accès au répertoire Origine ICR ("+errmes$(WERR)+"). Arrêt du traitement."
+    Endcase
+    Gosub ENVOI_ERREUR
+    Return
+Endif
+Onerrgo
+WERR=0
+Onerrgo PBCREATFIC
+Call EFFACE(WFICTST,WERR) From ORDSYS
+Onerrgo
+If WERR>0
+  Call SPE_SET_MES_LOG("Erreur - ZIMPICR [2] - Ligne "+num$(WERRL) + " / " + errmes$(WERR))
+  Gosub ENVOI_ERREUR
+  Return
+Endif
+
+# Création du fichier batch pour lire les fichiers présents
+Raz WLISFIC, WNUMFIC, WFICORI, WFICFIN, WERR
+Onerrgo PBCREATFIC
+Openo WREP+"Liste_Tempo.bat",0 Using [XXX]
+Wrseq 'DIR /B "'+WREP+'*.'+GZEXTICR+'"' Using [XXX]
+Openo Using [XXX]
+Sleep 2
+System WLISFIC=WREP+"Liste_Tempo.bat"
+Onerrgo
+If WERRL>0
+  Call SPE_SET_MES_LOG("Erreur - ZIMPICR [3] - Ligne "+num$(WERRL) + " / " + errmes$(WERR))
+  Gosub ENVOI_ERREUR
+  Return
+Endif
+Local Integer WNBFICTRAIT : WNBFICTRAIT=0
+Raz WERRL
+Onerrgo PBCREATFIC
+Call SPE_SET_MES_LOG("---------------------------------------------------")
+Call SPE_SET_MES_LOG("----- Début du traitement d'import automatisé -----")
+Gosub BOUCLE_FICHIER
+Onerrgo
+If WERRL>0
+  Call SPE_SET_MES_LOG("Erreur - ZIMPICR [4] - Ligne "+num$(WERRL) + " / " + errmes$(WERR))
+Else
+  Call SPE_SET_MES_LOG("------ Fin du traitement d'import automatisé ------")
+  Call SPE_SET_MES_LOG("---------------------------------------------------")
+Endif
+
+Call EFFACE(WREP+"Liste_Tempo.bat",WERR2) From ORDSYS
+Return
+
+######################################################## BOUCLE_FICHIER
+
+$BOUCLE_FICHIER
+Local Integer WCREATEFIC,WENTETE
+WCREATEFIC = 0
+# Boucle des fichiers à traiter
+For WNUMFIC=0 To 199
+  WFICORI = toupper(WLISFIC(WNUMFIC))
+  If vireblc(WFICORI,4)<>""
+    If toupper(right$(WFICORI,len(WFICORI)-(len(GZEXTICR)-1)))=toupper(GZEXTICR)
+      Raz WERR, WNOMFIC, WSOHNUM, WZDATTRI, WZDATREC, WITMREF, WITMDES, WZQTEOK, WZQTEKC, WZQTEHS, WZQTETOTLIG, WZTYPART, WSAU
+      Raz WVALCLE
+      WFINLIGNE=0
+      WCREATEFIC = 0
+      WNOMFIC = WFICORI
+      Call SPE_SET_MES_LOG("---------------------------------------------------")
+      Call SPE_SET_MES_LOG("Traitement du fichier : " + WNOMFIC)
+      adxifs="|"
+      adxirs=chr$(13)+chr$(10)
+      Openi WREP+WFICORI Using [ZENT]
+      Rdseq ZLIGFIC Using [ZENT]
+      While fstat=0
+        Call SPE_SET_MOT_CLE(ZLIGFIC)
+        #Si WVALCLE(6) est diférent de "", alors on a tous les eléments pour écrire dans la table
+        If(WFINLIGNE=1)Then
+          WFINLIGNE=0
+          If(val(WVALCLE(6))>0)Then
+            #On va maintenant ajouter un enregistrement dans la table ZIMPICR(ZII)
+              Raz [F:ZII]
+              [F:ZII]NOMFIC     = WNOMFIC
+              [F:ZII]ZCLE       = WCLE
+              [F:ZII]SOHNUM     = WVALCLE(0)
+              [F:ZII]ZDATTRI    = WVALCLE(2)
+              [F:ZII]ZDATREC    = WVALCLE(1)
+              [F:ZII]ITMREF     = WVALCLE(4)
+              [F:ZII]ITMDES     = WVALCLE(5)
+              [F:ZII]ZQTEOK     = val(WVALCLE(7))
+              [F:ZII]ZQTEKC     = val(WVALCLE(8))
+              [F:ZII]ZQTEHS     = val(WVALCLE(9))
+              [F:ZII]ZQTETOTLIG = val(WVALCLE(6))
+              [F:ZII]ZTYPART    = val(WVALCLE(3))
+              [F:ZII]SAU        = WSAU
+              Write [F:ZII]
+              If(fstat<>0)Then
+                Call SPE_SET_MES_LOG("### Erreur ### - Pb lors de l'enregistrement de l'article : Code erreur -> " + num$(fstat))
+              Else
+                WCREATEFIC = 1
+              Endif
+            Call SPE_SET_MES_LOG("---deb---")
+            For I=0 To 19
+              If(WMOTCLE(I)<>"")Then
+                Call SPE_SET_MES_LOG(WMOTCLE(I) + "=" + WVALCLE(I))
+              Endif
+            Next
+            Call SPE_SET_MES_LOG("---fin---")
+          Endif
+          #Ensuite on va vider le tableau à partir de la cellule 3 pour conserver le n° de collecte, la date de tri et de réception et le type de ligne
+          For I=4 To 19
+            WVALCLE(I) = ""
+          Next
+        Endif
+        Rdseq ZLIGFIC Using [ZENT]
+      Wend
+      Openi Using [ZENT]
+      #On va donc maintenant créer un fichier qui sera importé dans Sage X3
+      #On va tout d'abord regarder si la collecte n'est pas verrouillée
+      Call SPE_SET_MES_LOG("### Vérouillage du symbole " + "SOH"+WVALCLE(0) + "###")
+      SYMBOLE2 = "SOH"+WVALCLE(0)
+      Lock =SYMBOLE2
+      If fstat
+         # modification en cours sur un autre poste
+         WCREATEFIC = 0
+         Call SPE_SET_MES_LOG("### Impossible de vérouiller le symbole " + "SOH"+WVALCLE(0) + "###")
+      Endif
+
+      If(WCREATEFIC = 1)Then
+        WENTETE = 0
+        For [F:ZII]ZII0 Where [F:ZII]NOMFIC=WNOMFIC and [F:ZII]SOHNUM=WVALCLE(0) and [F:ZII]ZCLE=WCLE
+          If(WENTETE=0)Then
+            #On n'a pas encore créé l'entête, on va donc le faire
+            WENTETE=1
+            adxifs=";"
+            adxirs=chr$(13)+chr$(10)
+            Call SPE_SET_MES_LOG("### Création du fichier " + WCLE+"_"+WVALCLE(0)+".tmp" + "###")
+            Openo WREP+WCLE+"_"+WVALCLE(0)+".tmp" Using [ZFC]
+            Wrseq "E",[F:ZII]SOHNUM,[F:ZII]ZDATREC,[F:ZII]ZDATTRI,2,2 Using [ZFC]
+          Endif
+          Wrseq "L",[F:ZII]ZTYPART,[F:ZII]ITMREF,[F:ZII]ITMDES,[F:ZII]SAU,[F:ZII]ZQTETOTLIG,[F:ZII]ZQTEOK,[F:ZII]ZQTEKC,[F:ZII]ZQTEHS Using [ZFC]
+        Next
+        Openo Using [ZFC]
+        #On va maintenant renommer le fichier dans la bonne extension pour qu'il soit traité par le moteur d'import
+        Call MOVE(WREP+WCLE+"_"+WVALCLE(0)+".tmp",WREP+WCLE+"_"+WVALCLE(0)+"."+toupper([F:ZIA]ZIAEXTENS),WERR2) From ORDSYS
+        Call SPE_SET_MES_LOG("### Renommage du fichier en " + WCLE+"_"+WVALCLE(0)+"."+toupper([F:ZIA]ZIAEXTENS) + "###")
+        # Déplacement du fichier xml ICR dans le répertoire d'origine
+        Call SPE_SET_MES_LOG("Déplacement du fichier " + WMCLE14 + " dans le répertoire ORIGINE")
+        Call MOVE(WREP+WFICORI,WREP+"ORIGINE\",WERR2) From ORDSYS
+        # Unlock entête de la collecte
+        SYMBOLE2 = "SOH"+WVALCLE(0)
+        Unlock = SYMBOLE2
+        Call SPE_SET_MES_LOG("### Dévérouillage du symbole " + "SOH"+WVALCLE(0) + "###")
+      Endif
+      Call SPE_SET_MES_LOG("Fin du traitement du fichier : " + WMCLE14)
+      Call SPE_SET_MES_LOG("---------------------------------------------------")
+    Endif
+  Endif
+Next
+Return
+
+######################################################## PBCREATFIC
+
+$PBCREATFIC
+WERR=errn
+WERRLIG=errl
+Resume
+
+######################################################## ENVOI_ERREUR
+
+$ENVOI_ERREUR
+Trbegin [F:ZIR]
+Raz [F:ZIR]
+[F:ZIR]ZIRDAT = date$
+[F:ZIR]ZIRHOU = format$("D:hhmmss",date$)
+[F:ZIR]ZIRFLG = 1
+[F:ZIR]ZIRFIC = WFICORI
+[F:ZIR]ZIRMODELE = [F:ZIA]ZIAMODELE
+[F:ZIR]ZIRMESS = WMESS
+Write [F:ZIR]
+If fstat=0
+  Commit
+Else
+  Rollback
+Endif
+Return
+
+######################################################## SPE_SET_MES_LOG
+
+Subprog SPE_SET_MES_LOG(WMESSAGE)
+  Value Char WMESSAGE
+  Openo filpath("TRA","Import_Auto_ICR_" + format$("D:YYYYMMDD",date$),"tra") Using [ZSUR]
+  Wrseq format$("D:DD[/]MM[/]YYYY[  ]hh[:]mm[:]ss",date$) + " - " + WMESSAGE Using [ZSUR]
+  Openo Using [ZSUR]
+End
+
+######################################################## SPE_SET_MOT_CLE
+
+Subprog SPE_SET_MOT_CLE(WLIGNE)
+  Value Clbfile WLIGNE
+  Local Integer WPOS1, WPOS2, WLENGTH
+  Local Char WBALISEFIN(10)
+  WBALISEFIN="_HS"
+  #Cette procédure va parcourir l'ensemble des mots clés se traouvant dans la tableau WMOTCLE
+  #Et va rechercher dans WLIGNE si le mot clé existe.
+  #si oui, on va récupérer la valeur de la balise
+  For I=0 To 19
+    If(WMOTCLE(I)<>"")Then
+      #Le mot clé est différent de vide, on va donc le rechercher à l'intérieur de WLIGNE
+      WPOS1 = instr(1,toupper(WLIGNE),"<" + WMOTCLE(I) + ">")
+      WPOS2 = instr(1,toupper(WLIGNE),"</" + WMOTCLE(I) + ">")
+      WLENGTH = len(WMOTCLE(I))
+      If(WPOS1>0 and WPOS2>0 and WPOS2>=(WPOS1+WLENGTH+2))Then
+        #La balise début et fin existe
+        WVALCLE(I) = mid$(WLIGNE,(WPOS1+WLENGTH+2),WPOS2-(WPOS1+WLENGTH+2))
+        #Call SPE_SET_MES_LOG("SPE_SET_MOT_CLE - WVALCLE(" + num$(I) + ")=" + WVALCLE(I))
+      Endif
+    Endif
+  Next
+  #Si on trouve la balise de fin, on va le signifier en mettant 1 dans la variable globale WFINLIGNE
+  If(instr(1,toupper(WLIGNE),"<" + WBALISEFIN + ">")>0 or instr(1,toupper(WLIGNE),"<" + WBALISEFIN + "/>")>0)Then
+    WFINLIGNE=1
+  Endif
+End
+

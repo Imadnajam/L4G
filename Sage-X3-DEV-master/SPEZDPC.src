@@ -1,0 +1,106 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### SPEZDPC
+##################################################### créé le 17/07/2019
+##################################################### modifié le 17/07/2019
+
+$ACTION
+#infbox ACTION
+Case ACTION
+  When "OUVRE" : Gosub OUVRE
+  When "DEBUT" : Gosub DEBUT
+  When "OK"    : Gosub OK
+Endcase
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           LABELS                                                  #
+#---------------------------------------------------------------------------------------------------#
+
+######################################################################### OUVRE
+$OUVRE
+If clalev([F:ZDPC])=0 : Local File ZPRESTCOL [ZDPC] : Endif
+Return
+
+######################################################################### DEBUT
+$DEBUT
+[M:ZDPC]ZARNUM       = PARAM(1)
+[M:ZDPC]ZCODCHARG    = PARAM(2)
+[M:ZDPC]ZCODCLTCHARG = PARAM(3)
+Affzo [M:ZDPC]5
+#On va maintenant récupérer les enregistrements dans la table concernant l'article de prestation
+Effzo [M:ZDPC]10
+Raz [M:ZDPC]NBLIG
+For[F:ZDPC]ZDPC0 Where [F:ZDPC]ZARNUM=[M:ZDPC]ZARNUM and [F:ZDPC]ZCODCHARG=[M:ZDPC]ZCODCHARG and [F:ZDPC]ZCODCLTCHARG=[M:ZDPC]ZCODCLTCHARG
+  [M:ZDPC]ZPAYS([M:ZDPC]NBLIG)  = [F:ZDPC]ZPAYS
+  [M:ZDPC]ZSITE([M:ZDPC]NBLIG)  = [F:ZDPC]ZSITE
+  [M:ZDPC]ZTARIF([M:ZDPC]NBLIG) = [F:ZDPC]ZTARIF
+  [M:ZDPC]NBLIG += 1
+Next
+Affzo [M:ZDPC]10
+Return
+
+######################################################################### OK
+$OK
+#On va sauvegarder les lignes du tableau
+#L'opération va se faire à l'intérieure d'une transaction
+Local Integer WERR : WERR = 0
+Local Integer WNUMLIG : WNUMLIG = 0
+Trbegin [F:ZDPC]
+#On commence par supprimer toute les lignes de la table concernant l'article de prestation
+Delete [F:ZDPC] Where [F:ZDPC]ZARNUM=[M:ZDPC]ZARNUM and [F:ZDPC]ZCODCHARG=[M:ZDPC]ZCODCHARG and [F:ZDPC]ZCODCLTCHARG=[M:ZDPC]ZCODCLTCHARG
+If(fstat=0)Then
+  #On va maintenant parcourir le tableau pour sauvegarder les lignes
+  For WNUMLIG=0 To [M:ZDPC]NBLIG-1
+    [F:ZDPC]ZARNUM       = [M:ZDPC]ZARNUM
+    [F:ZDPC]ZCODCHARG    = [M:ZDPC]ZCODCHARG
+    [F:ZDPC]ZCODCLTCHARG = [M:ZDPC]ZCODCLTCHARG
+    [F:ZDPC]ZPAYS        = [M:ZDPC]ZPAYS(WNUMLIG)
+    [F:ZDPC]ZSITE        = [M:ZDPC]ZSITE(WNUMLIG)
+    [F:ZDPC]ZTARIF       = [M:ZDPC]ZTARIF(WNUMLIG)
+    Write[F:ZDPC]
+    If(fstat<>0)Then
+      WERR = 1
+      Break
+    Endif
+  Next
+Else
+  WERR = 1
+Endif
+If(WERR=0)Then
+  Commit
+Else
+  Rollback
+  Call ERREUR("Impossible de sauvegarder les lignes !!") From GESECRAN
+Endif
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           SUBPROGS                                                #
+#---------------------------------------------------------------------------------------------------#
+
+Subprog C_ZPAYS(VALEUR)
+Variable Char    VALEUR()
+#On va controler que la valeur du code pays est bien dans le vue de sélection
+If(VALEUR<>"")Then
+  If clalev([F:ZSCRY])=0 : Local File ZSELCRY [ZSCRY] : Endif
+  Read[F:ZSCRY]ZSCRY0=VALEUR
+  If(fstat<>0)Then
+    mkstat = 2
+    GMESSAGE = "Impossible, ce code pays n'existe pas."
+  Endif
+Endif
+End
+
+Subprog C_ZSITE(VALEUR)
+Variable Char    VALEUR()
+#On va controler que la valeur du site est bien dans le vue de sélection
+If(VALEUR<>"")Then
+  If clalev([F:ZSFCY])=0 : Local File ZSELFCY [ZSFCY] : Endif
+  Read[F:ZSFCY]ZSFCY0=VALEUR
+  If(fstat<>0)Then
+    mkstat = 2
+    GMESSAGE = "Impossible, ce code site n'existe pas."
+  Endif
+Endif
+End
+

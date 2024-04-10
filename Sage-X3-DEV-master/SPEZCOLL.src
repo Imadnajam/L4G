@@ -1,0 +1,201 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### SPEZCOLL
+##################################################### créé le 21/04/2020
+##################################################### modifié le 21/04/2020
+
+$ACTION
+#Infbox ACTION
+Case ACTION
+  When "OUVRE"       : Gosub OUVRE
+  When "SETBOUT"     : Gosub SETBOUT
+  When "LIENS"       : Gosub LIENS
+  When "APRES_MODIF" : Gosub APRES_MODIF  #<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS
+  When "STYLE"       : Gosub STYLE        #<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS
+  When "APRES_MOD"   : Gosub APRES_MOD    #<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS
+  When "APRES_CRE"   : Gosub APRES_CRE    #<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS
+  When "APRES_ANNULE": Gosub APRES_ANNULE #<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS
+  When "RAZCRE"      : Gosub RAZCREDUP    #<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS
+  When "RAZDUP"      : Gosub RAZCREDUP    #<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS
+Endcase
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           LABELS                                                  #
+#---------------------------------------------------------------------------------------------------#
+
+######################################################################### OUVRE
+$OUVRE
+  # Ouverture des tables
+  If clalev([F:ZCE])=0   : Local File ZCHEPI  [F:ZCE]   : Endif
+#<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS-----
+Global Char GTABPRIM(30) : GTABPRIM = "ZCOLLECT0" # Définition de la table primaire
+#Nous allons définir un mask que nous allons alimenter au fur et à mesure de la modification
+#des champs dont la modification doit être répercuté en temps réel dans EPALIS
+If clalev([M:ZZSE1])=0 : Local Mask ZZSE1        [M:ZZSE1] : Endif
+If clalev([F:ZZSE])=0  : Local File ZONESSYNCEPI [F:ZZSE]  : Endif
+#-------------------------------------------------------------------------------------------->
+Global Integer WCREDUP : WCREDUP = 0
+Return
+
+$RAZCREDUP
+  Actzo [M:ZCOL0]ZCOLLNUM
+  WCREDUP = 1
+  [M:ZCOL0]ZIDEPI = 0
+  Affzo [M:ZCOL0]ZIDEPI
+Return
+
+$STYLE
+#<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS-----
+#L'appel à cette fonction permet de colorer les zones qui vont être
+#mise à jour en temps réel avec le site web EPALIS
+#Cette procédure prend 3 paramètres :
+# 1 - Le nom de la table
+# 2 - Le nom de la fenêtre
+# 3 - Le nom d'un style de présentation
+If(!GWEBSERV)Then
+  Call SPE_SET_ZONE_TR(GTABPRIM,"ZCOL","MTOLINKD") From ZWSEPALISC #Table, nom de la fenêtre, Style de présentation
+Endif
+#-------------------------------------------------------------------------------------------->
+Return
+
+################################################# APRES_MODIF
+$APRES_MODIF
+#<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS-----
+If(!GWEBSERV and [M:ZCOL0]ZSYNCEPI=2)Then
+  If(WCREDUP=1 or [M:ZCOL0]ZIDEPI=0)Then
+    #Création/Duplication
+    Call SPE_SET_JSON(GTABPRIM,COUZON,num$(CZ),[M:ZCOL0]ZIDEPI,1) From ZWSEPALISC #Table, nom de la zone, valeur de la zone, ZIDEPI de la table, Type 1:Création, 2:Modification, 3:Suppression
+  Else
+    #Modification
+    Call SPE_SET_JSON(GTABPRIM,COUZON,num$(CZ),[M:ZCOL0]ZIDEPI,2) From ZWSEPALISC #Table, nom de la zone, valeur de la zone, ZIDEPI de la table, Type 1:Création, 2:Modification, 3:Suppression
+  Endif
+Endif
+#-------------------------------------------------------------------------------------------->
+Return
+
+$APRES_MOD
+#<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS-----
+#Infbox func ZWSEPALISC.SPE_GET_JSON()
+#On va commencer par regarder s'il faut déclencher la mise à jour de l'entité dans EPALIS web
+If(!GWEBSERV and [M:ZCOL0]ZSYNCEPI=2)Then
+  If([M:ZZSE1]NBLIG>0)Then
+    #La valeur de certains champs en modification temps réel a été modifié, on va donc faire appel au WS
+    Local Integer WRET
+    Local Clbfile WRCORPS(0)
+    Local Char WSPARAM1(50) : WSPARAM1 = [M:ZZSE1]ZRESTNAME(0)
+#    Infbox "WSPARAM1=" + WSPARAM1
+    Local Char WSPARAM2(10) : WSPARAM2 = [M:ZZSE1]ZMETHODREST(0)
+#    Infbox "WSPARAM2=" + WSPARAM2
+    Local Char WSPARAM3(250) : WSPARAM3 = func ZWSEPALISC.SPE_REPLACE_CHAR([M:ZZSE1]ZURLREST(0),"[ZIDEPI]",num$([M:ZCOL0]ZIDEPI))
+#    Infbox "WSPARAM3=" + WSPARAM3
+    Local Clbfile WSPARAM4(0) : WSPARAM4 = func ZWSEPALISC.SPE_GET_JSON()
+#    Infbox "WSPARAM4=" + WSPARAM4
+    Call SPE_WS_REST(WSPARAM1,WSPARAM2,WSPARAM3,WSPARAM4,"",WRET,WRCORPS) From ZWSEPALISC
+    If(WRET>=300)Then
+      Call ERREUR("Impossible de mettre à jour l'enregistrement sur le site Web EPALIS : [Erreur n°" + num$(WRET) + "]") From GESECRAN
+    Else
+      If(WRET=201)Then
+        #On est dans le cas d'une création, on va donc récupérer l'ID pour le sauvegarder
+        Read[F:ZCOL]ZCOL0=[M:ZCOL0]ZCOLLNUM
+        If(fstat=0)Then
+          [F:ZCOL]ZIDEPI = val(func ZWSEPALISC.SPE_GET_VALUE_JSON(WRCORPS,"id"))
+          [M:ZCOL0]ZIDEPI = val(func ZWSEPALISC.SPE_GET_VALUE_JSON(WRCORPS,"id")) : Affzo [M:ZCOL0]ZIDEPI
+          Rewrite[F:ZCOL]
+          If(fstat=0)Then
+            Gosub RELIT From GOBJSUB
+          Else
+            Call ERREUR("Pb lors de la sauvegarde de l'enregistrement.[Erreur N°" + num$(fstat) + "]") From GESECRAN
+          Endif
+        Endif
+      Else
+        Call MESSAGE("Modification effectuées avec succès sur le site web EPALIS.") From GESECRAN
+      Endif
+    Endif
+  Endif
+Endif
+#-------------------------------------------------------------------------------------------->
+Return
+
+$APRES_CRE
+Gosub APRES_MOD
+Return
+
+$APRES_ANNULE
+#<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS-----
+#On va commencer par regarder s'il faut déclencher la mise à jour de l'entité dans EPALIS web
+If(!GWEBSERV and [M:ZCOL0]ZSYNCEPI=2)Then
+  If([M:ZCOL0]ZIDEPI<>0)Then
+    Local Integer WRET
+    Local Clbfile WRCORPS(0)
+    Local Char WSPARAM1(50) : WSPARAM1 = GZWSREST
+#    Infbox "WSPARAM1=" + WSPARAM1
+    Local Char WSPARAM2(10) : WSPARAM2 = "DELETE"
+#    Infbox "WSPARAM2=" + WSPARAM2
+    Local Char WSPARAM3(250) : WSPARAM3 = "/collecteurs/" + num$([M:ZCOL0]ZIDEPI)
+#    Infbox "WSPARAM3=" + WSPARAM3
+    Local Clbfile WSPARAM4(0) : WSPARAM4 = "{}"
+#    Infbox "WSPARAM4=" + WSPARAM4
+    Call SPE_WS_REST(WSPARAM1,WSPARAM2,WSPARAM3,WSPARAM4,"",WRET,WRCORPS) From ZWSEPALISC
+    If(WRET>=300)Then
+      Call ERREUR("Impossible de supprimer l'enregistrement sur le site Web EPALIS") From GESECRAN
+    Else
+      Call MESSAGE("Suppression effectuées avec succès sur le site web EPALIS.") From GESECRAN
+    Endif
+  Endif
+Endif
+#-------------------------------------------------------------------------------------------->
+Return
+
+######################################################################### SETBOUT
+$SETBOUT
+Return
+
+######################################################################### LIENS
+$LIENS
+#<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS-----
+#On va effacer le mask permettant la sauvegarde des informations à synchroniser en temps réel
+WCREDUP = 0
+Effzo[M:ZZSE1]10
+[M:ZZSE1]NBLIG = 0
+#Infbox "ID EPALIS : " + num$([M:ZCOL0]ZIDEPI)
+If(!GWEBSERV)Then
+  If([M:ZCOL0]ZIDEPI=0)Then
+    Local Integer WRET
+    Local Clbfile WRCORPS(0)
+    Call SPE_WS_REST(GZWSREST, "GET","/x3/collecteur/" + [M:ZCOL0]ZCOLLNUM,"{}","id",WRET,WRCORPS) From ZWSEPALISC
+    If(WRET<>200)Then
+      Call ERREUR("Problème de récupération de l'ID EPALIS via le web service : [Erreur n°" + num$(WRET) + "]") From GESECRAN
+    Else
+      If(val(WRCORPS)>0)Then
+        [F:ZCOL]ZIDEPI = val(WRCORPS)
+        [M:ZCOL0]ZIDEPI = val(WRCORPS) : Affzo [M:ZCOL0]ZIDEPI
+        Rewrite[F:ZCOL]
+        If(fstat=0)Then
+          Gosub RELIT From GOBJSUB
+        Else
+          Call ERREUR("Pb lors de la sauvegarde de l'enregistrement.") From GESECRAN
+        Endif
+      Endif
+    Endif
+  Endif
+Endif
+#-------------------------------------------------------------------------------------------->
+#Nous allons récupérer tous les chauffeurs liés au collecteur sur lequel on se trouve
+Effzo [M:ZCOL2]
+[M:ZCOL2]NBLIG = 0
+Affzo [M:ZCOL2]NBLIG
+If([M:ZCOL0]ZCOLLNUM<>"")Then
+  For [F:ZCE]ZCE0 Where [F:ZCE]ZCOLLNUM=[M:ZCOL0]ZCOLLNUM
+    nolign = [M:ZCOL2]NBLIG + 1
+    [M:ZCOL2] = [F:ZCE]
+    [M:ZCOL2]ZACTIFCH([M:ZCOL2]NBLIG) = [F:ZCE]ZACTIF
+    [M:ZCOL2]NBLIG += 1
+  Next
+  Affzo [M:ZCOL2]
+Endif
+Diszo [M:ZCOL0]ZCOLLNUM
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           SUBPROGS                                                #
+#---------------------------------------------------------------------------------------------------#

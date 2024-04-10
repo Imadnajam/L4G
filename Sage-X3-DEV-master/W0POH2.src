@@ -1,0 +1,4019 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+# Superviseur
+# Gestion du masque POH2 
+
+Subprog SAIMSK(IMPFIC,ACTION,IMPTRT)
+Value Char IMPFIC
+Value Char ACTION
+Value Char IMPTRT
+
+Gosub DEFVAR
+
+####################################
+## Bloc tableau 1
+####################################
+IMPTBL = 1
+
+## Zone NBLIG
+mkstat = 0
+zoncou = "NBLIG"
+indice = 0
+status = 1
+zoncou = "NBLIG"
+WNUM = [M]NBLIG
+Gosub SETDEV From TRTDIV
+GDEV1(1) = [M:POH1]CUR
+If varmode([M]NBLIG,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "NBLIG" : Gosub ACTION From =IMPTRT
+ Endif
+ If !mkstat
+  NBLIG = [M]NBLIG
+  For nolign=1 To NBLIG
+   indice = nolign-1
+   [M]NBLIG = nolign
+   status = 75
+   Call SAI_NBLIG(IMPFIC,ACTION,IMPTRT)
+   If mkstat : Break : Endif
+  Next nolign
+  If mkstat : End : Endif
+  indice = 0
+  SAVACT = GACTION : GACTION = "STD"
+  Call C_NBLIG From SUBPOH
+  GACTION = SAVACT
+  If mkstat : GERR = 1 : GZONE = "NBLIG" : GZNUM = 0 : Endif
+  Gosub AFF From GSAISIE
+  If mkstat : End : Endif
+  If !mkstat
+   SAVACT = GACTION : GACTION = "DIVLINCONT"
+   Call INSERE("POPLIN") From TABLEAUX
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "NBLIG" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    If WNUM<>[M]NBLIG or IMPMOD
+     SAVACT = GACTION : GACTION = "STD"
+     Call AM_NBLIG From SUBPOH
+     GACTION = SAVACT
+     If mkstat : GERR = 1 : GZONE = "NBLIG" : GZNUM = 0 : Endif
+     Gosub AFF From GSAISIE
+     If mkstat : End : Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+####################################
+## Bloc liste 2
+####################################
+IMPTBL = 0
+
+## Zone ORDMINAMT
+mkstat = 0
+zoncou = "ORDMINAMT"
+indice = 0
+SAVACT = GACTION : GACTION = "INIDEV"
+GACTION = SAVACT
+GDEVFMT="11.2" : GDEVFMT = GDEVFMT1(max(find([M:POH1]CUR,GDEVISE(1..GNBDEV)),1))
+If mkstat=1 : Raz [M]ORDMINAMT : Endif
+
+## Zone ORDMAXAMT
+mkstat = 0
+zoncou = "ORDMAXAMT"
+indice = 0
+SAVACT = GACTION : GACTION = "INIDEV"
+GACTION = SAVACT
+GDEVFMT="11.2" : GDEVFMT = GDEVFMT1(max(find([M:POH1]CUR,GDEVISE(1..GNBDEV)),1))
+If mkstat=1 : Raz [M]ORDMAXAMT : Endif
+If !mkstat
+ If varmode([M]ORDMAXAMT,indice)=0
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "ORDMAXAMT" : Gosub ACTION From =IMPTRT
+  Endif
+  If [M]ORDMAXAMT<0
+   mkstat = 1 : GMESSAGE = mess(180,141,1)
+  Endif
+  If mkstat : GERR = 1 : GZONE = "ORDMAXAMT" : GZNUM = 53901 : Endif
+  Gosub AFF From GSAISIE
+  If mkstat : End : Endif
+ Endif
+Endif
+
+## Zone ORDFREFRT
+mkstat = 0
+zoncou = "ORDFREFRT"
+indice = 0
+SAVACT = GACTION : GACTION = "INIDEV"
+GACTION = SAVACT
+GDEVFMT="11.2" : GDEVFMT = GDEVFMT1(max(find([M:POH1]CUR,GDEVISE(1..GNBDEV)),1))
+If mkstat=1 : Raz [M]ORDFREFRT : Endif
+
+## Zone POHMINAMT
+mkstat = 0
+zoncou = "POHMINAMT"
+indice = 0
+IMPENT = [M]POHMINAMT
+If varinit([M]POHMINAMT,indice)=0
+ IMPENT = 1
+Endif
+[M]POHMINAMT = IMPENT
+
+## Zone WTOTLINAMT
+mkstat = 0
+zoncou = "WTOTLINAMT"
+indice = 0
+[M]WTOTLINAMT = [M:POH3]TOTLINAMT
+SAVACT = GACTION : GACTION = "INIDEV"
+GACTION = SAVACT
+GDEVFMT="11.2" : GDEVFMT = GDEVFMT1(max(find([M:POH1]CUR,GDEVISE(1..GNBDEV)),1))
+If mkstat=1 : Raz [M]WTOTLINAMT : Endif
+
+####################################
+## Bloc liste 3
+####################################
+IMPTBL = 0
+
+## Zone WREFFLG
+mkstat = 0
+zoncou = "WREFFLG"
+indice = 0
+IMPENT = [M]WREFFLG
+If varinit([M]WREFFLG,indice)=0
+ IMPENT = 1
+Endif
+[M]WREFFLG = IMPENT
+
+####################################
+## Bloc liste 4
+####################################
+IMPTBL = 0
+
+## Zone TCTRNUM
+mkstat = 0
+zoncou = "TCTRNUM"
+indice = 0
+WCHAR = [M]TCTRNUM
+If varmode([M]TCTRNUM,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "TCTRNUM" : Gosub ACTION From =IMPTRT
+ Endif
+ Call CONTROLE("TCTR","!",[M]TCTRNUM,"",mkstat) From CONTOBJ
+ If mkstat : GERR = 1 : GZONE = "TCTRNUM" : GZNUM = 52437 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+ If !mkstat
+  If WCHAR<>[M]TCTRNUM or IMPMOD
+   SAVACT = GACTION : GACTION = "STD"
+   Call AM_TCTRNUM([M]TCTRNUM) From SUBPOH
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "TCTRNUM" : GZNUM = 52437 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+  Endif
+ Endif
+Endif
+
+## Zone WEICAP
+mkstat = 0
+zoncou = "WEICAP"
+indice = 0
+WNUM = [M]WEICAP
+If varmode([M]WEICAP,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "WEICAP" : Gosub ACTION From =IMPTRT
+ Endif
+ If [M]WEICAP<0
+  mkstat = 1 : GMESSAGE = mess(180,141,1)
+ Endif
+ If mkstat : GERR = 1 : GZONE = "WEICAP" : GZNUM = 3634 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+ If !mkstat
+  If WNUM<>[M]WEICAP or IMPMOD
+   SAVACT = GACTION : GACTION = "STD"
+   Call AM_WEICAP([M]WEICAP) From SUBPOH
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "WEICAP" : GZNUM = 3634 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+  Endif
+ Endif
+Endif
+
+## Zone TCTRQTY
+mkstat = 0
+zoncou = "TCTRQTY"
+indice = 0
+WNUM = [M]TCTRQTY
+If varmode([M]TCTRQTY,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "TCTRQTY" : Gosub ACTION From =IMPTRT
+ Endif
+ If [M]TCTRQTY<0
+  mkstat = 1 : GMESSAGE = mess(180,141,1)
+ Endif
+ If mkstat : GERR = 1 : GZONE = "TCTRQTY" : GZNUM = 53913 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+ If !mkstat
+  If WNUM<>[M]TCTRQTY or IMPMOD
+   SAVACT = GACTION : GACTION = "STD"
+   Call AM_TCTRQTY([M]TCTRQTY) From SUBPOH
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "TCTRQTY" : GZNUM = 53913 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+  Endif
+ Endif
+Endif
+
+## Zone VOLCAP
+mkstat = 0
+zoncou = "VOLCAP"
+indice = 0
+WNUM = [M]VOLCAP
+If varmode([M]VOLCAP,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "VOLCAP" : Gosub ACTION From =IMPTRT
+ Endif
+ If [M]VOLCAP<0
+  mkstat = 1 : GMESSAGE = mess(180,141,1)
+ Endif
+ If mkstat : GERR = 1 : GZONE = "VOLCAP" : GZNUM = 1072 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+ If !mkstat
+  If WNUM<>[M]VOLCAP or IMPMOD
+   SAVACT = GACTION : GACTION = "STD"
+   Call AM_VOLCAP([M]VOLCAP) From SUBPOH
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "VOLCAP" : GZNUM = 1072 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+  Endif
+ Endif
+Endif
+
+####################################
+## Bloc liste 5
+####################################
+IMPTBL = 0
+
+####################################
+## Bloc liste 6
+####################################
+IMPTBL = 0
+
+####################################
+## Bloc liste 7
+####################################
+IMPTBL = 0
+
+## Zone ZCLLIV
+mkstat = 0
+zoncou = "ZCLLIV"
+indice = 0
+WCHAR = [M]ZCLLIV
+If varmode([M]ZCLLIV,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZCLLIV" : Gosub ACTION From =IMPTRT
+ Endif
+ Call CONTROLE("BPC","!",[M]ZCLLIV,"",mkstat) From CONTOBJ
+ If mkstat : GERR = 1 : GZONE = "ZCLLIV" : GZNUM = 103250 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+ If !mkstat
+  If WCHAR<>[M]ZCLLIV or IMPMOD
+   SAVACT = GACTION : GACTION = "SPE"
+   Call AM_ZCLLIV([M]ZCLLIV) From SPEPOH
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "ZCLLIV" : GZNUM = 103250 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+  Endif
+ Endif
+Endif
+
+## Zone ZADCL
+mkstat = 0
+zoncou = "ZADCL"
+indice = 0
+If varmode([M]ZADCL,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZADCL" : Gosub ACTION From =IMPTRT
+ Endif
+ Call CONTROLE("BPD","!",[M]ZADCL,"",mkstat) From CONTOBJ
+ If mkstat : GERR = 1 : GZONE = "ZADCL" : GZNUM = 103253 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+Endif
+
+## Zone ZDLIV
+mkstat = 0
+zoncou = "ZDLIV"
+indice = 0
+If varmode([M]ZDLIV,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZDLIV" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+## Zone ZFRENL
+mkstat = 0
+zoncou = "ZFRENL"
+indice = 0
+If varmode([M]ZFRENL,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZFRENL" : Gosub ACTION From =IMPTRT
+ Endif
+ Call CONTROLE("BPS","!",[M]ZFRENL,"",mkstat) From CONTOBJ
+ If mkstat : GERR = 1 : GZONE = "ZFRENL" : GZNUM = 103251 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+Endif
+
+## Zone ZADFR
+mkstat = 0
+zoncou = "ZADFR"
+indice = 0
+If varmode([M]ZADFR,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZADFR" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+## Zone ZDENL
+mkstat = 0
+zoncou = "ZDENL"
+indice = 0
+If varmode([M]ZDENL,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZDENL" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+####################################
+## Bloc liste 8
+####################################
+IMPTBL = 0
+
+## Zone ZCHARG
+mkstat = 0
+zoncou = "ZCHARG"
+indice = 0
+If varmode([M]ZCHARG,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZCHARG" : Gosub ACTION From =IMPTRT
+ Endif
+ Call CONTROLE("BPC","!",[M]ZCHARG,"",mkstat) From CONTOBJ
+ If mkstat : GERR = 1 : GZONE = "ZCHARG" : GZNUM = 102814 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+Endif
+
+## Zone ZCODCLT
+mkstat = 0
+zoncou = "ZCODCLT"
+indice = 0
+If varmode([M]ZCODCLT,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZCODCLT" : Gosub ACTION From =IMPTRT
+ Endif
+ SAVACT = GACTION : GACTION = "SPE"
+ Call AP_ZCODCLT([M]ZCODCLT) From SPEPOH
+ GACTION = SAVACT
+ If mkstat : GERR = 1 : GZONE = "ZCODCLT" : GZNUM = 102900 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+Endif
+
+####################################
+## Bloc liste 9
+####################################
+IMPTBL = 0
+
+## Zone ZTYPCOM
+mkstat = 0
+zoncou = "ZTYPCOM"
+indice = 0
+IMPENT = [M]ZTYPCOM
+If varinit([M]ZTYPCOM,indice)=0
+ IMPENT = 1
+Endif
+If varmode([M]ZTYPCOM,indice)=0
+ [M]ZTYPCOM(indice) = IMPENT
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZTYPCOM" : Gosub ACTION From =IMPTRT
+  IMPENT = [M]ZTYPCOM(indice)
+ Endif
+Endif
+[M]ZTYPCOM = IMPENT
+
+## Zone ZLLD
+mkstat = 0
+zoncou = "ZLLD"
+indice = 0
+IMPENT = [M]ZLLD
+If varinit([M]ZLLD,indice)=0
+ IMPENT = 1
+Endif
+If varmode([M]ZLLD,indice)=0
+ If !([M]ZTYPCOM=2 and (GFLAG="LOG" or GFLAG="DEC" or GFLAG="SER"))
+  mkstat = 2
+ Endif
+ If mkstat=1 : Raz IMPENT : Endif
+ [M]ZLLD(indice) = IMPENT
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZLLD" : Gosub ACTION From =IMPTRT
+  IMPENT = [M]ZLLD(indice)
+ Endif
+Endif
+[M]ZLLD = IMPENT
+
+## Zone ZTRPEPI
+mkstat = 0
+zoncou = "ZTRPEPI"
+indice = 0
+If varmode([M]ZTRPEPI,indice)=0
+ If !([M]ZTYPCOM=2 and (GFLAG="LOG" or GFLAG="DEC" or GFLAG="SER"))
+  mkstat = 2
+ Endif
+ If mkstat=1 : Raz [M]ZTRPEPI : Endif
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZTRPEPI" : Gosub ACTION From =IMPTRT
+ Endif
+ If !mkstat
+  Call CONTROLE("BPT","!Z",[M]ZTRPEPI,"",mkstat) From CONTOBJ
+  If mkstat : GERR = 1 : GZONE = "ZTRPEPI" : GZNUM = 1434 : Endif
+  Gosub AFF From GSAISIE
+  If mkstat : End : Endif
+ Endif
+Endif
+
+## Zone ZKM
+mkstat = 0
+zoncou = "ZKM"
+indice = 0
+If varmode([M]ZKM,indice)=0
+ If !([M]ZTYPCOM=2 and (GFLAG="LOG" or GFLAG="DEC" or GFLAG="SER"))
+  mkstat = 2
+ Endif
+ If mkstat=1 : Raz [M]ZKM : Endif
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZKM" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+## Zone ZCTTRP
+mkstat = 0
+zoncou = "ZCTTRP"
+indice = 0
+If varmode([M]ZCTTRP,indice)=0
+ If !([M]ZTYPCOM=2 and [M]ZLLD=3 and (GFLAG="LOG" or GFLAG="DEC" or GFLAG="SER"))
+  mkstat = 2
+ Endif
+ If mkstat=1 : Raz [M]ZCTTRP : Endif
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZCTTRP" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+####################################
+## Bloc tableau 10
+####################################
+IMPTBL = 1
+
+## Zone NBLIGDT
+mkstat = 0
+zoncou = "NBLIGDT"
+indice = 0
+status = 1
+zoncou = "NBLIGDT"
+If varmode([M]NBLIGDT,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "NBLIGDT" : Gosub ACTION From =IMPTRT
+ Endif
+ If !mkstat
+  NBLIG = [M]NBLIGDT
+  For nolign=1 To NBLIG
+   indice = nolign-1
+   [M]NBLIGDT = nolign
+   status = 75
+   Call SAI_NBLIGDT(IMPFIC,ACTION,IMPTRT)
+   If mkstat : Break : Endif
+  Next nolign
+  If mkstat : End : Endif
+  indice = 0
+ Endif
+Endif
+
+mkstat = 0
+
+End
+
+####################################
+## Bloc tableau 1
+####################################
+Subprog SAI_NBLIG(IMPFIC,ACTION,IMPTRT)
+Value Char IMPFIC
+Value Char ACTION
+Value Char IMPTRT
+
+Gosub DEFVAR
+
+IMPTBL = 1
+
+## Zone NBLIG
+mkstat = 0
+zoncou = "NBLIG"
+SAVACT = GACTION : GACTION = "STD"
+Call C_NBLIG From SUBPOH
+GACTION = SAVACT
+If mkstat : GERR = 1 : GZONE = "NBLIG" : GZNUM = 0 : Endif
+Gosub AFF From GSAISIE
+If mkstat : End : Endif
+If !mkstat
+ SAVACT = GACTION : GACTION = "DIVLINCONT"
+ Call INSERE("POPLIN") From TABLEAUX
+ GACTION = SAVACT
+ If mkstat : GERR = 1 : GZONE = "NBLIG" : GZNUM = 0 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+ SAVACT = GACTION : GACTION = "STD"
+ Call AVANT_NBLIG From SUBPOH
+ GACTION = SAVACT
+Endif
+
+## Zone ZMODTRIFLG
+mkstat = 0
+zoncou = "ZMODTRIFLG"
+IMPENT = [M]ZMODTRIFLG(indice)
+If varinit([M]ZMODTRIFLG,indice)=0
+ IMPENT = 1
+Endif
+[M]ZMODTRIFLG(indice) = IMPENT
+
+## Zone ITMREF
+mkstat = 0
+zoncou = "ITMREF"
+WCHAR = [M]ITMREF(indice)
+If varinit([M]ITMREF,indice)=0
+ SAVACT = GACTION : GACTION = "PJTINIBATA"
+ Call PJT_INIBATA(nolign-1,"[M:POH1]PJTH","[M:POH2]PJT") From TRTPJT
+ GACTION = SAVACT
+Endif
+If !mkstat
+ If varmode([M]ITMREF,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_ITMREF([M]ITMREF(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]ITMREF(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "ITMREF" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   If vireblc([M]ITMREF(indice),2)=""
+    mkstat = 1 : GMESSAGE = mess(10,123,1)
+   Endif
+   If mkstat : GERR = 1 : GZONE = "ITMREF" : GZNUM = 3651 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_ITMREF([M]ITMREF(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "ITMREF" : GZNUM = 3651 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     SAVACT = GACTION : GACTION = "STKINIECC"
+     Call STKINIECC([M]ITMREF(indice),"","POH2",1,2,nolign-1,2,func TRTX3FNC.VALFLD_C("[M]ECCVALMAJ(nolign-1)"),"ECCVALMAJ","ECCVALMIN","","",1,[M:POH0]BPSNUM) From STKACT
+     GACTION = SAVACT
+     If mkstat : GERR = 1 : GZONE = "ITMREF" : GZNUM = 3651 : Endif
+     Gosub AFF From GSAISIE
+     If mkstat : End : Endif
+     If !mkstat
+      If WCHAR<>[M]ITMREF(indice) or IMPMOD
+       SAVACT = GACTION : GACTION = "STD"
+       Call AM_ITMREF([M]ITMREF(indice)) From SUBPOH
+       GACTION = SAVACT
+       If mkstat : GERR = 1 : GZONE = "ITMREF" : GZNUM = 3651 : Endif
+       Gosub AFF From GSAISIE
+       If mkstat : End : Endif
+       If !mkstat
+        SAVACT = GACTION : GACTION = "INIECCSTA"
+        Call INIECCSTA([M]ITMREF(indice),"POH2",nolign-1) From STKECR
+        GACTION = SAVACT
+        If mkstat : GERR = 1 : GZONE = "ITMREF" : GZNUM = 3651 : Endif
+        Gosub AFF From GSAISIE
+        If mkstat : End : Endif
+       Endif
+      Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone ITMDES
+mkstat = 0
+zoncou = "ITMDES"
+If varmode([M]ITMDES,indice)=0
+ SAVACT = GACTION : GACTION = "PASLIN"
+ GACTION = SAVACT
+ If GMODIF<>2 mkstat=2 : Endif
+ If mkstat=1 : Raz [M]ITMDES(indice) : Endif
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ITMDES" : Gosub ACTION From =IMPTRT
+ Endif
+ If !mkstat
+  If vireblc([M]ITMDES(indice),2)=""
+   mkstat = 1 : GMESSAGE = mess(10,123,1)
+  Endif
+  If mkstat : GERR = 1 : GZONE = "ITMDES" : GZNUM = 282 : Endif
+  Gosub AFF From GSAISIE
+  If mkstat : End : Endif
+ Endif
+Endif
+
+## Zone ITMDES1
+mkstat = 0
+zoncou = "ITMDES1"
+If varmode([M]ITMDES1,indice)=0
+ SAVACT = GACTION : GACTION = "PASLIN"
+ GACTION = SAVACT
+ If GMODIF<>2 mkstat=2 : Endif
+ If mkstat=1 : Raz [M]ITMDES1(indice) : Endif
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ITMDES1" : Gosub ACTION From =IMPTRT
+ Endif
+ If !mkstat
+  If vireblc([M]ITMDES1(indice),2)=""
+   mkstat = 1 : GMESSAGE = mess(10,123,1)
+  Endif
+  If mkstat : GERR = 1 : GZONE = "ITMDES1" : GZNUM = 14914 : Endif
+  Gosub AFF From GSAISIE
+  If mkstat : End : Endif
+ Endif
+Endif
+
+## Zone ECCVALMAJ
+mkstat = 0
+zoncou = "ECCVALMAJ"
+WCHAR = [M]ECCVALMAJ(indice)
+If varmode([M]ECCVALMAJ,indice)=0
+ SAVACT = GACTION : GACTION = "STD"
+ Call AS_ECCVALMAJ([M]ECCVALMAJ(indice)) From SUBPOH
+ GACTION = SAVACT
+ If mkstat=1 : Raz [M]ECCVALMAJ(indice) : Endif
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ECCVALMAJ" : Gosub ACTION From =IMPTRT
+ Endif
+ If !mkstat
+  SAVACT = GACTION : GACTION = "STKCTRECC"
+  Call STKCTRECC([M:POH2]ITMREF(nolign-1),[M]ECCVALMAJ(indice),"","",3) From STKACT
+  GACTION = SAVACT
+  If mkstat : GERR = 1 : GZONE = "ECCVALMAJ" : GZNUM = 44205 : Endif
+  Gosub AFF From GSAISIE
+  If mkstat : End : Endif
+  If !mkstat
+   If WCHAR<>[M]ECCVALMAJ(indice) or IMPMOD
+    SAVACT = GACTION : GACTION = "STD"
+    Call AM_ECCVALMAJ([M]ECCVALMAJ(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "ECCVALMAJ" : GZNUM = 44205 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone ECCVALMIN
+mkstat = 0
+zoncou = "ECCVALMIN"
+WCHAR = [M]ECCVALMIN(indice)
+If varmode([M]ECCVALMIN,indice)=0
+ SAVACT = GACTION : GACTION = "STD"
+ Call AS_ECCVALMIN([M]ECCVALMIN(indice)) From SUBPOH
+ GACTION = SAVACT
+ If mkstat=1 : Raz [M]ECCVALMIN(indice) : Endif
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ECCVALMIN" : Gosub ACTION From =IMPTRT
+ Endif
+ If !mkstat
+  SAVACT = GACTION : GACTION = "STKCTRECC"
+  Call STKCTRECC([M:POH2]ITMREF(nolign-1),[M:POH2]ECCVALMAJ(nolign-1),[M]ECCVALMIN(indice),"",4) From STKACT
+  GACTION = SAVACT
+  If mkstat : GERR = 1 : GZONE = "ECCVALMIN" : GZNUM = 44207 : Endif
+  Gosub AFF From GSAISIE
+  If mkstat : End : Endif
+  If !mkstat
+   If WCHAR<>[M]ECCVALMIN(indice) or IMPMOD
+    SAVACT = GACTION : GACTION = "STD"
+    Call AM_ECCVALMIN([M]ECCVALMIN(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "ECCVALMIN" : GZNUM = 44207 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone PRHFCY
+mkstat = 0
+zoncou = "PRHFCY"
+WCHAR = [M]PRHFCY(indice)
+If varmode([M]PRHFCY,indice)=0
+ SAVACT = GACTION : GACTION = "PASLIN"
+ GACTION = SAVACT
+ If GMODIF<>2 mkstat=2 : Endif
+ If mkstat=1 : Raz [M]PRHFCY(indice) : Endif
+ If !mkstat
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_PRHFCY([M]PRHFCY(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]PRHFCY(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "PRHFCY" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   If vireblc([M]PRHFCY(indice),2)=""
+    mkstat = 1 : GMESSAGE = mess(10,123,1)
+   Endif
+   If mkstat : GERR = 1 : GZONE = "PRHFCY" : GZNUM = 5102 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "ACONTFCY"
+    Call CONTSITE([M]PRHFCY(indice)) From SUBAGF
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "PRHFCY" : GZNUM = 5102 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     Call CONTROLE("FCY","",[M]PRHFCY(indice),"",mkstat) From CONTOBJ
+     If mkstat : GERR = 1 : GZONE = "PRHFCY" : GZNUM = 5102 : Endif
+     Gosub AFF From GSAISIE
+     If mkstat : End : Endif
+     If !mkstat
+      SAVACT = GACTION : GACTION = "STD"
+      Call C_PRHFCY([M]PRHFCY(indice)) From SUBPOH
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "PRHFCY" : GZNUM = 5102 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+      If !mkstat
+       If WCHAR<>[M]PRHFCY(indice) or IMPMOD
+        SAVACT = GACTION : GACTION = "STD"
+        Call AM_PRHFCY([M]PRHFCY(indice)) From SUBPOH
+        GACTION = SAVACT
+        If mkstat : GERR = 1 : GZONE = "PRHFCY" : GZNUM = 5102 : Endif
+        Gosub AFF From GSAISIE
+        If mkstat : End : Endif
+        If !mkstat
+         SAVACT = GACTION : GACTION = "PAMAPPFLG"
+         Call PAMAPPFLG("POH2",nolign-1,"PRHFCY") From TRTACHAPP1
+         GACTION = SAVACT
+         If mkstat : GERR = 1 : GZONE = "PRHFCY" : GZNUM = 5102 : Endif
+         Gosub AFF From GSAISIE
+         If mkstat : End : Endif
+        Endif
+       Endif
+      Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone FCYADD
+mkstat = 0
+zoncou = "FCYADD"
+WCHAR = [M]FCYADD(indice)
+If varmode([M]FCYADD,indice)=0
+ SAVACT = GACTION : GACTION = "PASLIN"
+ GACTION = SAVACT
+ If GMODIF<>2 mkstat=2 : Endif
+ If mkstat=1 : Raz [M]FCYADD(indice) : Endif
+ If !mkstat
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_FCYADD([M]FCYADD(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]FCYADD(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "FCYADD" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   If vireblc([M]FCYADD(indice),2)=""
+    mkstat = 1 : GMESSAGE = mess(10,123,1)
+   Endif
+   If mkstat : GERR = 1 : GZONE = "FCYADD" : GZNUM = 1499 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_FCYADD([M]FCYADD(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "FCYADD" : GZNUM = 1499 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]FCYADD(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "STD"
+      Call AM_FCYADD([M]FCYADD(indice)) From SUBPOH
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "FCYADD" : GZNUM = 1499 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone USEPLC
+mkstat = 0
+zoncou = "USEPLC"
+If varmode([M]USEPLC,indice)=0
+ SAVACT = GACTION : GACTION = "PASLIN"
+ GACTION = SAVACT
+ If GMODIF<>2 mkstat=2 : Endif
+ If mkstat=1 : Raz [M]USEPLC(indice) : Endif
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "USEPLC" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+## Zone LINSTOFCY
+mkstat = 0
+zoncou = "LINSTOFCY"
+WCHAR = [M]LINSTOFCY(indice)
+If varmode([M]LINSTOFCY,indice)=0
+ SAVACT = GACTION : GACTION = "PASLIN"
+ GACTION = SAVACT
+ If GMODIF<>2 mkstat=2 : Endif
+ If mkstat=1 : Raz [M]LINSTOFCY(indice) : Endif
+ If !mkstat
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_LINSTOFCY([M]LINSTOFCY(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]LINSTOFCY(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "LINSTOFCY" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   SAVACT = GACTION : GACTION = "ACONTFCY"
+   Call CONTSITE([M]LINSTOFCY(indice)) From SUBAGF
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "LINSTOFCY" : GZNUM = 8560 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    Call CONTROLE("FCY","!D",[M]LINSTOFCY(indice),"",mkstat) From CONTOBJ
+    If mkstat : GERR = 1 : GZONE = "LINSTOFCY" : GZNUM = 8560 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     SAVACT = GACTION : GACTION = "STD"
+     Call C_LINSTOFCY([M]LINSTOFCY(indice)) From SUBPOH
+     GACTION = SAVACT
+     If mkstat : GERR = 1 : GZONE = "LINSTOFCY" : GZNUM = 8560 : Endif
+     Gosub AFF From GSAISIE
+     If mkstat : End : Endif
+     If !mkstat
+      If WCHAR<>[M]LINSTOFCY(indice) or IMPMOD
+       SAVACT = GACTION : GACTION = "STD"
+       Call AM_LINSTOFCY([M]LINSTOFCY(indice)) From SUBPOH
+       GACTION = SAVACT
+       If mkstat : GERR = 1 : GZONE = "LINSTOFCY" : GZNUM = 8560 : Endif
+       Gosub AFF From GSAISIE
+       If mkstat : End : Endif
+      Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone SCOADD
+mkstat = 0
+zoncou = "SCOADD"
+If varmode([M]SCOADD,indice)=0
+ SAVACT = GACTION : GACTION = "PASLIN"
+ GACTION = SAVACT
+ If GMODIF<>2 mkstat=2 : Endif
+ If mkstat=1 : Raz [M]SCOADD(indice) : Endif
+ If !mkstat
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_SCOADD([M]SCOADD(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]SCOADD(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "SCOADD" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   SAVACT = GACTION : GACTION = "STD"
+   Call C_SCOADD([M]SCOADD(indice)) From SUBPOH
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "SCOADD" : GZNUM = 24862 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+  Endif
+ Endif
+Endif
+
+## Zone ZTYPPAL
+mkstat = 0
+zoncou = "ZTYPPAL"
+IMPENT = [M]ZTYPPAL(indice)
+If varinit([M]ZTYPPAL,indice)=0
+ IMPENT = 1
+Endif
+If varmode([M]ZTYPPAL,indice)=0
+ [M]ZTYPPAL(indice) = IMPENT
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZTYPPAL" : Gosub ACTION From =IMPTRT
+  IMPENT = [M]ZTYPPAL(indice)
+ Endif
+Endif
+[M]ZTYPPAL(indice) = IMPENT
+
+## Zone UOM
+mkstat = 0
+zoncou = "UOM"
+WCHAR = [M]UOM(indice)
+If varmode([M]UOM,indice)=0
+ SAVACT = GACTION : GACTION = "PASLIN"
+ GACTION = SAVACT
+ If GMODIF<>2 mkstat=2 : Endif
+ If mkstat=1 : Raz [M]UOM(indice) : Endif
+ If !mkstat
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_UOM([M]UOM(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]UOM(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "UOM" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   If vireblc([M]UOM(indice),2)=""
+    mkstat = 1 : GMESSAGE = mess(10,123,1)
+   Endif
+   If mkstat : GERR = 1 : GZONE = "UOM" : GZNUM = 2192 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    Call CONTROLE("TUN","",[M]UOM(indice),"",mkstat) From CONTOBJ
+    If mkstat : GERR = 1 : GZONE = "UOM" : GZNUM = 2192 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     SAVACT = GACTION : GACTION = "PCOUOM"
+     Call PCOUOM([M]UOM(indice),[M:POH0]BPSNUM,[M:POH2]ITMREF(nolign-1),3,5) From TRTACHCTL1
+     GACTION = SAVACT
+     If mkstat : GERR = 1 : GZONE = "UOM" : GZNUM = 2192 : Endif
+     Gosub AFF From GSAISIE
+     If mkstat : End : Endif
+     If !mkstat
+      SAVACT = GACTION : GACTION = "STD"
+      Call C_UOM([M]UOM(indice)) From SUBPOH
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "UOM" : GZNUM = 2192 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+      If !mkstat
+       If WCHAR<>[M]UOM(indice) or IMPMOD
+        SAVACT = GACTION : GACTION = "PAMAPPFLG"
+        Call PAMAPPFLG("POH2",nolign-1,"UOM") From TRTACHAPP1
+        GACTION = SAVACT
+        If mkstat : GERR = 1 : GZONE = "UOM" : GZNUM = 2192 : Endif
+        Gosub AFF From GSAISIE
+        If mkstat : End : Endif
+        If !mkstat
+         SAVACT = GACTION : GACTION = "STD"
+         Call AM_UOM([M]UOM(indice)) From SUBPOH
+         GACTION = SAVACT
+         If mkstat : GERR = 1 : GZONE = "UOM" : GZNUM = 2192 : Endif
+         Gosub AFF From GSAISIE
+         If mkstat : End : Endif
+         If !mkstat
+          SAVACT = GACTION : GACTION = "PAMVATFLG"
+          Call PAMVATFLG("POH2",nolign-1,"UOM") From TRTACHFAC1
+          GACTION = SAVACT
+          If mkstat : GERR = 1 : GZONE = "UOM" : GZNUM = 2192 : Endif
+          Gosub AFF From GSAISIE
+          If mkstat : End : Endif
+         Endif
+        Endif
+       Endif
+      Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone ZDLTRI
+mkstat = 0
+zoncou = "ZDLTRI"
+IMPENT = [M]ZDLTRI(indice)
+WNUM = IMPENT
+If varinit([M]ZDLTRI,indice)=0
+ IMPENT = 1
+Endif
+If varmode([M]ZDLTRI,indice)=0
+ [M]ZDLTRI(indice) = IMPENT
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZDLTRI" : Gosub ACTION From =IMPTRT
+  IMPENT = [M]ZDLTRI(indice)
+ Endif
+ If WNUM<>IMPENT or IMPMOD
+  SAVACT = GACTION : GACTION = "SPE"
+  Call AM_ZDLTRI(IMPENT) From SPEPOH
+  GACTION = SAVACT
+  If mkstat : GERR = 1 : GZONE = "ZDLTRI" : GZNUM = 147 : Endif
+  Gosub AFF From GSAISIE
+  If mkstat : End : Endif
+ Endif
+Endif
+[M]ZDLTRI(indice) = IMPENT
+
+## Zone ZDLQBON
+mkstat = 0
+zoncou = "ZDLQBON"
+If varmode([M]ZDLQBON,indice)=0
+ SAVACT = GACTION : GACTION = "SPE"
+ Call AS_ZDLQBON([M]ZDLQBON(indice)) From SPEPOH
+ GACTION = SAVACT
+ If mkstat=1 : Raz [M]ZDLQBON(indice) : Endif
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZDLQBON" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+## Zone ZDLQREP
+mkstat = 0
+zoncou = "ZDLQREP"
+If varmode([M]ZDLQREP,indice)=0
+ SAVACT = GACTION : GACTION = "SPE"
+ Call AS_ZDLQREP([M]ZDLQREP(indice)) From SPEPOH
+ GACTION = SAVACT
+ If mkstat=1 : Raz [M]ZDLQREP(indice) : Endif
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZDLQREP" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+## Zone ZDLQHS
+mkstat = 0
+zoncou = "ZDLQHS"
+If varmode([M]ZDLQHS,indice)=0
+ SAVACT = GACTION : GACTION = "SPE"
+ Call AS_ZDLQHS([M]ZDLQHS(indice)) From SPEPOH
+ GACTION = SAVACT
+ If mkstat=1 : Raz [M]ZDLQHS(indice) : Endif
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZDLQHS" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+## Zone ZDATTRIR
+mkstat = 0
+zoncou = "ZDATTRIR"
+If varmode([M]ZDATTRIR,indice)=0
+ SAVACT = GACTION : GACTION = "SPE"
+ Call AS_ZDATTRIR([M]ZDATTRIR(indice)) From SPEPOH
+ GACTION = SAVACT
+ If mkstat=1 : Raz [M]ZDATTRIR(indice) : Endif
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZDATTRIR" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+## Zone UOMFLG
+mkstat = 0
+zoncou = "UOMFLG"
+IMPENT = [M]UOMFLG(indice)
+If varinit([M]UOMFLG,indice)=0
+ IMPENT = 1
+Endif
+[M]UOMFLG(indice) = IMPENT
+
+## Zone QTYUOM
+mkstat = 0
+zoncou = "QTYUOM"
+WNUM = [M]QTYUOM(indice)
+If varmode([M]QTYUOM,indice)=0
+ SAVACT = GACTION : GACTION = "PASLIN"
+ GACTION = SAVACT
+ If GMODIF<>2 mkstat=2 : Endif
+ If mkstat=1 : Raz [M]QTYUOM(indice) : Endif
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "QTYUOM" : Gosub ACTION From =IMPTRT
+ Endif
+ If !mkstat
+  If [M]QTYUOM(indice)=0
+   mkstat = 1 : GMESSAGE = mess(10,123,1)
+  Endif
+  If mkstat : GERR = 1 : GZONE = "QTYUOM" : GZNUM = 4620 : Endif
+  Gosub AFF From GSAISIE
+  If mkstat : End : Endif
+  If !mkstat
+   If [M]QTYUOM(indice)<0
+    mkstat = 1 : GMESSAGE = mess(180,141,1)
+   Endif
+   If mkstat : GERR = 1 : GZONE = "QTYUOM" : GZNUM = 4620 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_QTYUOM([M]QTYUOM(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "QTYUOM" : GZNUM = 4620 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WNUM<>[M]QTYUOM(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "PAMQTYSCO"
+      Call PAMQTYSCO([M]QTYUOM(indice),"POH2",nolign-1,"QTYUOM") From TRTACHCTL1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "QTYUOM" : GZNUM = 4620 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+      If !mkstat
+       SAVACT = GACTION : GACTION = "PAMAPPFLG"
+       Call PAMAPPFLG("POH2",nolign-1,"QTYUOM") From TRTACHAPP1
+       GACTION = SAVACT
+       If mkstat : GERR = 1 : GZONE = "QTYUOM" : GZNUM = 4620 : Endif
+       Gosub AFF From GSAISIE
+       If mkstat : End : Endif
+       If !mkstat
+        SAVACT = GACTION : GACTION = "STD"
+        Call AM_QTYUOM([M]QTYUOM(indice)) From SUBPOH
+        GACTION = SAVACT
+        If mkstat : GERR = 1 : GZONE = "QTYUOM" : GZNUM = 4620 : Endif
+        Gosub AFF From GSAISIE
+        If mkstat : End : Endif
+        If !mkstat
+         SAVACT = GACTION : GACTION = "PAMVATFLG"
+         Call PAMVATFLG("POH2",nolign-1,"QTYUOM") From TRTACHFAC1
+         GACTION = SAVACT
+         If mkstat : GERR = 1 : GZONE = "QTYUOM" : GZNUM = 4620 : Endif
+         Gosub AFF From GSAISIE
+         If mkstat : End : Endif
+        Endif
+       Endif
+      Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone UOMPUUCOE
+mkstat = 0
+zoncou = "UOMPUUCOE"
+WNUM = [M]UOMPUUCOE(indice)
+If varmode([M]UOMPUUCOE,indice)=0
+ SAVACT = GACTION : GACTION = "STD"
+ Call AS_UOMPUUCOE([M]UOMPUUCOE(indice)) From SUBPOH
+ GACTION = SAVACT
+ If mkstat=1 : Raz [M]UOMPUUCOE(indice) : Endif
+ If !mkstat
+  SAVACT = GACTION : GACTION = "PASLIN"
+  GACTION = SAVACT
+  If GMODIF<>2 mkstat=2 : Endif
+  If mkstat=1 : Raz [M]UOMPUUCOE(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "UOMPUUCOE" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   SAVACT = GACTION : GACTION = "STD"
+   Call AP_UOMPUUCOE([M]UOMPUUCOE(indice)) From SUBPOH
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "UOMPUUCOE" : GZNUM = 3377 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    If WNUM<>[M]UOMPUUCOE(indice) or IMPMOD
+     SAVACT = GACTION : GACTION = "PAMAPPFLG"
+     Call PAMAPPFLG("POH2",nolign-1,"UOMPUUCOE") From TRTACHAPP1
+     GACTION = SAVACT
+     If mkstat : GERR = 1 : GZONE = "UOMPUUCOE" : GZNUM = 3377 : Endif
+     Gosub AFF From GSAISIE
+     If mkstat : End : Endif
+     If !mkstat
+      SAVACT = GACTION : GACTION = "STD"
+      Call AM_UOMPUUCOE([M]UOMPUUCOE(indice)) From SUBPOH
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "UOMPUUCOE" : GZNUM = 3377 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone QTYSTU
+mkstat = 0
+zoncou = "QTYSTU"
+WNUM = [M]QTYSTU(indice)
+If varmode([M]QTYSTU,indice)=0
+ SAVACT = GACTION : GACTION = "STD"
+ Call AS_QTYSTU([M]QTYSTU(indice)) From SUBPOH
+ GACTION = SAVACT
+ If mkstat=1 : Raz [M]QTYSTU(indice) : Endif
+ If !mkstat
+  SAVACT = GACTION : GACTION = "PASLIN"
+  GACTION = SAVACT
+  If GMODIF<>2 mkstat=2 : Endif
+  If mkstat=1 : Raz [M]QTYSTU(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "QTYSTU" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   If [M]QTYSTU(indice)=0
+    mkstat = 1 : GMESSAGE = mess(10,123,1)
+   Endif
+   If mkstat : GERR = 1 : GZONE = "QTYSTU" : GZNUM = 4479 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    If [M]QTYSTU(indice)<0
+     mkstat = 1 : GMESSAGE = mess(180,141,1)
+    Endif
+    If mkstat : GERR = 1 : GZONE = "QTYSTU" : GZNUM = 4479 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WNUM<>[M]QTYSTU(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "PAMQTYSCO"
+      Call PAMQTYSCO([M]QTYSTU(indice),"POH2",nolign-1,"QTYSTU") From TRTACHCTL1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "QTYSTU" : GZNUM = 4479 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+      If !mkstat
+       SAVACT = GACTION : GACTION = "PAMAPPFLG"
+       Call PAMAPPFLG("POH2",nolign-1,"QTYSTU") From TRTACHAPP1
+       GACTION = SAVACT
+       If mkstat : GERR = 1 : GZONE = "QTYSTU" : GZNUM = 4479 : Endif
+       Gosub AFF From GSAISIE
+       If mkstat : End : Endif
+       If !mkstat
+        SAVACT = GACTION : GACTION = "STD"
+        Call AM_QTYSTU([M]QTYSTU(indice)) From SUBPOH
+        GACTION = SAVACT
+        If mkstat : GERR = 1 : GZONE = "QTYSTU" : GZNUM = 4479 : Endif
+        Gosub AFF From GSAISIE
+        If mkstat : End : Endif
+        If !mkstat
+         SAVACT = GACTION : GACTION = "PAMVATFLG"
+         Call PAMVATFLG("POH2",nolign-1,"QTYSTU") From TRTACHFAC1
+         GACTION = SAVACT
+         If mkstat : GERR = 1 : GZONE = "QTYSTU" : GZNUM = 4479 : Endif
+         Gosub AFF From GSAISIE
+         If mkstat : End : Endif
+        Endif
+       Endif
+      Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone UPDPSDFLG
+mkstat = 0
+zoncou = "UPDPSDFLG"
+IMPENT = [M]UPDPSDFLG(indice)
+If varinit([M]UPDPSDFLG,indice)=0
+ IMPENT = 1
+Endif
+[M]UPDPSDFLG(indice) = IMPENT
+
+## Zone PJT
+mkstat = 0
+zoncou = "PJT"
+WCHAR = [M]PJT(indice)
+If varmode([M]PJT,indice)=0
+ SAVACT = GACTION : GACTION = "PJTBEFZON"
+ Call PJT_BEFORE_ZONE([M]PJT(indice),"POH2","PJT",nolign-1,6,[V]CST_AYES,[V]CST_AYES,[V]CST_AYES,[V]CST_ANO,[V]CST_AYES,[V]CST_AYES,[V]CST_ANO,[V]CST_ANO,[V]CST_ANO,[M:POH0]POHFCY,"","","[M:POH1]PJTH","",func TRTPJT.GET_CPY_FROM_FCY([M:POH0]POHFCY)) From TRTPJT
+ GACTION = SAVACT
+ If mkstat=1 : Raz [M]PJT(indice) : Endif
+ If !mkstat
+  SAVACT = GACTION : GACTION = "PASLIN"
+  GACTION = SAVACT
+  If GMODIF<>2 mkstat=2 : Endif
+  If mkstat=1 : Raz [M]PJT(indice) : Endif
+  If !mkstat
+   SAVACT = GACTION : GACTION = "STD"
+   Call AS_PJT([M]PJT(indice)) From SUBPOH
+   GACTION = SAVACT
+   If mkstat=1 : Raz [M]PJT(indice) : Endif
+   If !mkstat
+    IMPMOD = 0 : IMPZON = "PJT" : Gosub ACTION From =IMPTRT
+   Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "PJTCTL"
+    Call PJT_CONTROL([M]PJT(indice),"POH2","PJT",nolign-1,6,[V]CST_AYES,[V]CST_AYES,[V]CST_AYES,[V]CST_ANO,[V]CST_AYES,[V]CST_AYES,[V]CST_ANO,[V]CST_ANO,[V]CST_ANO,[M:POH0]POHFCY,"","","[M:POH1]PJTH","",func TRTPJT.GET_CPY_FROM_FCY([M:POH0]POHFCY)) From TRTPJT
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "PJT" : GZNUM = 1886 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     SAVACT = GACTION : GACTION = "CONTOBJN"
+     Local Char    VALEUR(250)
+     VALEUR = [M]PJT(indice)
+     Call S_AFF_CHAR(VALEUR,PARAM,"CONTOBJN","CONTOBJ","") From GACTION
+     [M]PJT(indice) = VALEUR
+     GACTION = SAVACT
+     If mkstat : GERR = 1 : GZONE = "PJT" : GZNUM = 1886 : Endif
+     Gosub AFF From GSAISIE
+     If mkstat : End : Endif
+     If !mkstat
+      If WCHAR<>[M]PJT(indice) or IMPMOD
+       SAVACT = GACTION : GACTION = "PJTAFTMOD"
+       Call PJT_AFTER_MODIFY([M]PJT(indice),"POH2","PJT",nolign-1,6,[V]CST_AYES,[V]CST_AYES,[V]CST_AYES,[V]CST_ANO,[V]CST_AYES,[V]CST_AYES,[V]CST_ANO,[V]CST_ANO,[V]CST_ANO,[M:POH0]POHFCY,"","","[M:POH1]PJTH","",func TRTPJT.GET_CPY_FROM_FCY([M:POH0]POHFCY)) From TRTPJT
+       GACTION = SAVACT
+       If mkstat : GERR = 1 : GZONE = "PJT" : GZNUM = 1886 : Endif
+       Gosub AFF From GSAISIE
+       If mkstat : End : Endif
+       If !mkstat
+        SAVACT = GACTION : GACTION = "PAMAPPFLG"
+        Call PAMAPPFLG("POH2",nolign-1,"PJT") From TRTACHAPP1
+        GACTION = SAVACT
+        If mkstat : GERR = 1 : GZONE = "PJT" : GZNUM = 1886 : Endif
+        Gosub AFF From GSAISIE
+        If mkstat : End : Endif
+        If !mkstat
+         SAVACT = GACTION : GACTION = "STD"
+         Call AM_PJT([M]PJT(indice)) From SUBPOH
+         GACTION = SAVACT
+         If mkstat : GERR = 1 : GZONE = "PJT" : GZNUM = 1886 : Endif
+         Gosub AFF From GSAISIE
+         If mkstat : End : Endif
+        Endif
+       Endif
+      Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone EXTRCPDAT
+mkstat = 0
+zoncou = "EXTRCPDAT"
+WDATE = [M]EXTRCPDAT(indice)
+If varmode([M]EXTRCPDAT,indice)=0
+ SAVACT = GACTION : GACTION = "PASLIN"
+ GACTION = SAVACT
+ If GMODIF<>2 mkstat=2 : Endif
+ If mkstat=1 : Raz [M]EXTRCPDAT(indice) : Endif
+ If !mkstat
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_EXTRCPDAT([M]EXTRCPDAT(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]EXTRCPDAT(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "EXTRCPDAT" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   If [M]EXTRCPDAT(indice)=[0/0/0]
+    mkstat = 1 : GMESSAGE = mess(10,123,1)
+   Endif
+   If mkstat : GERR = 1 : GZONE = "EXTRCPDAT" : GZNUM = 5067 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "CTLJOU2"
+    Call CTL_JOU2([M]EXTRCPDAT(indice),[M:POH0]ORDDAT,[F:FCY]UVYDAY,[F:FCY]UVYCOD,1) From CONTX3
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "EXTRCPDAT" : GZNUM = 5067 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WDATE<>[M]EXTRCPDAT(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "STD"
+      Call AM_EXTRCPDAT([M]EXTRCPDAT(indice)) From SUBPOH
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "EXTRCPDAT" : GZNUM = 5067 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+      If !mkstat
+       SAVACT = GACTION : GACTION = "PAMAPPFLG"
+       Call PAMAPPFLG("POH2",nolign-1,"EXTRCPDAT") From TRTACHAPP1
+       GACTION = SAVACT
+       If mkstat : GERR = 1 : GZONE = "EXTRCPDAT" : GZNUM = 5067 : Endif
+       Gosub AFF From GSAISIE
+       If mkstat : End : Endif
+      Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone GROPRI
+mkstat = 0
+zoncou = "GROPRI"
+WNUM = [M]GROPRI(indice)
+If varmode([M]GROPRI,indice)=0
+ SAVACT = GACTION : GACTION = "PASLINPOH"
+ Call PASLINPOH(0) From SUBPOH
+ GACTION = SAVACT
+ If mkstat=1 : Raz [M]GROPRI(indice) : Endif
+ If !mkstat
+  SAVACT = GACTION : GACTION = "DIVREN"
+  PARAM(1) = "POH2"
+  PARAM(2) = "6"
+  PARAM(3) = num$(nolign-1)
+  PARAM(4) = "GROPRI"
+  Local Decimal VALEUR
+  VALEUR = [M]GROPRI(indice)
+  Call S_AFF_NUM(VALEUR,PARAM,"DIVREN","TRTPRICE","") From GACTION
+  [M]GROPRI(indice) = VALEUR
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]GROPRI(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "GROPRI" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   SAVACT = GACTION : GACTION = "STD"
+   Call AP_GROPRI([M]GROPRI(indice)) From SUBPOH
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "GROPRI" : GZNUM = 2541 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    If WNUM<>[M]GROPRI(indice) or IMPMOD
+     SAVACT = GACTION : GACTION = "PAMAPPFLG"
+     Call PAMAPPFLG("POH2",nolign-1,"GROPRI") From TRTACHAPP1
+     GACTION = SAVACT
+     If mkstat : GERR = 1 : GZONE = "GROPRI" : GZNUM = 2541 : Endif
+     Gosub AFF From GSAISIE
+     If mkstat : End : Endif
+     If !mkstat
+      SAVACT = GACTION : GACTION = "PAMDISCRG"
+      Call PAMDISCRG([M]GROPRI(indice),"POH2",0,nolign-1,[M:POH1]CUR) From TRTACHPRI1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "GROPRI" : GZNUM = 2541 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+      If !mkstat
+       SAVACT = GACTION : GACTION = "PAMVATFLG"
+       Call PAMVATFLG("POH2",nolign-1,"GROPRI") From TRTACHFAC1
+       GACTION = SAVACT
+       If mkstat : GERR = 1 : GZONE = "GROPRI" : GZNUM = 2541 : Endif
+       Gosub AFF From GSAISIE
+       If mkstat : End : Endif
+       If !mkstat
+        SAVACT = GACTION : GACTION = "STD"
+        Call AM_GROPRI([M]GROPRI(indice)) From SUBPOH
+        GACTION = SAVACT
+        If mkstat : GERR = 1 : GZONE = "GROPRI" : GZNUM = 2541 : Endif
+        Gosub AFF From GSAISIE
+        If mkstat : End : Endif
+       Endif
+      Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone DISCRGVAL1
+mkstat = 0
+zoncou = "DISCRGVAL1"
+WNUM = [M]DISCRGVAL1(indice)
+If varmode([M]DISCRGVAL1,indice)=0
+ SAVACT = GACTION : GACTION = "PASLINPOH"
+ Call PASLINPOH(1) From SUBPOH
+ GACTION = SAVACT
+ If mkstat=1 : Raz [M]DISCRGVAL1(indice) : Endif
+ If !mkstat
+  SAVACT = GACTION : GACTION = "DIVREN"
+  PARAM(1) = "POH2"
+  PARAM(2) = "6"
+  PARAM(3) = num$(nolign-1)
+  PARAM(4) = "DISCRGVAL1"
+  Local Decimal VALEUR
+  VALEUR = [M]DISCRGVAL1(indice)
+  Call S_AFF_NUM(VALEUR,PARAM,"DIVREN","TRTPRICE","") From GACTION
+  [M]DISCRGVAL1(indice) = VALEUR
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]DISCRGVAL1(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "DISCRGVAL1" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   If WNUM<>[M]DISCRGVAL1(indice) or IMPMOD
+    SAVACT = GACTION : GACTION = "PAMAPPFLG"
+    Call PAMAPPFLG("POH2",nolign-1,"DISCRGVAL1") From TRTACHAPP1
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "DISCRGVAL1" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     SAVACT = GACTION : GACTION = "PAMDISCRG"
+     Call PAMDISCRG([M]DISCRGVAL1(indice),"POH2",1,nolign-1,[M:POH1]CUR) From TRTACHPRI1
+     GACTION = SAVACT
+     If mkstat : GERR = 1 : GZONE = "DISCRGVAL1" : GZNUM = 0 : Endif
+     Gosub AFF From GSAISIE
+     If mkstat : End : Endif
+     If !mkstat
+      SAVACT = GACTION : GACTION = "PAMVATFLG"
+      Call PAMVATFLG("POH2",nolign-1,"DISCRGVAL1") From TRTACHFAC1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "DISCRGVAL1" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone DISCRGVAL2
+mkstat = 0
+zoncou = "DISCRGVAL2"
+WNUM = [M]DISCRGVAL2(indice)
+If varmode([M]DISCRGVAL2,indice)=0
+ SAVACT = GACTION : GACTION = "PASLINPOH"
+ Call PASLINPOH(2) From SUBPOH
+ GACTION = SAVACT
+ If mkstat=1 : Raz [M]DISCRGVAL2(indice) : Endif
+ If !mkstat
+  SAVACT = GACTION : GACTION = "DIVREN"
+  PARAM(1) = "POH2"
+  PARAM(2) = "6"
+  PARAM(3) = num$(nolign-1)
+  PARAM(4) = "DISCRGVAL2"
+  Local Decimal VALEUR
+  VALEUR = [M]DISCRGVAL2(indice)
+  Call S_AFF_NUM(VALEUR,PARAM,"DIVREN","TRTPRICE","") From GACTION
+  [M]DISCRGVAL2(indice) = VALEUR
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]DISCRGVAL2(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "DISCRGVAL2" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   If WNUM<>[M]DISCRGVAL2(indice) or IMPMOD
+    SAVACT = GACTION : GACTION = "PAMAPPFLG"
+    Call PAMAPPFLG("POH2",nolign-1,"DISCRGVAL2") From TRTACHAPP1
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "DISCRGVAL2" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     SAVACT = GACTION : GACTION = "PAMDISCRG"
+     Call PAMDISCRG([M]DISCRGVAL2(indice),"POH2",2,nolign-1,[M:POH1]CUR) From TRTACHPRI1
+     GACTION = SAVACT
+     If mkstat : GERR = 1 : GZONE = "DISCRGVAL2" : GZNUM = 0 : Endif
+     Gosub AFF From GSAISIE
+     If mkstat : End : Endif
+     If !mkstat
+      SAVACT = GACTION : GACTION = "PAMVATFLG"
+      Call PAMVATFLG("POH2",nolign-1,"DISCRGVAL2") From TRTACHFAC1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "DISCRGVAL2" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone DISCRGVAL3
+mkstat = 0
+zoncou = "DISCRGVAL3"
+WNUM = [M]DISCRGVAL3(indice)
+If varmode([M]DISCRGVAL3,indice)=0
+ SAVACT = GACTION : GACTION = "PASLINPOH"
+ Call PASLINPOH(3) From SUBPOH
+ GACTION = SAVACT
+ If mkstat=1 : Raz [M]DISCRGVAL3(indice) : Endif
+ If !mkstat
+  SAVACT = GACTION : GACTION = "DIVREN"
+  PARAM(1) = "POH2"
+  PARAM(2) = "6"
+  PARAM(3) = num$(nolign-1)
+  PARAM(4) = "DISCRGVAL3"
+  Local Decimal VALEUR
+  VALEUR = [M]DISCRGVAL3(indice)
+  Call S_AFF_NUM(VALEUR,PARAM,"DIVREN","TRTPRICE","") From GACTION
+  [M]DISCRGVAL3(indice) = VALEUR
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]DISCRGVAL3(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "DISCRGVAL3" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   If WNUM<>[M]DISCRGVAL3(indice) or IMPMOD
+    SAVACT = GACTION : GACTION = "PAMAPPFLG"
+    Call PAMAPPFLG("POH2",nolign-1,"DISCRGVAL3") From TRTACHAPP1
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "DISCRGVAL3" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     SAVACT = GACTION : GACTION = "PAMDISCRG"
+     Call PAMDISCRG([M]DISCRGVAL3(indice),"POH2",3,nolign-1,[M:POH1]CUR) From TRTACHPRI1
+     GACTION = SAVACT
+     If mkstat : GERR = 1 : GZONE = "DISCRGVAL3" : GZNUM = 0 : Endif
+     Gosub AFF From GSAISIE
+     If mkstat : End : Endif
+     If !mkstat
+      SAVACT = GACTION : GACTION = "PAMVATFLG"
+      Call PAMVATFLG("POH2",nolign-1,"DISCRGVAL3") From TRTACHFAC1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "DISCRGVAL3" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone DISCRGVAL4
+mkstat = 0
+zoncou = "DISCRGVAL4"
+WNUM = [M]DISCRGVAL4(indice)
+If varmode([M]DISCRGVAL4,indice)=0
+ SAVACT = GACTION : GACTION = "PASLINPOH"
+ Call PASLINPOH(4) From SUBPOH
+ GACTION = SAVACT
+ If mkstat=1 : Raz [M]DISCRGVAL4(indice) : Endif
+ If !mkstat
+  SAVACT = GACTION : GACTION = "DIVREN"
+  PARAM(1) = "POH2"
+  PARAM(2) = "6"
+  PARAM(3) = num$(nolign-1)
+  PARAM(4) = "DISCRGVAL4"
+  Local Decimal VALEUR
+  VALEUR = [M]DISCRGVAL4(indice)
+  Call S_AFF_NUM(VALEUR,PARAM,"DIVREN","TRTPRICE","") From GACTION
+  [M]DISCRGVAL4(indice) = VALEUR
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]DISCRGVAL4(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "DISCRGVAL4" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   If WNUM<>[M]DISCRGVAL4(indice) or IMPMOD
+    SAVACT = GACTION : GACTION = "PAMAPPFLG"
+    Call PAMAPPFLG("POH2",nolign-1,"DISCRGVAL4") From TRTACHAPP1
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "DISCRGVAL4" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     SAVACT = GACTION : GACTION = "PAMDISCRG"
+     Call PAMDISCRG([M]DISCRGVAL4(indice),"POH2",4,nolign-1,[M:POH1]CUR) From TRTACHPRI1
+     GACTION = SAVACT
+     If mkstat : GERR = 1 : GZONE = "DISCRGVAL4" : GZNUM = 0 : Endif
+     Gosub AFF From GSAISIE
+     If mkstat : End : Endif
+     If !mkstat
+      SAVACT = GACTION : GACTION = "PAMVATFLG"
+      Call PAMVATFLG("POH2",nolign-1,"DISCRGVAL4") From TRTACHFAC1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "DISCRGVAL4" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone DISCRGVAL5
+mkstat = 0
+zoncou = "DISCRGVAL5"
+WNUM = [M]DISCRGVAL5(indice)
+If varmode([M]DISCRGVAL5,indice)=0
+ SAVACT = GACTION : GACTION = "PASLINPOH"
+ Call PASLINPOH(5) From SUBPOH
+ GACTION = SAVACT
+ If mkstat=1 : Raz [M]DISCRGVAL5(indice) : Endif
+ If !mkstat
+  SAVACT = GACTION : GACTION = "DIVREN"
+  PARAM(1) = "POH2"
+  PARAM(2) = "6"
+  PARAM(3) = num$(nolign-1)
+  PARAM(4) = "DISCRGVAL5"
+  Local Decimal VALEUR
+  VALEUR = [M]DISCRGVAL5(indice)
+  Call S_AFF_NUM(VALEUR,PARAM,"DIVREN","TRTPRICE","") From GACTION
+  [M]DISCRGVAL5(indice) = VALEUR
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]DISCRGVAL5(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "DISCRGVAL5" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   If WNUM<>[M]DISCRGVAL5(indice) or IMPMOD
+    SAVACT = GACTION : GACTION = "PAMAPPFLG"
+    Call PAMAPPFLG("POH2",nolign-1,"DISCRGVAL5") From TRTACHAPP1
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "DISCRGVAL5" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     SAVACT = GACTION : GACTION = "PAMDISCRG"
+     Call PAMDISCRG([M]DISCRGVAL5(indice),"POH2",5,nolign-1,[M:POH1]CUR) From TRTACHPRI1
+     GACTION = SAVACT
+     If mkstat : GERR = 1 : GZONE = "DISCRGVAL5" : GZNUM = 0 : Endif
+     Gosub AFF From GSAISIE
+     If mkstat : End : Endif
+     If !mkstat
+      SAVACT = GACTION : GACTION = "PAMVATFLG"
+      Call PAMVATFLG("POH2",nolign-1,"DISCRGVAL5") From TRTACHFAC1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "DISCRGVAL5" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone CPRCOE
+mkstat = 0
+zoncou = "CPRCOE"
+If varmode([M]CPRCOE,indice)=0
+ SAVACT = GACTION : GACTION = "PASLIN"
+ GACTION = SAVACT
+ If GMODIF<>2 mkstat=2 : Endif
+ If mkstat=1 : Raz [M]CPRCOE(indice) : Endif
+ If !mkstat
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_CPRCOE([M]CPRCOE(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]CPRCOE(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "CPRCOE" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   SAVACT = GACTION : GACTION = "CONTCPR"
+   Call CONTCPR([M]CPRCOE(indice)) From TRTX3
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "CPRCOE" : GZNUM = 3950 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+  Endif
+ Endif
+Endif
+
+## Zone CPRAMT
+mkstat = 0
+zoncou = "CPRAMT"
+SAVACT = GACTION : GACTION = "PARDEV"
+GACTION = SAVACT
+If mkstat=1 : Raz [M]CPRAMT(indice) : Endif
+If !mkstat
+ If varmode([M]CPRAMT,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_CPRAMT([M]CPRAMT(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]CPRAMT(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "CPRAMT" : Gosub ACTION From =IMPTRT
+  Endif
+ Endif
+Endif
+
+## Zone LINACC1
+mkstat = 0
+zoncou = "LINACC1"
+WCHAR = [M]LINACC1(indice)
+SAVACT = GACTION : GACTION = "INIACCFMT"
+Call INIACCFMT(num$(GCOA(1))) From SETGLBCOA
+GACTION = SAVACT
+If mkstat=1 : Raz [M]LINACC1(indice) : Endif
+If !mkstat
+ If varmode([M]LINACC1,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_LINACC1([M]LINACC1(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]LINACC1(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "LINACC1" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("GAC","!",[M]LINACC1(indice),num$(GCOA(1)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "LINACC1" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_LINACC1([M]LINACC1(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "LINACC1" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]LINACC1(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "STD"
+      Call AM_LINACC1([M]LINACC1(indice)) From SUBPOH
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "LINACC1" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone LINACC2
+mkstat = 0
+zoncou = "LINACC2"
+WCHAR = [M]LINACC2(indice)
+SAVACT = GACTION : GACTION = "INIACCFMT"
+Call INIACCFMT(num$(GCOA(2))) From SETGLBCOA
+GACTION = SAVACT
+If mkstat=1 : Raz [M]LINACC2(indice) : Endif
+If !mkstat
+ If varmode([M]LINACC2,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_LINACC2([M]LINACC2(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]LINACC2(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "LINACC2" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("GAC","!",[M]LINACC2(indice),num$(GCOA(2)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "LINACC2" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_LINACC2([M]LINACC2(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "LINACC2" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]LINACC2(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "STD"
+      Call AM_LINACC2([M]LINACC2(indice)) From SUBPOH
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "LINACC2" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone LINACC3
+mkstat = 0
+zoncou = "LINACC3"
+WCHAR = [M]LINACC3(indice)
+SAVACT = GACTION : GACTION = "INIACCFMT"
+Call INIACCFMT(num$(GCOA(3))) From SETGLBCOA
+GACTION = SAVACT
+If mkstat=1 : Raz [M]LINACC3(indice) : Endif
+If !mkstat
+ If varmode([M]LINACC3,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_LINACC3([M]LINACC3(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]LINACC3(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "LINACC3" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("GAC","!",[M]LINACC3(indice),num$(GCOA(3)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "LINACC3" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_LINACC3([M]LINACC3(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "LINACC3" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]LINACC3(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "STD"
+      Call AM_LINACC3([M]LINACC3(indice)) From SUBPOH
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "LINACC3" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone LINACC4
+mkstat = 0
+zoncou = "LINACC4"
+WCHAR = [M]LINACC4(indice)
+SAVACT = GACTION : GACTION = "INIACCFMT"
+Call INIACCFMT(num$(GCOA(4))) From SETGLBCOA
+GACTION = SAVACT
+If mkstat=1 : Raz [M]LINACC4(indice) : Endif
+If !mkstat
+ If varmode([M]LINACC4,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_LINACC4([M]LINACC4(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]LINACC4(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "LINACC4" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("GAC","!",[M]LINACC4(indice),num$(GCOA(4)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "LINACC4" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_LINACC4([M]LINACC4(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "LINACC4" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]LINACC4(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "STD"
+      Call AM_LINACC4([M]LINACC4(indice)) From SUBPOH
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "LINACC4" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone LINACC5
+mkstat = 0
+zoncou = "LINACC5"
+WCHAR = [M]LINACC5(indice)
+SAVACT = GACTION : GACTION = "INIACCFMT"
+Call INIACCFMT(num$(GCOA(5))) From SETGLBCOA
+GACTION = SAVACT
+If mkstat=1 : Raz [M]LINACC5(indice) : Endif
+If !mkstat
+ If varmode([M]LINACC5,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_LINACC5([M]LINACC5(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]LINACC5(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "LINACC5" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("GAC","!",[M]LINACC5(indice),num$(GCOA(5)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "LINACC5" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_LINACC5([M]LINACC5(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "LINACC5" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]LINACC5(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "STD"
+      Call AM_LINACC5([M]LINACC5(indice)) From SUBPOH
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "LINACC5" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone LINACC6
+mkstat = 0
+zoncou = "LINACC6"
+WCHAR = [M]LINACC6(indice)
+SAVACT = GACTION : GACTION = "INIACCFMT"
+Call INIACCFMT(num$(GCOA(6))) From SETGLBCOA
+GACTION = SAVACT
+If mkstat=1 : Raz [M]LINACC6(indice) : Endif
+If !mkstat
+ If varmode([M]LINACC6,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_LINACC6([M]LINACC6(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]LINACC6(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "LINACC6" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("GAC","!",[M]LINACC6(indice),num$(GCOA(6)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "LINACC6" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_LINACC6([M]LINACC6(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "LINACC6" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]LINACC6(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "STD"
+      Call AM_LINACC6([M]LINACC6(indice)) From SUBPOH
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "LINACC6" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone LINACC7
+mkstat = 0
+zoncou = "LINACC7"
+WCHAR = [M]LINACC7(indice)
+SAVACT = GACTION : GACTION = "INIACCFMT"
+Call INIACCFMT(num$(GCOA(7))) From SETGLBCOA
+GACTION = SAVACT
+If mkstat=1 : Raz [M]LINACC7(indice) : Endif
+If !mkstat
+ If varmode([M]LINACC7,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_LINACC7([M]LINACC7(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]LINACC7(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "LINACC7" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("GAC","!",[M]LINACC7(indice),num$(GCOA(7)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "LINACC7" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_LINACC7([M]LINACC7(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "LINACC7" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]LINACC7(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "STD"
+      Call AM_LINACC7([M]LINACC7(indice)) From SUBPOH
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "LINACC7" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone LINACC8
+mkstat = 0
+zoncou = "LINACC8"
+WCHAR = [M]LINACC8(indice)
+SAVACT = GACTION : GACTION = "INIACCFMT"
+Call INIACCFMT(num$(GCOA(8))) From SETGLBCOA
+GACTION = SAVACT
+If mkstat=1 : Raz [M]LINACC8(indice) : Endif
+If !mkstat
+ If varmode([M]LINACC8,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_LINACC8([M]LINACC8(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]LINACC8(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "LINACC8" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("GAC","!",[M]LINACC8(indice),num$(GCOA(8)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "LINACC8" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_LINACC8([M]LINACC8(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "LINACC8" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]LINACC8(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "STD"
+      Call AM_LINACC8([M]LINACC8(indice)) From SUBPOH
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "LINACC8" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone LINACC9
+mkstat = 0
+zoncou = "LINACC9"
+WCHAR = [M]LINACC9(indice)
+SAVACT = GACTION : GACTION = "INIACCFMT"
+Call INIACCFMT(num$(GCOA(9))) From SETGLBCOA
+GACTION = SAVACT
+If mkstat=1 : Raz [M]LINACC9(indice) : Endif
+If !mkstat
+ If varmode([M]LINACC9,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_LINACC9([M]LINACC9(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]LINACC9(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "LINACC9" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("GAC","!",[M]LINACC9(indice),num$(GCOA(9)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "LINACC9" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_LINACC9([M]LINACC9(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "LINACC9" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]LINACC9(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "STD"
+      Call AM_LINACC9([M]LINACC9(indice)) From SUBPOH
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "LINACC9" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone LINACC10
+mkstat = 0
+zoncou = "LINACC10"
+WCHAR = [M]LINACC10(indice)
+SAVACT = GACTION : GACTION = "INIACCFMT"
+Call INIACCFMT(num$(GCOA(10))) From SETGLBCOA
+GACTION = SAVACT
+If mkstat=1 : Raz [M]LINACC10(indice) : Endif
+If !mkstat
+ If varmode([M]LINACC10,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_LINACC10([M]LINACC10(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]LINACC10(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "LINACC10" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("GAC","!",[M]LINACC10(indice),num$(GCOA(10)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "LINACC10" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_LINACC10([M]LINACC10(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "LINACC10" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]LINACC10(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "STD"
+      Call AM_LINACC10([M]LINACC10(indice)) From SUBPOH
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "LINACC10" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone LINPURTYP
+mkstat = 0
+zoncou = "LINPURTYP"
+IMPENT = [M]LINPURTYP(indice)
+WNUM = IMPENT
+If varinit([M]LINPURTYP,indice)=0
+ IMPENT = 1
+ SAVACT = GACTION : GACTION = "STD"
+ Call D_LINPURTYP(IMPENT) From SUBPOH
+ GACTION = SAVACT
+Endif
+If !mkstat
+ If varmode([M]LINPURTYP,indice)=0
+  SAVACT = GACTION : GACTION = "PASLIN"
+  GACTION = SAVACT
+  If GMODIF<>2 mkstat=2 : Endif
+  If mkstat=1 : Raz IMPENT : Endif
+  [M]LINPURTYP(indice) = IMPENT
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "LINPURTYP" : Gosub ACTION From =IMPTRT
+   IMPENT = [M]LINPURTYP(indice)
+  Endif
+  If !mkstat
+   If IMPENT=0
+    mkstat = 1 : GMESSAGE = mess(10,123,1)
+   Endif
+   If mkstat : GERR = 1 : GZONE = "LINPURTYP" : GZNUM = 2507 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    If WNUM<>IMPENT or IMPMOD
+     SAVACT = GACTION : GACTION = "STD"
+     Call AM_LINPURTYP(IMPENT) From SUBPOH
+     GACTION = SAVACT
+     If mkstat : GERR = 1 : GZONE = "LINPURTYP" : GZNUM = 2507 : Endif
+     Gosub AFF From GSAISIE
+     If mkstat : End : Endif
+     If !mkstat
+      SAVACT = GACTION : GACTION = "PAMVATFLG"
+      Call PAMVATFLG("POH2",nolign-1,"LINPURTYP") From TRTACHFAC1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "LINPURTYP" : GZNUM = 2507 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+[M]LINPURTYP(indice) = IMPENT
+
+## Zone MATTOL
+mkstat = 0
+zoncou = "MATTOL"
+If varinit([M]MATTOL,indice)=0
+ SAVACT = GACTION : GACTION = "STD"
+ Call D_MATTOL([M]MATTOL(indice)) From SUBPOH
+ GACTION = SAVACT
+Endif
+If !mkstat
+ If varmode([M]MATTOL,indice)=0
+  SAVACT = GACTION : GACTION = "PASLIN"
+  GACTION = SAVACT
+  If GMODIF<>2 mkstat=2 : Endif
+  If mkstat=1 : Raz [M]MATTOL(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "MATTOL" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("MAT","!",[M]MATTOL(indice),"",mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "MATTOL" : GZNUM = 43884 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+  Endif
+ Endif
+Endif
+
+## Zone CCE1
+mkstat = 0
+zoncou = "CCE1"
+WCHAR = [M]CCE1(indice)
+SAVACT = GACTION : GACTION = "INICCEFMT"
+Call INICCEFMT(num$(GDIE(1))) From SETGLBDIE
+GACTION = SAVACT
+If mkstat=1 : Raz [M]CCE1(indice) : Endif
+If !mkstat
+ If varinit([M]CCE1,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call D_CCE1([M]CCE1(indice)) From SUBPOH
+  GACTION = SAVACT
+ Endif
+Endif
+If !mkstat
+ If varmode([M]CCE1,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_CCE1([M]CCE1(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]CCE1(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "CCE1" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("CCE","!",[M]CCE1(indice),num$(GDIE(1)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "CCE1" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_CCE1([M]CCE1(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "CCE1" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]CCE1(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "PAMAPPFLG"
+      Call PAMAPPFLG("POH2",nolign-1,"CCE1") From TRTACHAPP1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "CCE1" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone CCE2
+mkstat = 0
+zoncou = "CCE2"
+WCHAR = [M]CCE2(indice)
+SAVACT = GACTION : GACTION = "INICCEFMT"
+Call INICCEFMT(num$(GDIE(2))) From SETGLBDIE
+GACTION = SAVACT
+If mkstat=1 : Raz [M]CCE2(indice) : Endif
+If !mkstat
+ If varinit([M]CCE2,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call D_CCE2([M]CCE2(indice)) From SUBPOH
+  GACTION = SAVACT
+ Endif
+Endif
+If !mkstat
+ If varmode([M]CCE2,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_CCE2([M]CCE2(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]CCE2(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "CCE2" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("CCE","!",[M]CCE2(indice),num$(GDIE(2)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "CCE2" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_CCE2([M]CCE2(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "CCE2" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]CCE2(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "PAMAPPFLG"
+      Call PAMAPPFLG("POH2",nolign-1,"CCE2") From TRTACHAPP1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "CCE2" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone CCE3
+mkstat = 0
+zoncou = "CCE3"
+WCHAR = [M]CCE3(indice)
+SAVACT = GACTION : GACTION = "INICCEFMT"
+Call INICCEFMT(num$(GDIE(3))) From SETGLBDIE
+GACTION = SAVACT
+If mkstat=1 : Raz [M]CCE3(indice) : Endif
+If !mkstat
+ If varinit([M]CCE3,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call D_CCE3([M]CCE3(indice)) From SUBPOH
+  GACTION = SAVACT
+ Endif
+Endif
+If !mkstat
+ If varmode([M]CCE3,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_CCE3([M]CCE3(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]CCE3(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "CCE3" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("CCE","!",[M]CCE3(indice),num$(GDIE(3)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "CCE3" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_CCE3([M]CCE3(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "CCE3" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]CCE3(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "PAMAPPFLG"
+      Call PAMAPPFLG("POH2",nolign-1,"CCE3") From TRTACHAPP1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "CCE3" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone CCE4
+mkstat = 0
+zoncou = "CCE4"
+WCHAR = [M]CCE4(indice)
+SAVACT = GACTION : GACTION = "INICCEFMT"
+Call INICCEFMT(num$(GDIE(4))) From SETGLBDIE
+GACTION = SAVACT
+If mkstat=1 : Raz [M]CCE4(indice) : Endif
+If !mkstat
+ If varinit([M]CCE4,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call D_CCE4([M]CCE4(indice)) From SUBPOH
+  GACTION = SAVACT
+ Endif
+Endif
+If !mkstat
+ If varmode([M]CCE4,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_CCE4([M]CCE4(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]CCE4(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "CCE4" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("CCE","!",[M]CCE4(indice),num$(GDIE(4)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "CCE4" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_CCE4([M]CCE4(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "CCE4" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]CCE4(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "PAMAPPFLG"
+      Call PAMAPPFLG("POH2",nolign-1,"CCE4") From TRTACHAPP1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "CCE4" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone CCE5
+mkstat = 0
+zoncou = "CCE5"
+WCHAR = [M]CCE5(indice)
+SAVACT = GACTION : GACTION = "INICCEFMT"
+Call INICCEFMT(num$(GDIE(5))) From SETGLBDIE
+GACTION = SAVACT
+If mkstat=1 : Raz [M]CCE5(indice) : Endif
+If !mkstat
+ If varinit([M]CCE5,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call D_CCE5([M]CCE5(indice)) From SUBPOH
+  GACTION = SAVACT
+ Endif
+Endif
+If !mkstat
+ If varmode([M]CCE5,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_CCE5([M]CCE5(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]CCE5(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "CCE5" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("CCE","!",[M]CCE5(indice),num$(GDIE(5)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "CCE5" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_CCE5([M]CCE5(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "CCE5" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]CCE5(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "PAMAPPFLG"
+      Call PAMAPPFLG("POH2",nolign-1,"CCE5") From TRTACHAPP1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "CCE5" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone CCE6
+mkstat = 0
+zoncou = "CCE6"
+WCHAR = [M]CCE6(indice)
+SAVACT = GACTION : GACTION = "INICCEFMT"
+Call INICCEFMT(num$(GDIE(6))) From SETGLBDIE
+GACTION = SAVACT
+If mkstat=1 : Raz [M]CCE6(indice) : Endif
+If !mkstat
+ If varinit([M]CCE6,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call D_CCE6([M]CCE6(indice)) From SUBPOH
+  GACTION = SAVACT
+ Endif
+Endif
+If !mkstat
+ If varmode([M]CCE6,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_CCE6([M]CCE6(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]CCE6(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "CCE6" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("CCE","!",[M]CCE6(indice),num$(GDIE(6)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "CCE6" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_CCE6([M]CCE6(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "CCE6" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]CCE6(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "PAMAPPFLG"
+      Call PAMAPPFLG("POH2",nolign-1,"CCE6") From TRTACHAPP1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "CCE6" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone CCE7
+mkstat = 0
+zoncou = "CCE7"
+WCHAR = [M]CCE7(indice)
+SAVACT = GACTION : GACTION = "INICCEFMT"
+Call INICCEFMT(num$(GDIE(7))) From SETGLBDIE
+GACTION = SAVACT
+If mkstat=1 : Raz [M]CCE7(indice) : Endif
+If !mkstat
+ If varinit([M]CCE7,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call D_CCE7([M]CCE7(indice)) From SUBPOH
+  GACTION = SAVACT
+ Endif
+Endif
+If !mkstat
+ If varmode([M]CCE7,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_CCE7([M]CCE7(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]CCE7(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "CCE7" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("CCE","!",[M]CCE7(indice),num$(GDIE(7)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "CCE7" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_CCE7([M]CCE7(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "CCE7" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]CCE7(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "PAMAPPFLG"
+      Call PAMAPPFLG("POH2",nolign-1,"CCE7") From TRTACHAPP1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "CCE7" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone CCE8
+mkstat = 0
+zoncou = "CCE8"
+WCHAR = [M]CCE8(indice)
+SAVACT = GACTION : GACTION = "INICCEFMT"
+Call INICCEFMT(num$(GDIE(8))) From SETGLBDIE
+GACTION = SAVACT
+If mkstat=1 : Raz [M]CCE8(indice) : Endif
+If !mkstat
+ If varinit([M]CCE8,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call D_CCE8([M]CCE8(indice)) From SUBPOH
+  GACTION = SAVACT
+ Endif
+Endif
+If !mkstat
+ If varmode([M]CCE8,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_CCE8([M]CCE8(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]CCE8(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "CCE8" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("CCE","!",[M]CCE8(indice),num$(GDIE(8)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "CCE8" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_CCE8([M]CCE8(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "CCE8" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]CCE8(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "PAMAPPFLG"
+      Call PAMAPPFLG("POH2",nolign-1,"CCE8") From TRTACHAPP1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "CCE8" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone CCE9
+mkstat = 0
+zoncou = "CCE9"
+WCHAR = [M]CCE9(indice)
+SAVACT = GACTION : GACTION = "INICCEFMT"
+Call INICCEFMT(num$(GDIE(9))) From SETGLBDIE
+GACTION = SAVACT
+If mkstat=1 : Raz [M]CCE9(indice) : Endif
+If !mkstat
+ If varinit([M]CCE9,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call D_CCE9([M]CCE9(indice)) From SUBPOH
+  GACTION = SAVACT
+ Endif
+Endif
+If !mkstat
+ If varmode([M]CCE9,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_CCE9([M]CCE9(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]CCE9(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "CCE9" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("CCE","!",[M]CCE9(indice),num$(GDIE(9)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "CCE9" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_CCE9([M]CCE9(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "CCE9" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]CCE9(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "PAMAPPFLG"
+      Call PAMAPPFLG("POH2",nolign-1,"CCE9") From TRTACHAPP1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "CCE9" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone CCE10
+mkstat = 0
+zoncou = "CCE10"
+WCHAR = [M]CCE10(indice)
+SAVACT = GACTION : GACTION = "INICCEFMT"
+Call INICCEFMT(num$(GDIE(10))) From SETGLBDIE
+GACTION = SAVACT
+If mkstat=1 : Raz [M]CCE10(indice) : Endif
+If !mkstat
+ If varinit([M]CCE10,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call D_CCE10([M]CCE10(indice)) From SUBPOH
+  GACTION = SAVACT
+ Endif
+Endif
+If !mkstat
+ If varmode([M]CCE10,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_CCE10([M]CCE10(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]CCE10(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "CCE10" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("CCE","!",[M]CCE10(indice),num$(GDIE(10)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "CCE10" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_CCE10([M]CCE10(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "CCE10" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]CCE10(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "PAMAPPFLG"
+      Call PAMAPPFLG("POH2",nolign-1,"CCE10") From TRTACHAPP1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "CCE10" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone CCE11
+mkstat = 0
+zoncou = "CCE11"
+WCHAR = [M]CCE11(indice)
+SAVACT = GACTION : GACTION = "INICCEFMT"
+Call INICCEFMT(num$(GDIE(11))) From SETGLBDIE
+GACTION = SAVACT
+If mkstat=1 : Raz [M]CCE11(indice) : Endif
+If !mkstat
+ If varinit([M]CCE11,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call D_CCE11([M]CCE11(indice)) From SUBPOH
+  GACTION = SAVACT
+ Endif
+Endif
+If !mkstat
+ If varmode([M]CCE11,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_CCE11([M]CCE11(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]CCE11(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "CCE11" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("CCE","!",[M]CCE11(indice),num$(GDIE(11)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "CCE11" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_CCE11([M]CCE11(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "CCE11" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]CCE11(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "PAMAPPFLG"
+      Call PAMAPPFLG("POH2",nolign-1,"CCE11") From TRTACHAPP1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "CCE11" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone CCE12
+mkstat = 0
+zoncou = "CCE12"
+WCHAR = [M]CCE12(indice)
+SAVACT = GACTION : GACTION = "INICCEFMT"
+Call INICCEFMT(num$(GDIE(12))) From SETGLBDIE
+GACTION = SAVACT
+If mkstat=1 : Raz [M]CCE12(indice) : Endif
+If !mkstat
+ If varinit([M]CCE12,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call D_CCE12([M]CCE12(indice)) From SUBPOH
+  GACTION = SAVACT
+ Endif
+Endif
+If !mkstat
+ If varmode([M]CCE12,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_CCE12([M]CCE12(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]CCE12(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "CCE12" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("CCE","!",[M]CCE12(indice),num$(GDIE(12)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "CCE12" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_CCE12([M]CCE12(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "CCE12" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]CCE12(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "PAMAPPFLG"
+      Call PAMAPPFLG("POH2",nolign-1,"CCE12") From TRTACHAPP1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "CCE12" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone CCE13
+mkstat = 0
+zoncou = "CCE13"
+WCHAR = [M]CCE13(indice)
+SAVACT = GACTION : GACTION = "INICCEFMT"
+Call INICCEFMT(num$(GDIE(13))) From SETGLBDIE
+GACTION = SAVACT
+If mkstat=1 : Raz [M]CCE13(indice) : Endif
+If !mkstat
+ If varinit([M]CCE13,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call D_CCE13([M]CCE13(indice)) From SUBPOH
+  GACTION = SAVACT
+ Endif
+Endif
+If !mkstat
+ If varmode([M]CCE13,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_CCE13([M]CCE13(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]CCE13(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "CCE13" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("CCE","!",[M]CCE13(indice),num$(GDIE(13)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "CCE13" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_CCE13([M]CCE13(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "CCE13" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]CCE13(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "PAMAPPFLG"
+      Call PAMAPPFLG("POH2",nolign-1,"CCE13") From TRTACHAPP1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "CCE13" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone CCE14
+mkstat = 0
+zoncou = "CCE14"
+WCHAR = [M]CCE14(indice)
+SAVACT = GACTION : GACTION = "INICCEFMT"
+Call INICCEFMT(num$(GDIE(14))) From SETGLBDIE
+GACTION = SAVACT
+If mkstat=1 : Raz [M]CCE14(indice) : Endif
+If !mkstat
+ If varinit([M]CCE14,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call D_CCE14([M]CCE14(indice)) From SUBPOH
+  GACTION = SAVACT
+ Endif
+Endif
+If !mkstat
+ If varmode([M]CCE14,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_CCE14([M]CCE14(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]CCE14(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "CCE14" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("CCE","!",[M]CCE14(indice),num$(GDIE(14)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "CCE14" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_CCE14([M]CCE14(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "CCE14" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]CCE14(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "PAMAPPFLG"
+      Call PAMAPPFLG("POH2",nolign-1,"CCE14") From TRTACHAPP1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "CCE14" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone CCE15
+mkstat = 0
+zoncou = "CCE15"
+WCHAR = [M]CCE15(indice)
+SAVACT = GACTION : GACTION = "INICCEFMT"
+Call INICCEFMT(num$(GDIE(15))) From SETGLBDIE
+GACTION = SAVACT
+If mkstat=1 : Raz [M]CCE15(indice) : Endif
+If !mkstat
+ If varinit([M]CCE15,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call D_CCE15([M]CCE15(indice)) From SUBPOH
+  GACTION = SAVACT
+ Endif
+Endif
+If !mkstat
+ If varmode([M]CCE15,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_CCE15([M]CCE15(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]CCE15(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "CCE15" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("CCE","!",[M]CCE15(indice),num$(GDIE(15)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "CCE15" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_CCE15([M]CCE15(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "CCE15" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]CCE15(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "PAMAPPFLG"
+      Call PAMAPPFLG("POH2",nolign-1,"CCE15") From TRTACHAPP1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "CCE15" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone CCE16
+mkstat = 0
+zoncou = "CCE16"
+WCHAR = [M]CCE16(indice)
+SAVACT = GACTION : GACTION = "INICCEFMT"
+Call INICCEFMT(num$(GDIE(16))) From SETGLBDIE
+GACTION = SAVACT
+If mkstat=1 : Raz [M]CCE16(indice) : Endif
+If !mkstat
+ If varinit([M]CCE16,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call D_CCE16([M]CCE16(indice)) From SUBPOH
+  GACTION = SAVACT
+ Endif
+Endif
+If !mkstat
+ If varmode([M]CCE16,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_CCE16([M]CCE16(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]CCE16(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "CCE16" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("CCE","!",[M]CCE16(indice),num$(GDIE(16)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "CCE16" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_CCE16([M]CCE16(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "CCE16" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]CCE16(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "PAMAPPFLG"
+      Call PAMAPPFLG("POH2",nolign-1,"CCE16") From TRTACHAPP1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "CCE16" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone CCE17
+mkstat = 0
+zoncou = "CCE17"
+WCHAR = [M]CCE17(indice)
+SAVACT = GACTION : GACTION = "INICCEFMT"
+Call INICCEFMT(num$(GDIE(17))) From SETGLBDIE
+GACTION = SAVACT
+If mkstat=1 : Raz [M]CCE17(indice) : Endif
+If !mkstat
+ If varinit([M]CCE17,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call D_CCE17([M]CCE17(indice)) From SUBPOH
+  GACTION = SAVACT
+ Endif
+Endif
+If !mkstat
+ If varmode([M]CCE17,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_CCE17([M]CCE17(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]CCE17(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "CCE17" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("CCE","!",[M]CCE17(indice),num$(GDIE(17)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "CCE17" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_CCE17([M]CCE17(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "CCE17" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]CCE17(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "PAMAPPFLG"
+      Call PAMAPPFLG("POH2",nolign-1,"CCE17") From TRTACHAPP1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "CCE17" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone CCE18
+mkstat = 0
+zoncou = "CCE18"
+WCHAR = [M]CCE18(indice)
+SAVACT = GACTION : GACTION = "INICCEFMT"
+Call INICCEFMT(num$(GDIE(18))) From SETGLBDIE
+GACTION = SAVACT
+If mkstat=1 : Raz [M]CCE18(indice) : Endif
+If !mkstat
+ If varinit([M]CCE18,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call D_CCE18([M]CCE18(indice)) From SUBPOH
+  GACTION = SAVACT
+ Endif
+Endif
+If !mkstat
+ If varmode([M]CCE18,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_CCE18([M]CCE18(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]CCE18(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "CCE18" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("CCE","!",[M]CCE18(indice),num$(GDIE(18)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "CCE18" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_CCE18([M]CCE18(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "CCE18" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]CCE18(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "PAMAPPFLG"
+      Call PAMAPPFLG("POH2",nolign-1,"CCE18") From TRTACHAPP1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "CCE18" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone CCE19
+mkstat = 0
+zoncou = "CCE19"
+WCHAR = [M]CCE19(indice)
+SAVACT = GACTION : GACTION = "INICCEFMT"
+Call INICCEFMT(num$(GDIE(19))) From SETGLBDIE
+GACTION = SAVACT
+If mkstat=1 : Raz [M]CCE19(indice) : Endif
+If !mkstat
+ If varinit([M]CCE19,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call D_CCE19([M]CCE19(indice)) From SUBPOH
+  GACTION = SAVACT
+ Endif
+Endif
+If !mkstat
+ If varmode([M]CCE19,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_CCE19([M]CCE19(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]CCE19(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "CCE19" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("CCE","!",[M]CCE19(indice),num$(GDIE(19)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "CCE19" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_CCE19([M]CCE19(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "CCE19" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]CCE19(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "PAMAPPFLG"
+      Call PAMAPPFLG("POH2",nolign-1,"CCE19") From TRTACHAPP1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "CCE19" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone CCE20
+mkstat = 0
+zoncou = "CCE20"
+WCHAR = [M]CCE20(indice)
+SAVACT = GACTION : GACTION = "INICCEFMT"
+Call INICCEFMT(num$(GDIE(20))) From SETGLBDIE
+GACTION = SAVACT
+If mkstat=1 : Raz [M]CCE20(indice) : Endif
+If !mkstat
+ If varinit([M]CCE20,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call D_CCE20([M]CCE20(indice)) From SUBPOH
+  GACTION = SAVACT
+ Endif
+Endif
+If !mkstat
+ If varmode([M]CCE20,indice)=0
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_CCE20([M]CCE20(indice)) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz [M]CCE20(indice) : Endif
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "CCE20" : Gosub ACTION From =IMPTRT
+  Endif
+  If !mkstat
+   Call CONTROLE("CCE","!",[M]CCE20(indice),num$(GDIE(20)),mkstat) From CONTOBJ
+   If mkstat : GERR = 1 : GZONE = "CCE20" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "STD"
+    Call C_CCE20([M]CCE20(indice)) From SUBPOH
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "CCE20" : GZNUM = 0 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]CCE20(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "PAMAPPFLG"
+      Call PAMAPPFLG("POH2",nolign-1,"CCE20") From TRTACHAPP1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "CCE20" : GZNUM = 0 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone QUAFLG
+mkstat = 0
+zoncou = "QUAFLG"
+IMPENT = [M]QUAFLG(indice)
+WNUM = IMPENT
+If varinit([M]QUAFLG,indice)=0
+ IMPENT = 1
+Endif
+If varmode([M]QUAFLG,indice)=0
+ SAVACT = GACTION : GACTION = "PASLIN"
+ GACTION = SAVACT
+ If GMODIF<>2 mkstat=2 : Endif
+ If mkstat=1 : Raz IMPENT : Endif
+ If !mkstat
+  SAVACT = GACTION : GACTION = "STD"
+  Call AS_QUAFLG(IMPENT) From SUBPOH
+  GACTION = SAVACT
+  If mkstat=1 : Raz IMPENT : Endif
+  [M]QUAFLG(indice) = IMPENT
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "QUAFLG" : Gosub ACTION From =IMPTRT
+   IMPENT = [M]QUAFLG(indice)
+  Endif
+  If !mkstat
+   If WNUM<>IMPENT or IMPMOD
+    SAVACT = GACTION : GACTION = "PAMAPPFLG"
+    Call PAMAPPFLG("POH2",nolign-1,"QUAFLG") From TRTACHAPP1
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "QUAFLG" : GZNUM = 1927 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+   Endif
+  Endif
+ Endif
+Endif
+[M]QUAFLG(indice) = IMPENT
+
+## Zone EECINCRAT
+mkstat = 0
+zoncou = "EECINCRAT"
+WNUM = [M]EECINCRAT(indice)
+If varmode([M]EECINCRAT,indice)=0
+ SAVACT = GACTION : GACTION = "PASLIN"
+ GACTION = SAVACT
+ If GMODIF<>2 mkstat=2 : Endif
+ If mkstat=1 : Raz [M]EECINCRAT(indice) : Endif
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "EECINCRAT" : Gosub ACTION From =IMPTRT
+ Endif
+ If !mkstat
+  If [M]EECINCRAT(indice)<0
+   mkstat = 1 : GMESSAGE = mess(180,141,1)
+  Endif
+  If mkstat : GERR = 1 : GZONE = "EECINCRAT" : GZNUM = 4204 : Endif
+  Gosub AFF From GSAISIE
+  If mkstat : End : Endif
+  If !mkstat
+   If WNUM<>[M]EECINCRAT(indice) or IMPMOD
+    SAVACT = GACTION : GACTION = "PAMAPPFLG"
+    Call PAMAPPFLG("POH2",nolign-1,"EECINCRAT") From TRTACHAPP1
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "EECINCRAT" : GZNUM = 4204 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone ORICRY
+mkstat = 0
+zoncou = "ORICRY"
+WCHAR = [M]ORICRY(indice)
+If varinit([M]ORICRY,indice)=0
+ [M]ORICRY(indice) = GPAYS
+Endif
+If varmode([M]ORICRY,indice)=0
+ SAVACT = GACTION : GACTION = "PASLIN"
+ GACTION = SAVACT
+ If GMODIF<>2 mkstat=2 : Endif
+ If mkstat=1 : Raz [M]ORICRY(indice) : Endif
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ORICRY" : Gosub ACTION From =IMPTRT
+ Endif
+ If !mkstat
+  Call CONTROLE("TCY","!",[M]ORICRY(indice),"",mkstat) From CONTOBJ
+  If mkstat : GERR = 1 : GZONE = "ORICRY" : GZNUM = 263 : Endif
+  Gosub AFF From GSAISIE
+  If mkstat : End : Endif
+  If !mkstat
+   If WCHAR<>[M]ORICRY(indice) or IMPMOD
+    SAVACT = GACTION : GACTION = "PAMAPPFLG"
+    Call PAMAPPFLG("POH2",nolign-1,"ORICRY") From TRTACHAPP1
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "ORICRY" : GZNUM = 263 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone LINCLEFLG
+mkstat = 0
+zoncou = "LINCLEFLG"
+IMPENT = [M]LINCLEFLG(indice)
+If varinit([M]LINCLEFLG,indice)=0
+ IMPENT = 1
+Endif
+[M]LINCLEFLG(indice) = IMPENT
+
+## Zone ORI
+mkstat = 0
+zoncou = "ORI"
+IMPENT = [M]ORI(indice)
+If varinit([M]ORI,indice)=0
+ IMPENT = 1
+Endif
+[M]ORI(indice) = IMPENT
+
+## Zone QTYWEU
+mkstat = 0
+zoncou = "QTYWEU"
+If varmode([M]QTYWEU,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "QTYWEU" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+## Zone QTYVOU
+mkstat = 0
+zoncou = "QTYVOU"
+If varmode([M]QTYVOU,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "QTYVOU" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+## Zone TSICOD1
+mkstat = 0
+zoncou = "TSICOD1"
+If varinit([M]TSICOD1,indice)=0
+ SAVACT = GACTION : GACTION = "INILEG"
+ Call INILEG([M]TSICOD1(indice),"20","") From SUBADI
+ GACTION = SAVACT
+Endif
+
+## Zone TSICOD2
+mkstat = 0
+zoncou = "TSICOD2"
+If varinit([M]TSICOD2,indice)=0
+ SAVACT = GACTION : GACTION = "INILEG"
+ Call INILEG([M]TSICOD2(indice),"21",[M:POH2]TSICOD1(nolign-1)) From SUBADI
+ GACTION = SAVACT
+Endif
+
+## Zone TSICOD3
+mkstat = 0
+zoncou = "TSICOD3"
+If varinit([M]TSICOD3,indice)=0
+ SAVACT = GACTION : GACTION = "INILEG"
+ Call INILEG([M]TSICOD3(indice),"22",[M:POH2]TSICOD2(nolign-1)) From SUBADI
+ GACTION = SAVACT
+Endif
+
+## Zone TSICOD4
+mkstat = 0
+zoncou = "TSICOD4"
+If varinit([M]TSICOD4,indice)=0
+ SAVACT = GACTION : GACTION = "INILEG"
+ Call INILEG([M]TSICOD4(indice),"23",[M:POH2]TSICOD3(nolign-1)) From SUBADI
+ GACTION = SAVACT
+Endif
+
+## Zone TSICOD5
+mkstat = 0
+zoncou = "TSICOD5"
+If varinit([M]TSICOD5,indice)=0
+ SAVACT = GACTION : GACTION = "INILEG"
+ Call INILEG([M]TSICOD5(indice),"24",[M:POH2]TSICOD4(nolign-1)) From SUBADI
+ GACTION = SAVACT
+Endif
+
+## Zone VAT1
+mkstat = 0
+zoncou = "VAT1"
+WCHAR = [M]VAT1(indice)
+If varmode([M]VAT1,indice)=0
+ SAVACT = GACTION : GACTION = "PASLINPOH"
+ Call PASLINPOH(0) From SUBPOH
+ GACTION = SAVACT
+ If mkstat=1 : Raz [M]VAT1(indice) : Endif
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "VAT1" : Gosub ACTION From =IMPTRT
+ Endif
+ If !mkstat
+  If vireblc([M]VAT1(indice),2)=""
+   mkstat = 1 : GMESSAGE = mess(10,123,1)
+  Endif
+  If mkstat : GERR = 1 : GZONE = "VAT1" : GZNUM = 6743 : Endif
+  Gosub AFF From GSAISIE
+  If mkstat : End : Endif
+  If !mkstat
+   SAVACT = GACTION : GACTION = "CONTTVT"
+   Call CONTTVT([M]VAT1(indice),GCURLEG,"POH2","VAT1",[M:POH0]POHFCY,"",GSOCIETE) From SUBTVT
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "VAT1" : GZNUM = 6743 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    SAVACT = GACTION : GACTION = "PCOVAT"
+    Call PCOVAT([M]VAT1(indice),[M:POH1]VACBPR) From TRTACHCTL1
+    GACTION = SAVACT
+    If mkstat : GERR = 1 : GZONE = "VAT1" : GZNUM = 6743 : Endif
+    Gosub AFF From GSAISIE
+    If mkstat : End : Endif
+    If !mkstat
+     If WCHAR<>[M]VAT1(indice) or IMPMOD
+      SAVACT = GACTION : GACTION = "PAMVATFLG"
+      Call PAMVATFLG("POH2",nolign-1,"VAT1") From TRTACHFAC1
+      GACTION = SAVACT
+      If mkstat : GERR = 1 : GZONE = "VAT1" : GZNUM = 6743 : Endif
+      Gosub AFF From GSAISIE
+      If mkstat : End : Endif
+     Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone VAT2
+mkstat = 0
+zoncou = "VAT2"
+WCHAR = [M]VAT2(indice)
+If varmode([M]VAT2,indice)=0
+ SAVACT = GACTION : GACTION = "PASLINPOH"
+ Call PASLINPOH(0) From SUBPOH
+ GACTION = SAVACT
+ If mkstat=1 : Raz [M]VAT2(indice) : Endif
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "VAT2" : Gosub ACTION From =IMPTRT
+ Endif
+ If !mkstat
+  SAVACT = GACTION : GACTION = "CONTTVT"
+  Call CONTTVT([M]VAT2(indice),GCURLEG,"POH2","VAT2",[M:POH0]POHFCY,"",GSOCIETE) From SUBTVT
+  GACTION = SAVACT
+  If mkstat : GERR = 1 : GZONE = "VAT2" : GZNUM = 6744 : Endif
+  Gosub AFF From GSAISIE
+  If mkstat : End : Endif
+  If !mkstat
+   SAVACT = GACTION : GACTION = "PCOVAT"
+   Call PCOVAT([M]VAT2(indice),[M:POH1]VACBPR) From TRTACHCTL1
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "VAT2" : GZNUM = 6744 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    If WCHAR<>[M]VAT2(indice) or IMPMOD
+     SAVACT = GACTION : GACTION = "PAMVATFLG"
+     Call PAMVATFLG("POH2",nolign-1,"VAT2") From TRTACHFAC1
+     GACTION = SAVACT
+     If mkstat : GERR = 1 : GZONE = "VAT2" : GZNUM = 6744 : Endif
+     Gosub AFF From GSAISIE
+     If mkstat : End : Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone VAT3
+mkstat = 0
+zoncou = "VAT3"
+WCHAR = [M]VAT3(indice)
+If varmode([M]VAT3,indice)=0
+ SAVACT = GACTION : GACTION = "PASLINPOH"
+ Call PASLINPOH(0) From SUBPOH
+ GACTION = SAVACT
+ If mkstat=1 : Raz [M]VAT3(indice) : Endif
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "VAT3" : Gosub ACTION From =IMPTRT
+ Endif
+ If !mkstat
+  SAVACT = GACTION : GACTION = "CONTTVT"
+  Call CONTTVT([M]VAT3(indice),GCURLEG,"POH2","VAT3",[M:POH0]POHFCY,"",GSOCIETE) From SUBTVT
+  GACTION = SAVACT
+  If mkstat : GERR = 1 : GZONE = "VAT3" : GZNUM = 6745 : Endif
+  Gosub AFF From GSAISIE
+  If mkstat : End : Endif
+  If !mkstat
+   SAVACT = GACTION : GACTION = "PCOVAT"
+   Call PCOVAT([M]VAT3(indice),[M:POH1]VACBPR) From TRTACHCTL1
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "VAT3" : GZNUM = 6745 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    If WCHAR<>[M]VAT3(indice) or IMPMOD
+     SAVACT = GACTION : GACTION = "PAMVATFLG"
+     Call PAMVATFLG("POH2",nolign-1,"VAT3") From TRTACHFAC1
+     GACTION = SAVACT
+     If mkstat : GERR = 1 : GZONE = "VAT3" : GZNUM = 6745 : Endif
+     Gosub AFF From GSAISIE
+     If mkstat : End : Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone LINTYP
+mkstat = 0
+zoncou = "LINTYP"
+IMPENT = [M]LINTYP(indice)
+If varinit([M]LINTYP,indice)=0
+ IMPENT = 1
+Endif
+[M]LINTYP(indice) = IMPENT
+
+## Zone DISCRGAMT1
+mkstat = 0
+zoncou = "DISCRGAMT1"
+SAVACT = GACTION : GACTION = "INIDEV"
+GACTION = SAVACT
+GDEVFMT="11.2" : GDEVFMT = GDEVFMT1(max(find([M:POH1]CUR,GDEVISE(1..GNBDEV)),1))
+If mkstat=1 : Raz [M]DISCRGAMT1(indice) : Endif
+
+## Zone DISCRGAMT2
+mkstat = 0
+zoncou = "DISCRGAMT2"
+SAVACT = GACTION : GACTION = "INIDEV"
+GACTION = SAVACT
+GDEVFMT="11.2" : GDEVFMT = GDEVFMT1(max(find([M:POH1]CUR,GDEVISE(1..GNBDEV)),1))
+If mkstat=1 : Raz [M]DISCRGAMT2(indice) : Endif
+
+## Zone DISCRGAMT3
+mkstat = 0
+zoncou = "DISCRGAMT3"
+SAVACT = GACTION : GACTION = "INIDEV"
+GACTION = SAVACT
+GDEVFMT="11.2" : GDEVFMT = GDEVFMT1(max(find([M:POH1]CUR,GDEVISE(1..GNBDEV)),1))
+If mkstat=1 : Raz [M]DISCRGAMT3(indice) : Endif
+
+## Zone DISCRGAMT4
+mkstat = 0
+zoncou = "DISCRGAMT4"
+SAVACT = GACTION : GACTION = "INIDEV"
+GACTION = SAVACT
+GDEVFMT="11.2" : GDEVFMT = GDEVFMT1(max(find([M:POH1]CUR,GDEVISE(1..GNBDEV)),1))
+If mkstat=1 : Raz [M]DISCRGAMT4(indice) : Endif
+
+## Zone DISCRGAMT5
+mkstat = 0
+zoncou = "DISCRGAMT5"
+SAVACT = GACTION : GACTION = "INIDEV"
+GACTION = SAVACT
+GDEVFMT="11.2" : GDEVFMT = GDEVFMT1(max(find([M:POH1]CUR,GDEVISE(1..GNBDEV)),1))
+If mkstat=1 : Raz [M]DISCRGAMT5(indice) : Endif
+
+## Zone DISCRGAMT6
+mkstat = 0
+zoncou = "DISCRGAMT6"
+SAVACT = GACTION : GACTION = "INIDEV"
+GACTION = SAVACT
+GDEVFMT="11.2" : GDEVFMT = GDEVFMT1(max(find([M:POH1]CUR,GDEVISE(1..GNBDEV)),1))
+If mkstat=1 : Raz [M]DISCRGAMT6(indice) : Endif
+
+## Zone DISCRGAMT7
+mkstat = 0
+zoncou = "DISCRGAMT7"
+SAVACT = GACTION : GACTION = "INIDEV"
+GACTION = SAVACT
+GDEVFMT="11.2" : GDEVFMT = GDEVFMT1(max(find([M:POH1]CUR,GDEVISE(1..GNBDEV)),1))
+If mkstat=1 : Raz [M]DISCRGAMT7(indice) : Endif
+
+## Zone DISCRGAMT8
+mkstat = 0
+zoncou = "DISCRGAMT8"
+SAVACT = GACTION : GACTION = "INIDEV"
+GACTION = SAVACT
+GDEVFMT="11.2" : GDEVFMT = GDEVFMT1(max(find([M:POH1]CUR,GDEVISE(1..GNBDEV)),1))
+If mkstat=1 : Raz [M]DISCRGAMT8(indice) : Endif
+
+## Zone DISCRGAMT9
+mkstat = 0
+zoncou = "DISCRGAMT9"
+SAVACT = GACTION : GACTION = "INIDEV"
+GACTION = SAVACT
+GDEVFMT="11.2" : GDEVFMT = GDEVFMT1(max(find([M:POH1]CUR,GDEVISE(1..GNBDEV)),1))
+If mkstat=1 : Raz [M]DISCRGAMT9(indice) : Endif
+
+## Zone DISBASLIN1
+mkstat = 0
+zoncou = "DISBASLIN1"
+SAVACT = GACTION : GACTION = "INIDEV"
+GACTION = SAVACT
+GDEVFMT="11.2" : GDEVFMT = GDEVFMT1(max(find([M:POH1]CUR,GDEVISE(1..GNBDEV)),1))
+If mkstat=1 : Raz [M]DISBASLIN1(indice) : Endif
+
+## Zone BASTAXLIN1
+mkstat = 0
+zoncou = "BASTAXLIN1"
+SAVACT = GACTION : GACTION = "INIDEV"
+GACTION = SAVACT
+GDEVFMT="11.2" : GDEVFMT = GDEVFMT1(max(find([M:POH1]CUR,GDEVISE(1..GNBDEV)),1))
+If mkstat=1 : Raz [M]BASTAXLIN1(indice) : Endif
+
+## Zone AMTTAXLIN1
+mkstat = 0
+zoncou = "AMTTAXLIN1"
+SAVACT = GACTION : GACTION = "INIDEV"
+GACTION = SAVACT
+GDEVFMT="11.2" : GDEVFMT = GDEVFMT1(max(find([M:POH1]CUR,GDEVISE(1..GNBDEV)),1))
+If mkstat=1 : Raz [M]AMTTAXLIN1(indice) : Endif
+
+## Zone AMTTAXLIN2
+mkstat = 0
+zoncou = "AMTTAXLIN2"
+SAVACT = GACTION : GACTION = "INIDEV"
+GACTION = SAVACT
+GDEVFMT="11.2" : GDEVFMT = GDEVFMT1(max(find([M:POH1]CUR,GDEVISE(1..GNBDEV)),1))
+If mkstat=1 : Raz [M]AMTTAXLIN2(indice) : Endif
+
+## Zone AMTTAXLIN3
+mkstat = 0
+zoncou = "AMTTAXLIN3"
+SAVACT = GACTION : GACTION = "INIDEV"
+GACTION = SAVACT
+GDEVFMT="11.2" : GDEVFMT = GDEVFMT1(max(find([M:POH1]CUR,GDEVISE(1..GNBDEV)),1))
+If mkstat=1 : Raz [M]AMTTAXLIN3(indice) : Endif
+
+## Zone DEDTAXLIN1
+mkstat = 0
+zoncou = "DEDTAXLIN1"
+SAVACT = GACTION : GACTION = "INIDEV"
+GACTION = SAVACT
+GDEVFMT="11.2" : GDEVFMT = GDEVFMT1(max(find([M:POH1]CUR,GDEVISE(1..GNBDEV)),1))
+If mkstat=1 : Raz [M]DEDTAXLIN1(indice) : Endif
+
+## Zone DEDTAXLIN2
+mkstat = 0
+zoncou = "DEDTAXLIN2"
+SAVACT = GACTION : GACTION = "INIDEV"
+GACTION = SAVACT
+GDEVFMT="11.2" : GDEVFMT = GDEVFMT1(max(find([M:POH1]CUR,GDEVISE(1..GNBDEV)),1))
+If mkstat=1 : Raz [M]DEDTAXLIN2(indice) : Endif
+
+## Zone DEDTAXLIN3
+mkstat = 0
+zoncou = "DEDTAXLIN3"
+SAVACT = GACTION : GACTION = "INIDEV"
+GACTION = SAVACT
+GDEVFMT="11.2" : GDEVFMT = GDEVFMT1(max(find([M:POH1]CUR,GDEVISE(1..GNBDEV)),1))
+If mkstat=1 : Raz [M]DEDTAXLIN3(indice) : Endif
+
+## Zone STOMGTCOD
+mkstat = 0
+zoncou = "STOMGTCOD"
+IMPENT = [M]STOMGTCOD(indice)
+If varinit([M]STOMGTCOD,indice)=0
+ IMPENT = 1
+Endif
+[M]STOMGTCOD(indice) = IMPENT
+
+## Zone FBUFLG
+mkstat = 0
+zoncou = "FBUFLG"
+IMPENT = [M]FBUFLG(indice)
+If varinit([M]FBUFLG,indice)=0
+ IMPENT = 1
+Endif
+[M]FBUFLG(indice) = IMPENT
+
+## Zone WAPPFLG
+mkstat = 0
+zoncou = "WAPPFLG"
+IMPENT = [M]WAPPFLG(indice)
+If varinit([M]WAPPFLG,indice)=0
+ IMPENT = 1
+Endif
+[M]WAPPFLG(indice) = IMPENT
+
+## Zone CMMTAX
+mkstat = 0
+zoncou = "CMMTAX"
+IMPENT = [M]CMMTAX(indice)
+If varinit([M]CMMTAX,indice)=0
+ IMPENT = 1
+Endif
+[M]CMMTAX(indice) = IMPENT
+
+## Zone VCRTYPORI
+mkstat = 0
+zoncou = "VCRTYPORI"
+IMPENT = [M]VCRTYPORI(indice)
+If varinit([M]VCRTYPORI,indice)=0
+ IMPENT = 1
+Endif
+[M]VCRTYPORI(indice) = IMPENT
+
+## Zone FCSCSTPUR
+mkstat = 0
+zoncou = "FCSCSTPUR"
+SAVACT = GACTION : GACTION = "INIDEV"
+GACTION = SAVACT
+GDEVFMT="11.2" : GDEVFMT = GDEVFMT1(max(find(GLOCALDEV,GDEVISE(1..GNBDEV)),1))
+If mkstat=1 : Raz [M]FCSCSTPUR(indice) : Endif
+
+## Zone FCSCPR
+mkstat = 0
+zoncou = "FCSCPR"
+SAVACT = GACTION : GACTION = "INIDEV"
+GACTION = SAVACT
+GDEVFMT="11.2" : GDEVFMT = GDEVFMT1(max(find(GLOCALDEV,GDEVISE(1..GNBDEV)),1))
+If mkstat=1 : Raz [M]FCSCPR(indice) : Endif
+
+## Zone NBLIG
+mkstat = 0
+zoncou = "NBLIG"
+status = 71
+SAVACT = GACTION : GACTION = "DIVLINNUM"
+Call LINNUM("POPLIN") From TABLEAUX
+GACTION = SAVACT
+If !mkstat
+ SAVACT = GACTION : GACTION = "STD"
+ Call APRES_NBLIG From SUBPOH
+ GACTION = SAVACT
+Endif
+
+End
+
+####################################
+## Bloc tableau 10
+####################################
+Subprog SAI_NBLIGDT(IMPFIC,ACTION,IMPTRT)
+Value Char IMPFIC
+Value Char ACTION
+Value Char IMPTRT
+
+Gosub DEFVAR
+
+IMPTBL = 1
+
+## Zone NBLIGDT
+mkstat = 0
+zoncou = "NBLIGDT"
+
+## Zone ORDRE
+mkstat = 0
+zoncou = "ORDRE"
+WNUM = [M]ORDRE(indice)
+If varmode([M]ORDRE,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ORDRE" : Gosub ACTION From =IMPTRT
+ Endif
+ SAVACT = GACTION : GACTION = "SPE"
+ Call C_ORDRE([M]ORDRE(indice)) From SPEPOH
+ GACTION = SAVACT
+ If mkstat : GERR = 1 : GZONE = "ORDRE" : GZNUM = 5626 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+ If !mkstat
+  If WNUM<>[M]ORDRE(indice) or IMPMOD
+   SAVACT = GACTION : GACTION = "SPE"
+   Call AM_ORDRE([M]ORDRE(indice)) From SPEPOH
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "ORDRE" : GZNUM = 5626 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+  Endif
+ Endif
+Endif
+
+## Zone TYPETRSP
+mkstat = 0
+zoncou = "TYPETRSP"
+IMPENT = [M]TYPETRSP(indice)
+WNUM = IMPENT
+If varinit([M]TYPETRSP,indice)=0
+ IMPENT = 1
+Endif
+If varmode([M]TYPETRSP,indice)=0
+ [M]TYPETRSP(indice) = IMPENT
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "TYPETRSP" : Gosub ACTION From =IMPTRT
+  IMPENT = [M]TYPETRSP(indice)
+ Endif
+ If WNUM<>IMPENT or IMPMOD
+  SAVACT = GACTION : GACTION = "SPE"
+  Call AM_TYPETRSP(IMPENT) From SPEPOH
+  GACTION = SAVACT
+  If mkstat : GERR = 1 : GZONE = "TYPETRSP" : GZNUM = 53767 : Endif
+  Gosub AFF From GSAISIE
+  If mkstat : End : Endif
+ Endif
+Endif
+[M]TYPETRSP(indice) = IMPENT
+
+## Zone CODE
+mkstat = 0
+zoncou = "CODE"
+WCHAR = [M]CODE(indice)
+If varmode([M]CODE,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "CODE" : Gosub ACTION From =IMPTRT
+ Endif
+ SAVACT = GACTION : GACTION = "SPE"
+ Call C_CODE([M]CODE(indice)) From SPEPOH
+ GACTION = SAVACT
+ If mkstat : GERR = 1 : GZONE = "CODE" : GZNUM = 5296 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+ If !mkstat
+  If WCHAR<>[M]CODE(indice) or IMPMOD
+   SAVACT = GACTION : GACTION = "SPE"
+   Call AM_CODE([M]CODE(indice)) From SPEPOH
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "CODE" : GZNUM = 5296 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+  Endif
+ Endif
+Endif
+
+## Zone BPAADD
+mkstat = 0
+zoncou = "BPAADD"
+WCHAR = [M]BPAADD(indice)
+If varmode([M]BPAADD,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "BPAADD" : Gosub ACTION From =IMPTRT
+ Endif
+ SAVACT = GACTION : GACTION = "SPE"
+ Call C_BPAADD([M]BPAADD(indice)) From SPEPOH
+ GACTION = SAVACT
+ If mkstat : GERR = 1 : GZONE = "BPAADD" : GZNUM = 1499 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+ If !mkstat
+  If WCHAR<>[M]BPAADD(indice) or IMPMOD
+   SAVACT = GACTION : GACTION = "SPE"
+   Call AM_BPAADD([M]BPAADD(indice)) From SPEPOH
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "BPAADD" : GZNUM = 1499 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+  Endif
+ Endif
+Endif
+
+## Zone NBLIGDT
+mkstat = 0
+zoncou = "NBLIGDT"
+
+End
+
+$DEFVAR
+Local Integer I , J , K , XOK , NOL , IMPENT , IMPMOD , IMPTBL , NBLIG
+Local Char    IMPMSK(GLONAMK) , IMPZON(GLONAVA) , NOMZONE(40)
+Local Char    PROGSUB(GLONADC), PROGSPE(GLONADC), PROGSPV(GLONADC)
+Local Char    PARAM(250)(1..20) , SAVACT(20)
+Local Char    WCHAR(255)
+Local Decimal WNUM
+Local Date    WDATE
+Local Clbfile WCLOB(9)
+
+IMPMSK = "POH2"
+Return
+

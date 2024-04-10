@@ -1,0 +1,44 @@
+#<AdxTL>@(#)3.0.0.0 $Revision$
+##################################################### ZSELBPD
+##################################################### créé le 11/10/17
+##################################################### modifié le 11/10/17
+
+###################################################################################### ACTION
+$ACTION
+#Infbox ACTION
+Case ACTION
+ When "SEL_TABLE" : Gosub SEL_TABLE
+ When Default
+Endcase
+Return
+
+###################################################################################### SEL_TABLE
+$SEL_TABLE
+#  Infbox PARAM(1)
+  #Si on est dans le cas d'un achat de palettes du chargeur
+  If clalev([F:BPD2])=0 : Local File BPDLVCUST [F:BPD2] : Endif
+  Raz CRITERE
+  #On défini la table par défaut, celle qui va servir pour la sélection
+  Default File [F:BPD2]
+  #On défini le nombre de colonne de la fenêtre de sélection
+  NBCOL = 2
+  #On défini le nom de chaque colonne
+  TIT(1) = "code adresse"
+  TIT(2) = "Adresse"
+  #On défini les champs à afficher
+  COL(1) = "BPAADD"
+  COL(2) = "BPDNAM"
+  #On indique le titre de la sélection
+  TIT(0) = "Sélection des adresses EPALIS"
+  START = "BPAADD"
+  #On indique au système de gérer les pages
+  DEFPAG = 1
+  #Critère de sélection
+  CRITERE = " [F:BPD2]BPCNUM='" + PARAM(1) + "' and  [F:BPD2]ZEPIADR=2"
+  #Trier
+  ORDRE = "BPAADD"
+  #Ordre Décroissant
+  #SENS = 2
+  ORDCHO="BPAADD"
+  EXPSTART="BPAADD>=''"
+Return

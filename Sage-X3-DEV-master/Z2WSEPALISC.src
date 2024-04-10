@@ -1,0 +1,802 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+######################################################################### SPE_ALIM_TAB_ACHVEN_FROM_ZZSTOCK
+$SPE_ALIM_TAB_ACHVEN_FROM_ZZSTOCK
+  #On est dans le cas où l'article de prestation est à prendre en compte, il va donc générer la création d'un document de vente ou d'achat
+  #On va commencer par rechercher s'il y a déjà une entrée dans le tableau correspondant à la palette que l'on traite
+
+  #On doit alimenter le tableau suivant :
+  #Local Integer WTYPIMP(0..399)          # Tableau des type d'import : 1 -> Livraison, 2 -> Réception
+  #Local Char WTIERS(60)(0..399)          # Tableau des clients facturés si WTYPIMP=1 et des fournisseurs si WTYPIMP=2
+  #Local Char WITMREF(60)(0..399)         # Tableau des articles de prestation : Valable si WTYPIMP = 1
+  #Local Integer WTYPPAL(0..399)          # Tableau des type de palettes : Valable si WTYPIMP = 2
+  #Local Char WARTTRI(60)(0..399)         # Tableau des article de tris : Valable si WTYPIMP = 2
+  #Local Decimal WQTY(0..399)             # Tableau des quantités
+  #Local Decimal WTABPRIX(0..399)         # Tableau des prix
+  #Local Char WCHARGEUR(60)(0..399)       # Tableau des Chargeurs
+
+  #Local Integer WCRESDH : WCRESDH = 1    # Variable indiquant s'il y a au moins un BLs à créer : 1-> Non, 2 -> Oui
+  #Local Integer WCREPTH : WCREPTH = 1    # Variable indiquant s'il y a au moins un BRs à créer : 1-> Non, 2 -> Oui
+  #Local Integer WNEXTLIG : WNEXTLIG = 0  # Indice de la prochaine ligne à écrire dans le tableau
+  Local Integer WNUMINDEX : WNUMINDEX = 0
+  Local Integer WNEWENTRY : WNEWENTRY = 1
+  Local Char WARTPREST(30)
+  WARTPREST = [F:ZIE]ART_PREST
+  If([F:ZIE]ZTYPFLUX=1 and WARTVEN<>"")Then
+    WARTPREST = WARTVEN
+  Endif
+  If([F:ZIE]ZTYPFLUX=2 and WARTACH<>"")Then
+    WARTPREST = WARTACH
+  Endif
+  For WNUMINDEX=0 To (WNEXTLIG-1)
+    #On va commencer par déterminer le payeur de la prestation
+    #Explication
+    If(
+& WTYPIMP(WNUMINDEX)=[F:ZIE]ZTYPFLUX
+& and WTIERS(WNUMINDEX)=WTIERSCF
+& and WITMREF(WNUMINDEX)=WARTPREST
+& and WARTTRI(WNUMINDEX)=[F:ZIE]ART_TRI
+& and WTYPPAL(WNUMINDEX)=[F:ZTE]ZTYPPAL
+& and WTABPRIX(WNUMINDEX)=WPRIX
+& and WCHARGEUR(WNUMINDEX)=WCHARGACT
+& )Then
+      WNEWENTRY = 0
+      Break
+    Endif
+  Next
+  Local Integer WCOEFFFT : WCOEFFFT = 1
+  If clalev([F:ZAAT])=0 : Local File ZARTTRANSFO [ZAAT] : Endif
+  Read[F:ZAAT]ZAAT0=[F:ZTE]ZBPCORD;[F:ZTE]ZITMREF;[F:ZTE]ZITMREFDEST
+  If(fstat=0)Then
+    If([F:ZAAT]ZCOEFTRANS<>1)Then
+      WCOEFFFT = int(arr([F:ZAAT]ZCOEFTRANS,1))
+    Endif
+  Endif
+  If(WNEWENTRY=0)Then
+    #Il existe déjà une entrée dans le tableau, on va donc augmenter la quantité
+    WQTY(WNUMINDEX)        += ([F:ZZS]ZQTY*[F:ZIE]COEFFAC/WCOEFFFT)
+  Else
+    #Il n'y a pas d'entrée dans le tableau, on va donc la créer
+    WTYPIMP(WNEXTLIG)   = [F:ZIE]ZTYPFLUX
+    WTIERS(WNEXTLIG)    = WTIERSCF
+    WITMREF(WNEXTLIG)   = WARTPREST
+    WTYPPAL(WNEXTLIG)   = [F:ZTE]ZTYPPAL
+    WARTTRI(WNEXTLIG)   = [F:ZIE]ART_TRI
+    WQTY(WNEXTLIG)      = ([F:ZZS]ZQTY*[F:ZIE]COEFFAC/WCOEFFFT)
+    WTABPRIX(WNEXTLIG)  = WPRIX
+    WCHARGEUR(WNEXTLIG) = WCHARGACT
+    WNEXTLIG += 1
+    If([F:ZIE]ZTYPFLUX=1)Then
+      [L]WCRESDH = 2
+    Else
+      [L]WCREPTH = 2
+    Endif
+  Endif
+  #L'article sur lequel ou est va générer la création d'un BL ou d'un BR
+  WPRESTAFACT = 1
+#      For WNUMINDEX=0 To WNEXTLIG-1
+#        Infbox num$(WNUMINDEX) + "+++" + num$(WTYPIMP(WNUMINDEX)) + "---" + WTIERS(WNUMINDEX) + "---" + WITMREF(WNUMINDEX) + "---" + num$(WTYPPAL(WNUMINDEX)) + "---" + WARTTRI(WNUMINDEX) + "---" +
+#& num$(WQTY(WNUMINDEX)) + "---" + num$(WTABPRIX(WNUMINDEX))
+#      Next
+Return
+
+######################################################################### SPE_ALIM_TAB_ACHVEN_FROM_ZZATRIER
+$SPE_ALIM_TAB_ACHVEN_FROM_ZZATRIER
+  #On est dans le cas où l'article de prestation est à prendre en compte, il va donc générer la création d'un document de vente ou d'achat
+  #On va commencer par rechercher s'il y a déjà une entrée dans le tableau correspondant à la palette que l'on traite
+
+  #On doit alimenter le tableau suivant :
+  #Local Integer WTYPIMP(0..399)          # Tableau des type d'import : 1 -> Livraison, 2 -> Réception
+  #Local Char WTIERS(60)(0..399)          # Tableau des clients facturés si WTYPIMP=1 et des fournisseurs si WTYPIMP=2
+  #Local Char WITMREF(60)(0..399)         # Tableau des articles de prestation : Valable si WTYPIMP = 1
+  #Local Integer WTYPPAL(0..399)          # Tableau des type de palettes : Valable si WTYPIMP = 2
+  #Local Char WARTTRI(60)(0..399)         # Tableau des article de tris : Valable si WTYPIMP = 2
+  #Local Decimal WQTY(0..399)             # Tableau des quantités
+  #Local Decimal WTABPRIX(0..399)         # Tableau des prix
+  #Local Char WCHARGEUR(60)(0..399)       # Tableau des Chargeurs
+
+  #Local Integer WCRESDH : WCRESDH = 1    # Variable indiquant s'il y a au moins un BLs à créer : 1-> Non, 2 -> Oui
+  #Local Integer WCREPTH : WCREPTH = 1    # Variable indiquant s'il y a au moins un BRs à créer : 1-> Non, 2 -> Oui
+  #Local Integer WNEXTLIG : WNEXTLIG = 0  # Indice de la prochaine ligne à écrire dans le tableau
+  Local Integer WNUMINDEX : WNUMINDEX = 0
+  Local Integer WNEWENTRY : WNEWENTRY = 1
+  Local Char WARTPREST(30)
+  WARTPREST = [F:ZIE]ART_PREST
+  If([F:ZIE]ZTYPFLUX=1 and WARTVEN<>"")Then
+    WARTPREST = WARTVEN
+  Endif
+  If([F:ZIE]ZTYPFLUX=2 and WARTACH<>"")Then
+    WARTPREST = WARTACH
+  Endif
+  For WNUMINDEX=0 To (WNEXTLIG-1)
+    #On va commencer par déterminer le payeur de la prestation
+    #Explication
+    If(
+& WTYPIMP(WNUMINDEX)=[F:ZIE]ZTYPFLUX
+& and WTIERS(WNUMINDEX)=WTIERSCF
+& and WITMREF(WNUMINDEX)=WARTPREST
+& and WARTTRI(WNUMINDEX)=[F:ZIE]ART_TRI
+& and WTYPPAL(WNUMINDEX)=[F:ZTE]ZTYPPAL
+& and WTABPRIX(WNUMINDEX)=WPRIX
+& and WCHARGEUR(WNUMINDEX)=WCHARGACT
+& )Then
+      WNEWENTRY = 0
+      Break
+    Endif
+  Next
+  Local Integer WCOEFFFT : WCOEFFFT = 1
+  If clalev([F:ZAAT])=0 : Local File ZARTTRANSFO [ZAAT] : Endif
+  Read[F:ZAAT]ZAAT0=[F:ZTE]ZBPCORD;[F:ZTE]ZITMREF;[F:ZTE]ZITMREFDEST
+  If(fstat=0)Then
+    If([F:ZAAT]ZCOEFTRANS<>1)Then
+      WCOEFFFT = int(arr([F:ZAAT]ZCOEFTRANS,1))
+    Endif
+  Endif
+  If(WNEWENTRY=0)Then
+    #Il existe déjà une entrée dans le tableau, on va donc augmenter la quantité
+    WQTY(WNUMINDEX)        += ([F:ZZAT]ZQTY*[F:ZIE]COEFFAC/WCOEFFFT)
+  Else
+    #Il n'y a pas d'entrée dans le tableau, on va donc la créer
+    WTYPIMP(WNEXTLIG)   = [F:ZIE]ZTYPFLUX
+    WTIERS(WNEXTLIG)    = WTIERSCF
+    WITMREF(WNEXTLIG)   = WARTPREST
+    WTYPPAL(WNEXTLIG)   = [F:ZTE]ZTYPPAL
+    WARTTRI(WNEXTLIG)   = [F:ZIE]ART_TRI
+    WQTY(WNEXTLIG)      = ([F:ZZAT]ZQTY*[F:ZIE]COEFFAC/WCOEFFFT)
+    WTABPRIX(WNEXTLIG)  = WPRIX
+    WCHARGEUR(WNEXTLIG) = WCHARGACT
+    WNEXTLIG += 1
+    If([F:ZIE]ZTYPFLUX=1)Then
+      [L]WCRESDH = 2
+    Else
+      [L]WCREPTH = 2
+    Endif
+  Endif
+  #L'article sur lequel ou est va générer la création d'un BL ou d'un BR
+  WPRESTAFACT = 1
+#      For WNUMINDEX=0 To WNEXTLIG-1
+#        Infbox num$(WNUMINDEX) + "+++" + num$(WTYPIMP(WNUMINDEX)) + "---" + WTIERS(WNUMINDEX) + "---" + WITMREF(WNUMINDEX) + "---" + num$(WTYPPAL(WNUMINDEX)) + "---" + WARTTRI(WNUMINDEX) + "---" +
+#& num$(WQTY(WNUMINDEX)) + "---" + num$(WTABPRIX(WNUMINDEX))
+#      Next
+Return
+
+######################################################################### SPE_TRAIT_TRI
+$SPE_TRAIT_TRI
+For [F:ZSTRI]ZSTRI0 Where
+& [F:ZSTRI]ZARNUM=WPARAM1
+& and [F:ZSTRI]ZCODCHARG=WPARAM2
+& and [F:ZSTRI]ZCODCLTCHARG=WPARAM3
+& and [F:ZSTRI]ZPAYS=WPARAM4
+& and [F:ZSTRI]ZSITE=WPARAM5
+& and [F:ZSTRI]ZTYPPAL=WPARAM6
+  If([F:ZTE]ZQTY>=[F:ZSTRI]ZQTYMIN and [F:ZTE]ZQTY<=[F:ZSTRI]ZQTYMAX)Then
+    #On a trouvé un enregistrement
+    WARTPRESTOK = 1
+    WPRIX = 0
+    WARTVEN = [F:ZSTRI]ZARTVEN
+    WARTACH = [F:ZSTRI]ZARTACH
+    If([F:ZSTRI]ZTARIF>0)Then
+      WPRIX = [F:ZSTRI]ZTARIF * [F:ZIE]COEFFAC
+    Endif
+    #<---On va maintenant déterminé le Tiers concerné
+    If([F:ZIE]ZDELEG<>2 and [F:ZSTRI]ZCLTFOU<>"")Then
+      #On récupère le client / Fournisseur défini au niveau de la spécificité
+      WTIERSCF = [F:ZSTRI]ZCLTFOU
+    Elsif([F:ZIE]ZDELEG<>2 and [F:ZSTRI]ZCLTFOU="")Then
+      #On récupère le tiers au niveau de l'article de tri
+      WTIERSCF = [F:ZIE]CODE_PAYEUR
+    Else
+      #On récupère le tiers au niveau du dépôt
+      Read[F:ZCMC]ZCMC=[F:ZTE]VCRNUM
+      If(fstat=0)Then
+        #On va maintenant récupérer le dépôt de la collecte multichargeur
+        Read[F:ZDPO]ZDPO0=[F:ZCMC]ZDEPNUM
+        If(fstat=0)Then
+          If([F:ZIE]ZTYPFLUX=1 and [F:ZDPO]ZCODCLTFAC<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODCLTFAC
+          Elsif([F:ZIE]ZTYPFLUX=2 and [F:ZDPO]ZCODFOU<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODFOU
+          Else
+            If([F:ZSTRI]ZCLTFOU<>"")Then
+              WTIERSCF = [F:ZSTRI]ZCLTFOU
+            Else
+              WTIERSCF = [F:ZIE]CODE_PAYEUR
+            Endif
+          Endif
+        Else
+          If([F:ZSTRI]ZCLTFOU<>"")Then
+            WTIERSCF = [F:ZSTRI]ZCLTFOU
+          Else
+            WTIERSCF = [F:ZIE]CODE_PAYEUR
+          Endif
+        Endif
+      Else
+        #On va maintenant récupérer le dépôt de la collecte multichargeur
+        Read[F:ZDPO]ZDPO0=[F:ZZS]ZDEPNUM
+        If(fstat=0)Then
+          If([F:ZIE]ZTYPFLUX=1 and [F:ZDPO]ZCODCLTFAC<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODCLTFAC
+          Elsif([F:ZIE]ZTYPFLUX=2 and [F:ZDPO]ZCODFOU<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODFOU
+          Else
+            If([F:ZSTRI]ZCLTFOU<>"")Then
+              WTIERSCF = [F:ZSTRI]ZCLTFOU
+            Else
+              WTIERSCF = [F:ZIE]CODE_PAYEUR
+            Endif
+          Endif
+        Else
+          If([F:ZSTRI]ZCLTFOU<>"")Then
+            WTIERSCF = [F:ZSTRI]ZCLTFOU
+          Else
+            WTIERSCF = [F:ZIE]CODE_PAYEUR
+          Endif
+        Endif
+      Endif
+    Endif
+    #--->
+    Break
+  Endif
+Next
+Return
+
+######################################################################### SPE_TRAIT_REC
+$SPE_TRAIT_REC
+For [F:ZSREC]ZSREC0 Where
+& [F:ZSREC]ZARNUM=WPARAM1
+& and [F:ZSREC]ZCODCHARG=WPARAM2
+& and [F:ZSREC]ZCODCLTCHARG=WPARAM3
+& and [F:ZSREC]ZPAYS=WPARAM4
+& and [F:ZSREC]ZSITE=WPARAM5
+
+  If([F:ZTE]ZQTY>=[F:ZSREC]ZQTYMIN and [F:ZTE]ZQTY<=[F:ZSREC]ZQTYMAX and WTRIUSINE=[F:ZSREC]ZTESTTRIUSIN)Then
+    #On a trouvé un enregistrement
+    WARTPRESTOK = 1
+    WPRIX = 0
+    If([F:ZSREC]ZTARIF>0)Then
+      WPRIX = [F:ZSREC]ZTARIF * [F:ZIE]COEFFAC
+    Endif
+    #<---On va maintenant déterminé le Tiers concerné
+    If([F:ZIE]ZDELEG<>2 and [F:ZSREC]ZCLTFOU<>"")Then
+      #On récupère le client / Fournisseur défini au niveau de la spécificité
+      WTIERSCF = [F:ZSREC]ZCLTFOU
+    Elsif([F:ZIE]ZDELEG<>2 and [F:ZSREC]ZCLTFOU="")Then
+      #On récupère le tiers au niveau de l'article de tri
+      WTIERSCF = [F:ZIE]CODE_PAYEUR
+    Else
+      #On récupère le tiers au niveau du dépôt
+      Read[F:ZCMC]ZCMC=[F:ZTE]VCRNUM
+      If(fstat=0)Then
+        #On va maintenant récupérer le dépôt de la collecte multichargeur
+        Read[F:ZDPO]ZDPO0=[F:ZCMC]ZDEPNUM
+        If(fstat=0)Then
+          If([F:ZIE]ZTYPFLUX=1 and [F:ZDPO]ZCODCLTFAC<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODCLTFAC
+          Elsif([F:ZIE]ZTYPFLUX=2 and [F:ZDPO]ZCODFOU<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODFOU
+          Else
+            If([F:ZSREC]ZCLTFOU<>"")Then
+              WTIERSCF = [F:ZSREC]ZCLTFOU
+            Else
+              WTIERSCF = [F:ZIE]CODE_PAYEUR
+            Endif
+          Endif
+        Else
+          If([F:ZSREC]ZCLTFOU<>"")Then
+            WTIERSCF = [F:ZSREC]ZCLTFOU
+          Else
+            WTIERSCF = [F:ZIE]CODE_PAYEUR
+          Endif
+        Endif
+      Else
+        #On va maintenant récupérer le dépôt de la collecte multichargeur
+        Read[F:ZDPO]ZDPO0=[F:ZZS]ZDEPNUM
+        If(fstat=0)Then
+          If([F:ZIE]ZTYPFLUX=1 and [F:ZDPO]ZCODCLTFAC<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODCLTFAC
+          Elsif([F:ZIE]ZTYPFLUX=2 and [F:ZDPO]ZCODFOU<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODFOU
+          Else
+            If([F:ZSREC]ZCLTFOU<>"")Then
+              WTIERSCF = [F:ZSREC]ZCLTFOU
+            Else
+              WTIERSCF = [F:ZIE]CODE_PAYEUR
+            Endif
+          Endif
+        Else
+          If([F:ZSREC]ZCLTFOU<>"")Then
+            WTIERSCF = [F:ZSREC]ZCLTFOU
+          Else
+            WTIERSCF = [F:ZIE]CODE_PAYEUR
+          Endif
+        Endif
+      Endif
+    Endif
+    #--->
+    Break
+  Endif
+Next
+Return
+
+######################################################################### SPE_TRAIT_REP
+$SPE_TRAIT_REP
+For [F:ZSREP]ZSREP0 Where
+& [F:ZSREP]ZARNUM=WPARAM1
+& and [F:ZSREP]ZCODCHARG=WPARAM2
+& and [F:ZSREP]ZCODCLTCHARG=WPARAM3
+& and [F:ZSREP]ZSITE=WPARAM4
+  If([F:ZTE]ZQTY>=[F:ZSREP]ZQTYMIN and [F:ZTE]ZQTY<=[F:ZSREP]ZQTYMAX)Then
+    #On a trouvé un enregistrement
+    WARTPRESTOK = 1
+    WPRIX = 0
+    If([F:ZSREP]ZTARIF>0)Then
+      WPRIX = [F:ZSREP]ZTARIF * [F:ZIE]COEFFAC
+    Endif
+    #<---On va maintenant déterminé le Tiers concerné
+    If([F:ZIE]ZDELEG<>2 and [F:ZSREP]ZCLTFOU<>"")Then
+      #On récupère le client / Fournisseur défini au niveau de la spécificité
+      WTIERSCF = [F:ZSREP]ZCLTFOU
+    Elsif([F:ZIE]ZDELEG<>2 and [F:ZSREP]ZCLTFOU="")Then
+      #On récupère le tiers au niveau de l'article de tri
+      WTIERSCF = [F:ZIE]CODE_PAYEUR
+    Else
+      #On va maintenant récupérer le dépôt de la collecte multichargeur
+      Read[F:ZDPO]ZDPO0=[F:ZZS]ZDEPNUM
+      If(fstat=0)Then
+        If([F:ZIE]ZTYPFLUX=1 and [F:ZDPO]ZCODCLTFAC<>"")Then
+          WTIERSCF = [F:ZDPO]ZCODCLTFAC
+        Elsif([F:ZIE]ZTYPFLUX=2 and [F:ZDPO]ZCODFOU<>"")Then
+          WTIERSCF = [F:ZDPO]ZCODFOU
+        Else
+          If([F:ZSREP]ZCLTFOU<>"")Then
+            WTIERSCF = [F:ZSREP]ZCLTFOU
+          Else
+            WTIERSCF = [F:ZIE]CODE_PAYEUR
+          Endif
+        Endif
+      Else
+        If([F:ZSREP]ZCLTFOU<>"")Then
+          WTIERSCF = [F:ZSREP]ZCLTFOU
+        Else
+          WTIERSCF = [F:ZIE]CODE_PAYEUR
+        Endif
+      Endif
+    Endif
+    #--->
+    Break
+  Endif
+Next
+Return
+
+######################################################################### SPE_TRAIT_REL
+$SPE_TRAIT_REL
+For [F:ZSREL]ZSREL0 Where
+& [F:ZSREL]ZARNUM=WPARAM1
+& and [F:ZSREL]ZCODCHARG=WPARAM2
+& and [F:ZSREL]ZCODCLTCHARG=WPARAM3
+& and [F:ZSREL]ZPAYSCOLL=WPARAM4
+& and [F:ZSREL]ZSITECOLL=WPARAM5
+& and [F:ZSREL]ZSITE=WPARAM6
+& and [F:ZSREL]ZCLTFOU=WPARAM7
+& and [F:ZSREL]ZADRCHARG=WPARAM8
+& and [F:ZSREL]ZTYPPAL=WPARAM9
+  If([F:ZTE]ZQTY>=[F:ZSREL]ZQTYMIN and [F:ZTE]ZQTY<=[F:ZSREL]ZQTYMAX)Then
+    #Infbox "Cas n°" + num$(WNUMCAS)
+    #On a trouvé un enregistrement
+    WARTPRESTOK = 1
+    WPRIX = 0
+    If([F:ZSREL]ZTARIF>0)Then
+      WPRIX = [F:ZSREL]ZTARIF * [F:ZIE]COEFFAC
+    Endif
+    #<---On va maintenant déterminé le Tiers concerné
+    If([F:ZIE]ZDELEG<>2 and [F:ZSREL]ZCLTFOU<>"")Then
+      #On récupère le client / Fournisseur défini au niveau de la spécificité
+      WTIERSCF = [F:ZSREL]ZCLTFOU
+    Elsif([F:ZIE]ZDELEG<>2 and [F:ZSREL]ZCLTFOU="")Then
+      #On récupère le tiers au niveau de l'article de tri
+      #<----- MODIF JBS du 09/12/2019-----
+      #WTIERSCF = [F:ZIE]CODE_PAYEUR
+      WTIERSCF = [F:ZTE]ZBPCORDF
+      #---------------------------------->
+    Else
+      #On va maintenant récupérer le dépôt de la collecte multichargeur
+      Read[F:ZDPO]ZDPO0=[F:ZZS]ZDEPNUM
+      If(fstat=0)Then
+        If([F:ZIE]ZTYPFLUX=1 and [F:ZDPO]ZCODCLTFAC<>"")Then
+          WTIERSCF = [F:ZDPO]ZCODCLTFAC
+        Elsif([F:ZIE]ZTYPFLUX=2 and [F:ZDPO]ZCODFOU<>"")Then
+          WTIERSCF = [F:ZDPO]ZCODFOU
+        Else
+          If([F:ZSREL]ZCLTFOU<>"")Then
+            WTIERSCF = [F:ZSREL]ZCLTFOU
+          Else
+            #<----- MODIF JBS du 09/12/2019-----
+            #WTIERSCF = [F:ZIE]CODE_PAYEUR
+            WTIERSCF = [F:ZTE]ZBPCORDF
+            #---------------------------------->
+          Endif
+        Endif
+      Else
+        If([F:ZSREL]ZCLTFOU<>"")Then
+          WTIERSCF = [F:ZSREL]ZCLTFOU
+        Else
+          #<----- MODIF JBS du 09/12/2019-----
+          #WTIERSCF = [F:ZIE]CODE_PAYEUR
+          WTIERSCF = [F:ZTE]ZBPCORDF
+          #---------------------------------->
+        Endif
+      Endif
+    Endif
+    #--->
+    Break
+  Endif
+Next
+Return
+
+######################################################################### SPE_TRAIT_TRA
+$SPE_TRAIT_TRA
+For [F:ZSTRA]ZSTRA0 Where
+& [F:ZSTRA]ZARNUM=WPARAM1
+& and [F:ZSTRA]ZCODCHARG=WPARAM2
+& and [F:ZSTRA]ZCODCLTCHARG=WPARAM3
+& and [F:ZSTRA]ZITMREFORI=WPARAM4
+  If([F:ZTE]ZQTY>=[F:ZSTRA]ZQTYMIN and [F:ZTE]ZQTY<=[F:ZSTRA]ZQTYMAX)Then
+    #On a trouvé un enregistrement
+    WARTPRESTOK = 1
+    WPRIX = 0
+    If([F:ZSTRA]ZTARIF>0)Then
+      WPRIX = [F:ZSTRA]ZTARIF * [F:ZIE]COEFFAC
+    Endif
+    #<---On va maintenant déterminé le Tiers concerné
+    If([F:ZIE]ZDELEG<>2 and [F:ZSTRA]ZCLTFOU<>"")Then
+      #On récupère le client / Fournisseur défini au niveau de la spécificité
+      WTIERSCF = [F:ZSTRA]ZCLTFOU
+    Elsif([F:ZIE]ZDELEG<>2 and [F:ZSTRA]ZCLTFOU="")Then
+      #On récupère le tiers au niveau de l'article de tri
+      WTIERSCF = [F:ZIE]CODE_PAYEUR
+    Else
+      #On va maintenant récupérer le dépôt de la collecte multichargeur
+      Read[F:ZDPO]ZDPO0=[F:ZZS]ZDEPNUM
+      If(fstat=0)Then
+        If([F:ZIE]ZTYPFLUX=1 and [F:ZDPO]ZCODCLTFAC<>"")Then
+          WTIERSCF = [F:ZDPO]ZCODCLTFAC
+        Elsif([F:ZIE]ZTYPFLUX=2 and [F:ZDPO]ZCODFOU<>"")Then
+          WTIERSCF = [F:ZDPO]ZCODFOU
+        Else
+          If([F:ZSREP]ZCLTFOU<>"")Then
+            WTIERSCF = [F:ZSTRA]ZCLTFOU
+          Else
+            WTIERSCF = [F:ZIE]CODE_PAYEUR
+          Endif
+        Endif
+      Else
+        If([F:ZSTRA]ZCLTFOU<>"")Then
+          WTIERSCF = [F:ZSTRA]ZCLTFOU
+        Else
+          WTIERSCF = [F:ZIE]CODE_PAYEUR
+        Endif
+      Endif
+    Endif
+    #--->
+    Break
+  Endif
+Next
+Return
+
+######################################################################### SPE_TRAIT_EDI
+$SPE_TRAIT_EDI
+For [F:ZSEDI]ZSEDI0 Where
+& [F:ZSEDI]ZARNUM=WPARAM1
+& and [F:ZSEDI]ZCODCHARG=WPARAM2
+& and [F:ZSEDI]ZCODCLTCHARG=WPARAM3
+& and [F:ZSEDI]ZPAYS=WPARAM4
+& and [F:ZSEDI]ZSITE=WPARAM5
+& and [F:ZSEDI]ZTYPPAL=WPARAM6
+  If([F:ZTE]ZQTY>=[F:ZSEDI]ZQTYMIN and [F:ZTE]ZQTY<=[F:ZSEDI]ZQTYMAX)Then
+    #On a trouvé un enregistrement
+    WARTPRESTOK = 1
+    WPRIX = 0
+    WARTVEN = [F:ZSEDI]ZARTVEN
+    WARTACH = [F:ZSEDI]ZARTACH
+    If([F:ZSEDI]ZTARIF>0)Then
+      WPRIX = [F:ZSEDI]ZTARIF * [F:ZIE]COEFFAC
+    Endif
+    #<---On va maintenant déterminé le Tiers concerné
+    If([F:ZIE]ZDELEG<>2 and [F:ZSEDI]ZCLTFOU<>"")Then
+      #On récupère le client / Fournisseur défini au niveau de la spécificité
+      WTIERSCF = [F:ZSEDI]ZCLTFOU
+    Elsif([F:ZIE]ZDELEG<>2 and [F:ZSEDI]ZCLTFOU="")Then
+      #On récupère le tiers au niveau de l'article de tri
+      WTIERSCF = [F:ZIE]CODE_PAYEUR
+    Else
+      #On récupère le tiers au niveau du dépôt
+      Read[F:ZCMC]ZCMC=[F:ZTE]VCRNUM
+      If(fstat=0)Then
+        #On va maintenant récupérer le dépôt de la collecte multichargeur
+        Read[F:ZDPO]ZDPO0=[F:ZCMC]ZDEPNUM
+        If(fstat=0)Then
+          If([F:ZIE]ZTYPFLUX=1 and [F:ZDPO]ZCODCLTFAC<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODCLTFAC
+          Elsif([F:ZIE]ZTYPFLUX=2 and [F:ZDPO]ZCODFOU<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODFOU
+          Else
+            If([F:ZSEDI]ZCLTFOU<>"")Then
+              WTIERSCF = [F:ZSEDI]ZCLTFOU
+            Else
+              WTIERSCF = [F:ZIE]CODE_PAYEUR
+            Endif
+          Endif
+        Else
+          If([F:ZSEDI]ZCLTFOU<>"")Then
+            WTIERSCF = [F:ZSEDI]ZCLTFOU
+          Else
+            WTIERSCF = [F:ZIE]CODE_PAYEUR
+          Endif
+        Endif
+      Else
+        #On va maintenant récupérer le dépôt de la collecte multichargeur
+        Read[F:ZDPO]ZDPO0=[F:ZZS]ZDEPNUM
+        If(fstat=0)Then
+          If([F:ZIE]ZTYPFLUX=1 and [F:ZDPO]ZCODCLTFAC<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODCLTFAC
+          Elsif([F:ZIE]ZTYPFLUX=2 and [F:ZDPO]ZCODFOU<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODFOU
+          Else
+            If([F:ZSEDI]ZCLTFOU<>"")Then
+              WTIERSCF = [F:ZSEDI]ZCLTFOU
+            Else
+              WTIERSCF = [F:ZIE]CODE_PAYEUR
+            Endif
+          Endif
+        Else
+          If([F:ZSEDI]ZCLTFOU<>"")Then
+            WTIERSCF = [F:ZSEDI]ZCLTFOU
+          Else
+            WTIERSCF = [F:ZIE]CODE_PAYEUR
+          Endif
+        Endif
+      Endif
+    Endif
+    #--->
+    Break
+  Endif
+Next
+Return
+
+######################################################################### SPE_TRAIT_SDI
+$SPE_TRAIT_SDI
+For [F:ZSSDI]ZSSDI0 Where
+& [F:ZSSDI]ZARNUM=WPARAM1
+& and [F:ZSSDI]ZCODCHARG=WPARAM2
+& and [F:ZSSDI]ZCODCLTCHARG=WPARAM3
+& and [F:ZSSDI]ZSITE=WPARAM4
+& and [F:ZSSDI]ZTYPPAL=WPARAM5
+  If([F:ZTE]ZQTY>=[F:ZSSDI]ZQTYMIN and [F:ZTE]ZQTY<=[F:ZSSDI]ZQTYMAX)Then
+    #On a trouvé un enregistrement
+    WARTPRESTOK = 1
+    WPRIX = 0
+    WARTVEN = [F:ZSSDI]ZARTVEN
+    WARTACH = [F:ZSSDI]ZARTACH
+    If([F:ZSSDI]ZTARIF>0)Then
+      WPRIX = [F:ZSSDI]ZTARIF * [F:ZIE]COEFFAC
+    Endif
+    #<---On va maintenant déterminé le Tiers concerné
+    If([F:ZIE]ZDELEG<>2 and [F:ZSSDI]ZCLTFOU<>"")Then
+      #On récupère le client / Fournisseur défini au niveau de la spécificité
+      WTIERSCF = [F:ZSSDI]ZCLTFOU
+    Elsif([F:ZIE]ZDELEG<>2 and [F:ZSSDI]ZCLTFOU="")Then
+      #On récupère le tiers au niveau de l'article de tri
+      WTIERSCF = [F:ZIE]CODE_PAYEUR
+    Else
+      #On récupère le tiers au niveau du dépôt
+      Read[F:ZCMC]ZCMC=[F:ZTE]VCRNUM
+      If(fstat=0)Then
+        #On va maintenant récupérer le dépôt de la collecte multichargeur
+        Read[F:ZDPO]ZDPO0=[F:ZCMC]ZDEPNUM
+        If(fstat=0)Then
+          If([F:ZIE]ZTYPFLUX=1 and [F:ZDPO]ZCODCLTFAC<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODCLTFAC
+          Elsif([F:ZIE]ZTYPFLUX=2 and [F:ZDPO]ZCODFOU<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODFOU
+          Else
+            If([F:ZSSDI]ZCLTFOU<>"")Then
+              WTIERSCF = [F:ZSSDI]ZCLTFOU
+            Else
+              WTIERSCF = [F:ZIE]CODE_PAYEUR
+            Endif
+          Endif
+        Else
+          If([F:ZSSDI]ZCLTFOU<>"")Then
+            WTIERSCF = [F:ZSSDI]ZCLTFOU
+          Else
+            WTIERSCF = [F:ZIE]CODE_PAYEUR
+          Endif
+        Endif
+      Else
+        #On va maintenant récupérer le dépôt de la collecte multichargeur
+        Read[F:ZDPO]ZDPO0=[F:ZZS]ZDEPNUM
+        If(fstat=0)Then
+          If([F:ZIE]ZTYPFLUX=1 and [F:ZDPO]ZCODCLTFAC<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODCLTFAC
+          Elsif([F:ZIE]ZTYPFLUX=2 and [F:ZDPO]ZCODFOU<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODFOU
+          Else
+            If([F:ZSSDI]ZCLTFOU<>"")Then
+              WTIERSCF = [F:ZSSDI]ZCLTFOU
+            Else
+              WTIERSCF = [F:ZIE]CODE_PAYEUR
+            Endif
+          Endif
+        Else
+          If([F:ZSSDI]ZCLTFOU<>"")Then
+            WTIERSCF = [F:ZSSDI]ZCLTFOU
+          Else
+            WTIERSCF = [F:ZIE]CODE_PAYEUR
+          Endif
+        Endif
+      Endif
+    Endif
+    #--->
+    Break
+  Endif
+Next
+Return
+
+######################################################################### SPE_TRAIT_AEX
+$SPE_TRAIT_AEX
+For [F:ZSAEX]ZSAEX0 Where
+& [F:ZSAEX]ZARNUM=WPARAM1
+& and [F:ZSAEX]ZCODCHARG=WPARAM2
+& and [F:ZSAEX]ZCODCLTCHARG=WPARAM3
+& and [F:ZSAEX]ZSITE=WPARAM4
+& and [F:ZSAEX]ZTYPPAL=WPARAM5
+  If([F:ZTE]ZQTY>=[F:ZSAEX]ZQTYMIN and [F:ZTE]ZQTY<=[F:ZSAEX]ZQTYMAX)Then
+    #On a trouvé un enregistrement
+    WARTPRESTOK = 1
+    WPRIX = 0
+    WARTVEN = [F:ZSAEX]ZARTVEN
+    WARTACH = [F:ZSAEX]ZARTACH
+    If([F:ZSAEX]ZTARIF>0)Then
+      WPRIX = [F:ZSAEX]ZTARIF * [F:ZIE]COEFFAC
+    Endif
+    #<---On va maintenant déterminé le Tiers concerné
+    If([F:ZIE]ZDELEG<>2 and [F:ZSAEX]ZCLTFOU<>"")Then
+      #On récupère le client / Fournisseur défini au niveau de la spécificité
+      WTIERSCF = [F:ZSAEX]ZCLTFOU
+    Elsif([F:ZIE]ZDELEG<>2 and [F:ZSAEX]ZCLTFOU="")Then
+      #On récupère le tiers au niveau de l'article de tri
+      WTIERSCF = [F:ZIE]CODE_PAYEUR
+    Else
+      #On récupère le tiers au niveau du dépôt
+      Read[F:ZCMC]ZCMC=[F:ZTE]VCRNUM
+      If(fstat=0)Then
+        #On va maintenant récupérer le dépôt de la collecte multichargeur
+        Read[F:ZDPO]ZDPO0=[F:ZCMC]ZDEPNUM
+        If(fstat=0)Then
+          If([F:ZIE]ZTYPFLUX=1 and [F:ZDPO]ZCODCLTFAC<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODCLTFAC
+          Elsif([F:ZIE]ZTYPFLUX=2 and [F:ZDPO]ZCODFOU<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODFOU
+          Else
+            If([F:ZSAEX]ZCLTFOU<>"")Then
+              WTIERSCF = [F:ZSAEX]ZCLTFOU
+            Else
+              WTIERSCF = [F:ZIE]CODE_PAYEUR
+            Endif
+          Endif
+        Else
+          If([F:ZSAEX]ZCLTFOU<>"")Then
+            WTIERSCF = [F:ZSAEX]ZCLTFOU
+          Else
+            WTIERSCF = [F:ZIE]CODE_PAYEUR
+          Endif
+        Endif
+      Else
+        #On va maintenant récupérer le dépôt de la collecte multichargeur
+        Read[F:ZDPO]ZDPO0=[F:ZZS]ZDEPNUM
+        If(fstat=0)Then
+          If([F:ZIE]ZTYPFLUX=1 and [F:ZDPO]ZCODCLTFAC<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODCLTFAC
+          Elsif([F:ZIE]ZTYPFLUX=2 and [F:ZDPO]ZCODFOU<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODFOU
+          Else
+            If([F:ZSAEX]ZCLTFOU<>"")Then
+              WTIERSCF = [F:ZSAEX]ZCLTFOU
+            Else
+              WTIERSCF = [F:ZIE]CODE_PAYEUR
+            Endif
+          Endif
+        Else
+          If([F:ZSAEX]ZCLTFOU<>"")Then
+            WTIERSCF = [F:ZSAEX]ZCLTFOU
+          Else
+            WTIERSCF = [F:ZIE]CODE_PAYEUR
+          Endif
+        Endif
+      Endif
+    Endif
+    #--->
+    Break
+  Endif
+Next
+Return
+
+######################################################################### SPE_TRAIT_TDS
+$SPE_TRAIT_TDS
+For [F:ZSTDS]ZSTDS0 Where
+& [F:ZSTDS]ZARNUM=WPARAM1
+& and [F:ZSTDS]ZCODCHARG=WPARAM2
+& and [F:ZSTDS]ZCODCLTCHARG=WPARAM3
+& and [F:ZSTDS]ZSITEORI=WPARAM4
+& and [F:ZSTDS]ZSITEDEST=WPARAM5
+& and [F:ZSTDS]ZTYPPAL=WPARAM6
+  If([F:ZTE]ZQTY>=[F:ZSTDS]ZQTYMIN and [F:ZTE]ZQTY<=[F:ZSTDS]ZQTYMAX)Then
+    #On a trouvé un enregistrement
+    WARTPRESTOK = 1
+    WPRIX = 0
+    WARTVEN = [F:ZSTDS]ZARTVEN
+    WARTACH = [F:ZSTDS]ZARTACH
+    If([F:ZSTDS]ZTARIF>0)Then
+      WPRIX = [F:ZSTDS]ZTARIF * [F:ZIE]COEFFAC
+    Endif
+    #<---On va maintenant déterminé le Tiers concerné
+    If([F:ZIE]ZDELEG<>2 and [F:ZSTDS]ZCLTFOU<>"")Then
+      #On récupère le client / Fournisseur défini au niveau de la spécificité
+      WTIERSCF = [F:ZSTDS]ZCLTFOU
+    Elsif([F:ZIE]ZDELEG<>2 and [F:ZSTDS]ZCLTFOU="")Then
+      #On récupère le tiers au niveau de l'article de tri
+      WTIERSCF = [F:ZIE]CODE_PAYEUR
+    Else
+      #On récupère le tiers au niveau du dépôt
+      Read[F:ZCMC]ZCMC=[F:ZTE]VCRNUM
+      If(fstat=0)Then
+        #On va maintenant récupérer le dépôt de la collecte multichargeur
+        Read[F:ZDPO]ZDPO0=[F:ZCMC]ZDEPNUM
+        If(fstat=0)Then
+          If([F:ZIE]ZTYPFLUX=1 and [F:ZDPO]ZCODCLTFAC<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODCLTFAC
+          Elsif([F:ZIE]ZTYPFLUX=2 and [F:ZDPO]ZCODFOU<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODFOU
+          Else
+            If([F:ZSTDS]ZCLTFOU<>"")Then
+              WTIERSCF = [F:ZSTDS]ZCLTFOU
+            Else
+              WTIERSCF = [F:ZIE]CODE_PAYEUR
+            Endif
+          Endif
+        Else
+          If([F:ZSTDS]ZCLTFOU<>"")Then
+            WTIERSCF = [F:ZSTDS]ZCLTFOU
+          Else
+            WTIERSCF = [F:ZIE]CODE_PAYEUR
+          Endif
+        Endif
+      Else
+        #On va maintenant récupérer le dépôt de la collecte multichargeur
+        Read[F:ZDPO]ZDPO0=[F:ZZS]ZDEPNUM
+        If(fstat=0)Then
+          If([F:ZIE]ZTYPFLUX=1 and [F:ZDPO]ZCODCLTFAC<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODCLTFAC
+          Elsif([F:ZIE]ZTYPFLUX=2 and [F:ZDPO]ZCODFOU<>"")Then
+            WTIERSCF = [F:ZDPO]ZCODFOU
+          Else
+            If([F:ZSTDS]ZCLTFOU<>"")Then
+              WTIERSCF = [F:ZSTDS]ZCLTFOU
+            Else
+              WTIERSCF = [F:ZIE]CODE_PAYEUR
+            Endif
+          Endif
+        Else
+          If([F:ZSTDS]ZCLTFOU<>"")Then
+            WTIERSCF = [F:ZSTDS]ZCLTFOU
+          Else
+            WTIERSCF = [F:ZIE]CODE_PAYEUR
+          Endif
+        Endif
+      Endif
+    Endif
+    #--->
+    Break
+  Endif
+Next
+Return
+

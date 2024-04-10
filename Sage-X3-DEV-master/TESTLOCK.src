@@ -1,0 +1,10 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+SYMBOLE = "ACT1912-DG9998"
+Lock =SYMBOLE With lockwait = 0
+If(fstat=0)Then
+  Call MESSAGE ("1 - l'action est maintenant vérouillée.") From GESECRAN
+Else
+  Call ERREUR ("2 - Impossible ! l'action est déjà vérouillée.") From GESECRAN
+Endif
+#Unlock =SYMBOLE
+

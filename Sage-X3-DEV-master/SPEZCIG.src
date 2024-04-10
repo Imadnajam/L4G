@@ -1,0 +1,472 @@
+#<AdxTL>@(#)8.0.0.0 $Revision$
+################################################### SPEZCIG
+################################################### 09/01/2014
+
+$ACTION
+Case ACTION
+ When "OUVRE" : Gosub OUVRE
+ When "DEBUT" : Gosub DEBUT
+ When "OK" : Gosub OK
+ When Default
+Endcase
+Return
+
+################################################### OUVRE
+
+$OUVRE
+If clalev([F:GTE])=0 : Local File GTYPACCENT : Endif
+If clalev([F:JOU])=0 : Local File GJOURNAL : Endif
+If clalev([F:SDH])=0 : Local File SDELIVERY : Endif
+If clalev([F:ZSDH])=0 : Local File SDELIVERY [ZSDH] : Endif
+If clalev([F:SDD])=0 : Local File SDELIVERYD : Endif
+If clalev([F:AOE])=0 : Local File AOBJEXT : Endif
+If clalev([F:AOR])=0 : Local File AOBJEXTR : Endif
+If clalev([F:BPR])=0 : Local File BPARTNER : Endif
+If clalev([F:FCYV])=0 : Local File FACILITY [FCYV]  : Endif
+If clalev([F:FCYA])=0 : Local File FACILITY [FCYA]  : Endif
+If clalev([F:HAE])=0 : Local File GACCENTRY : Endif
+If clalev([F:CCE])=0 : Local File CACCE : Endif
+If clalev([F:CAL])=0 : Local File CPTANALIN : Endif
+If clalev([F:GDE])=0 : Local File GDIAENTRY : Endif
+
+# Suite demande de modif mail du 30/01/2018, 12h35
+If clalev([F:GAC])=0 : Local File GACCOUNT : Endif
+If clalev([F:ZCIA])=0 : Local File ZCIGACH : Endif
+If clalev([F:ZCIV])=0 : Local File ZCIGVEN : Endif
+
+Local Char WHORODAT(14), WNOMFIC(250), WREPERT(250), WFICTST(250), WMESS(250)
+Local Char WMETIER(GLONCCE), WNATFCYV(GLONCNA), WNATBPCA(GLONCNA)
+Local Decimal WAMT
+Local Integer WERR, WOK, WNBSEC, WNUM, WNBECT, WNBIMP
+
+# Suite demande de modif mail du 30/01/2018, 12h35
+Local Char WMODULE(1)
+Local Integer WNBNAT, WENTETE
+
+# V5 : Filter [F:CCE] Where AXI=2
+Filter [F:CCE] Where DIE="AX2"
+WNBSEC = rowcount([F:CCE])
+
+# Suite demande de modif mail du 30/01/2018, 12h35
+Filter [F:GAC] Where [F:GAC]COA="AFR"
+WNBNAT = rowcount([F:GAC])
+
+Local Char WTAB_METIER(GLONCCE)(1..WNBSEC)
+Local Decimal WTAB_AMT(1..WNBSEC)
+
+WNUM=1
+For [F:CCE]CCE0
+    WTAB_METIER(WNUM) = [F:CCE]CCE
+    WNUM += 1
+Next
+Filter [F:CCE]
+
+# Suite demande de modif mail du 30/01/2018, 12h35
+Local Char WTAB_METIER_NAT(50)(1..(WNBSEC*WNBNAT))
+Local Decimal WTAB_AMT_METNAT(1..(WNBSEC*WNBNAT))
+
+#WNUM=1
+#For [F:CCE]CCE0
+#  For [F:GAC]GAC0
+#    WTAB_METIER_NAT(WNUM) = [F:CCE]CCE+"|"+[F:GAC]ACC
+#    WNUM += 1
+#  Next
+#Next
+Filter [F:GAC]
+
+Return
+
+################################################### DEBUT
+
+$DEBUT
+Raz [M:ZCIG]
+Effzo [M:ZCIG]
+[M:ZCIG]ZCIGJOU = GZCIG01JOU
+[M:ZCIG]ZCIGGTE = GZCIG02GTE
+[M:ZCIG]ZCIGCAT = GZCIG03CAT
+[M:ZCIG]ZCIGSTA = GZCIG04STA
+[M:ZCIG]ZCIGDAT = date$
+[M:ZCIG]ZCIGCCE = GZCIG07CCE
+[M:ZCIG]ZCIGDAC = GZCIG08DAC
+[M:ZCIG]ZCIGAOE = GZCIG05AOE
+[M:ZCIG]ZCIGREP = GZCIG06REP
+[M:ZCIG]ZCIGDFIN = date$
+Affzo [M:ZCIG]
+Return
+
+################################################### OK
+
+$OK
+WOK=1
+
+WREPERT = [M:ZCIG]ZCIGREP
+If right$(WREPERT,len(WREPERT))<>"\"
+    WREPERT += "\"
+Endif
+Gosub CONTROLES_REPERT
+If WOK=0
+    FIN=1
+Endif
+
+#If GPROFIL="ADMIN"
+#  Local Integer WREP : WREP=1
+#  Call OUINON("Voulez-vous utiliser les natures sur articles ?", WREP) From GESECRAN
+#  If WREP=2
+#    Gosub NEW_TRAITEMENT
+#    Return
+#  Endif
+#Endif
+
+Link [F:SDD] With [F:SDH]SDH0=[F:SDD]SDHNUM, [F:CAL]CAL0="SDD";0;[F:SDD]SDHNUM;[F:SDD]SDDLIN;0;"";1
+& As [LNK]
+& Where [F:SDH]ZCIGFLAG<>2 and [F:SDH]BETFCY=2 and [F:SDH]BETCPY=1 and [F:SDH]CFMFLG=2 and [F:SDH]INVFLG=1
+& and (([F:SDH]SHIDAT>=[M:ZCIG]ZCIGDDEB and [M:ZCIG]ZCIGDDEB<>[0/0/0]) or [M:ZCIG]ZCIGDDEB=[0/0/0])
+& and [F:SDH]SHIDAT<=[M:ZCIG]ZCIGDFIN
+& Order By Key LNKCLE=[F:SDH]STOFCY;[F:SDH]BPCORD;[F:CAL]CCE(1);[F:SDH]SDHNUM
+
+Call OUVRE_TRACE("Génération des cessions internes") From LECFIC
+Call ECR_TRACE("Dates, du "+format$("D:DD[/]MM[/]YYYY",[M:ZCIG]ZCIGDDEB)+" au "+format$("D:DD[/]MM[/]YYYY",[M:ZCIG]ZCIGDFIN)+".",0) From GESECRAN
+
+For [F:LNK]LNKCLE(1)
+    # Pour chaque site d'expédition
+    Read [F:FCYV]FCY0=[F:SDH]STOFCY
+    If fstat=0
+        For [F:LNK]LNKCLE(2)
+            # Pour chaque client
+            Read [F:BPR]BPR0=[F:SDH]BPCORD
+            If fstat=0
+                Read [F:FCYA]FCY0=[F:BPR]FCY
+                If fstat=0
+                    Raz WTAB_AMT, WNBECT, WNBIMP
+                    For [F:LNK]LNKCLE(3)
+                        # Pour chaque axe Métier
+                        WMETIER = [F:CAL]CCE(1)
+                        WNUM = find(WMETIER,WTAB_METIER(1..WNBSEC))
+                        If WNUM>0
+                            For [F:LNK]LNKCLE
+                                # Pour chaque ligne de BL
+                                WTAB_AMT(WNUM) += [F:SDD]QTY*[F:SDD]NETPRI
+                            Next : # Ligne de BL suivante
+                        Endif
+                    Next : # Axe Métier suivant
+                    For WNUM=1 To WNBSEC
+                        If WTAB_AMT(WNUM)<>0
+                            WMETIER = WTAB_METIER(WNUM)
+                            WAMT = WTAB_AMT(WNUM)
+                            WNBECT += 1
+                            WHORODAT = format$("D:YYYYMMDDhhmmss",date$)
+                            WNOMFIC = WREPERT+"CIG_"+[F:FCYV]FCY+[F:FCYA]FCY+"_"+WHORODAT+".TXT"
+                            Openo WNOMFIC,0 Using [ZECT]
+                            adxirs = chr$(13)+chr$(10)
+                            adxifs = ";"
+                            Gosub CREE_ENTETE_ECRITURE
+                            Gosub CREE_ECRITURE
+                            Openo Using [ZECT]
+                            Gosub IMPORT_ECRITURE
+                        Endif
+                    Next
+                    Gosub FLAG_BL
+                Endif
+            Endif
+        Next : # Client suivant
+    Endif
+Next : # Site d'expédition suivant
+
+Call FERME_TRACE From LECFIC
+Call LEC_TRACE From LECFIC
+Return
+
+################################################### CONTROLES_REPERT
+
+$CONTROLES_REPERT
+# Vérification accès en lecture/écriture sur le répertoire de départ
+Onerrgo PBCREATFICTXT
+WFICTST = WREPERT+"TEST_"+GUSER+"_"+format$("D:YYYYMMDDhhmmss",date$)+".TXT"
+Openo WFICTST,0 Using [ZTST]
+Onerrgo
+Openo Using [ZTST]
+If WERR>0
+    Case WERR
+     When 20
+        WMESS = "Répertoire principal inexistant. Arrêt du traitement."
+     When 27
+        WMESS = "Accès impossible (permission refusée) au répertoire principal . Arrêt du traitement."
+     When 44
+        WMESS = "Problème de place disque sur le répertoire principal. Arrêt du traitement."
+     When Default
+        WMESS = "Problème système rencontré lors de la vérification d'accès au répertoire principal ("+errmes$(WERR)+"). Arrêt du traitement."
+    Endcase
+    Call ERREUR(WMESS) From GESECRAN
+    WOK=0
+    Return
+Else
+    Call EFFACE(WFICTST,WERR) From ORDSYS
+Endif
+Return
+
+################################################### PBCREATFICTXT
+
+$PBCREATFICTXT
+WERR=errn
+Resume
+
+################################################### CREE_ENTETE_ECRITURE
+
+$CREE_ENTETE_ECRITURE
+# Création de l'entête de l'écriture
+# E, site, référence, journal, type de pièce, date comptable, catégorie, devise, transaction, horodatage
+Wrseq "E", [F:FCYV]FINRSPFCY, "CI du "+[F:FCYV]FCY+" au "+[F:FCYA]FCY, [M:ZCIG]ZCIGJOU, [M:ZCIG]ZCIGGTE, format$("D:YYYYMMDD",[M:ZCIG]ZCIGDAT), [M:ZCIG]ZCIGCAT, GEURO, [M:ZCIG]ZCIGDAC, WHORODAT Using
+& [ZECT]
+Return
+
+################################################### CREE_ECRITURE
+
+$CREE_ECRITURE
+# Création des lignes d'écriture
+# L, nature, libellé, sens, montant
+# A, nature, section 1, section 2, montant
+If [F:FCYA]ZFCYAREA=[F:FCYV]ZFCYAREA
+    WNATFCYV = [F:FCYV]ZCNAIVEN
+    WNATBPCA = [F:FCYA]ZCNAIACH
+Else
+    WNATFCYV = [F:FCYV]ZCNAEVEN
+    WNATBPCA = [F:FCYA]ZCNAEACH
+Endif
+# Ligne 1
+Wrseq "L", "2", WNATFCYV, "CI Vente du "+[F:FCYV]FCY+" au "+[F:FCYA]FCY, -1, WAMT Using [ZECT]
+Wrseq "A", "AX1", [F:FCYV]CCE(0), "AX2", WMETIER, WAMT Using [ZECT]
+# Ligne 2
+Wrseq "L", "2", WNATFCYV, "CI Vente du "+[F:FCYV]FCY+" au "+[F:FCYA]FCY, +1, WAMT Using [ZECT]
+Wrseq "A", "AX1", [M:ZCIG]ZCIGCCE, "AX2", WMETIER, WAMT Using [ZECT]
+# Ligne 3
+Wrseq "L", "2",  WNATBPCA, "CI Achat du "+[F:FCYA]FCY+" au "+[F:FCYV]FCY, -1, WAMT Using [ZECT]
+Wrseq "A", "AX1", [M:ZCIG]ZCIGCCE, "AX2", WMETIER, WAMT Using [ZECT]
+# Ligne 4
+Wrseq "L", "2", WNATBPCA, "CI Achat du "+[F:FCYA]FCY+" au "+[F:FCYV]FCY, +1, WAMT Using [ZECT]
+Wrseq "A", "AX1", [F:FCYA]CCE(0), "AX2", WMETIER, WAMT Using [ZECT]
+Return
+
+################################################### CREE_LIGNE_ECRITURE
+
+$CREE_LIGNE_ECRITURE
+# Création des lignes d'écriture
+# L, nature, libellé, sens, montant
+# A, section 1, section 2, montant
+
+If WMODULE="A"
+  # Ligne 1
+  Wrseq "L", "2",  [F:ZCIA]ZCNAACH, "CI Achat du "+[F:ZCIA]FCY+" au "+[F:ZCIA]STOFCY, -1, WAMT Using [ZECT]
+  Wrseq "A", "AX1", [M:ZCIG]ZCIGCCE, "AX2", WMETIER, WAMT Using [ZECT]
+  # Ligne 2
+  Wrseq "L", "2", [F:ZCIA]ZCNAACH, "CI Achat du "+[F:ZCIA]FCY+" au "+[F:ZCIA]STOFCY, +1, WAMT Using [ZECT]
+  Wrseq "A", "AX1", [F:FCYA]CCE(0), "AX2", WMETIER, WAMT Using [ZECT]
+Else
+  # Ligne 1
+  Wrseq "L", "2", [F:ZCIV]ZCNAVEN, "CI Vente du "+[F:ZCIV]STOFCY+" au "+[F:ZCIA]FCY, -1, WAMT Using [ZECT]
+  Wrseq "A", "AX1", [F:FCYV]CCE(0), "AX2", WMETIER, WAMT Using [ZECT]
+  # Ligne 2
+  Wrseq "L", "2", [F:ZCIV]ZCNAVEN, "CI Vente du "+[F:ZCIV]STOFCY+" au "+[F:ZCIA]FCY, +1, WAMT Using [ZECT]
+  Wrseq "A", "AX1", [M:ZCIG]ZCIGCCE, "AX2", WMETIER, WAMT Using [ZECT]
+Endif
+
+Return
+
+################################################### IMPORT_ECRITURE
+
+$IMPORT_ECRITURE
+Gosub OUVRE From GIMPOBJ
+[M:IMP2]MODIMP=[M:ZCIG]ZCIGAOE
+[M:IMP2]TYPEXP=2
+[M:IMP2]NOMIMP=WNOMFIC
+If GSERVEUR=0
+    GSERVEUR=1
+    Gosub EXEC From GIMPOBJ
+    GSERVEUR=0
+Else
+    Gosub EXEC From GIMPOBJ
+Endif
+
+# On recherche l'écriture comptable générée
+WOK=2
+Filter [F:HAE] Where ZBPHORODAT=WHORODAT
+If rowcount([F:HAE])=1
+    Call ECR_TRACE("Ecriture comptable créée "+[F:HAE]NUM+", axe "+WMETIER+", du site "+[F:FCYV]FCY+" vers le site "+[F:FCYA]FCY+".",0) From GESECRAN
+    WNBIMP += 1
+Else
+    Call ECR_TRACE("L'écriture comptable gérant l'axe "+WMETIER+", du site "+[F:FCYV]FCY+" vers le site "+[F:FCYA]FCY+" n'a pas été créée.",1) From GESECRAN
+Endif
+Filter [F:HAE]
+Call EFFACE(WNOMFIC,WERR) From ORDSYS
+Return
+
+################################################### FLAG_BL
+
+$FLAG_BL
+Filter [F:ZSDH] Where [F:ZSDH]ZCIGFLAG<>2 and [F:ZSDH]BETFCY=2 and [F:ZSDH]BETCPY=1 and [F:ZSDH]CFMFLG=2
+&                     and [F:ZSDH]INVFLG=1 and [F:ZSDH]STOFCY=[F:FCYV]FCY and [F:ZSDH]BPCORD=[F:BPR]BPRNUM
+# Trbegin [F:ZSDH]
+For [F:ZSDH]SDH0
+    [F:ZSDH]ZCIGFLAG = 2
+    Rewrite [F:ZSDH]
+    If fstat
+        # Pb d'écriture d'une livraison, on annule tout et on prévient de supprimer l'écriture analytique
+        Call ECR_TRACE("    Erreur de mise à jour du flag d'une livraison "+[F:ZSDH]SDHNUM+". Supprimez l'écriture comptable.",1) From GESECRAN
+        # Rollback
+        WOK=1
+        Break
+    Endif
+Next
+If WOK=2
+    Call ECR_TRACE("    Les livraisons associées à cette écriture ont toutes été mises à jour.",0) From GESECRAN
+    # Commit
+Endif
+Return
+
+################################################### NEW_TRAITEMENT
+
+$NEW_TRAITEMENT
+# Traitement pour les achats
+Call OUVRE_TRACE("Génération des cessions internes achat.") From LECFIC
+Call ECR_TRACE("Dates, du "+format$("D:DD[/]MM[/]YYYY",[M:ZCIG]ZCIGDDEB)+" au "+format$("D:DD[/]MM[/]YYYY",[M:ZCIG]ZCIGDFIN)+".",0) From GESECRAN
+
+WMODULE = "A"
+For [F:ZCIA]ZCIA0(1) : # Pour chaque site de vente
+  Read [F:FCYV]FCY0=[F:ZCIA]STOFCY
+  If fstat=0
+    For [F:ZCIA]ZCIA0(2) : # Pour chaque site d'achat
+      Read [F:FCYA]FCY0=[F:ZCIA]FCY
+      If fstat=0
+        For [F:ZCIA]ZCIA0(3) : # Pour chaque section analytique métier
+          Raz WTAB_AMT_METNAT, WNBECT, WNBIMP, WENTETE
+          For [F:ZCIA]ZCIA0(4) : # Pour chaque nature achat
+            WMETIER = [F:ZCIA]CCE1
+            WNUM = find(WMETIER+"|"+[F:ZCIA]ZCNAACH,WTAB_METIER_NAT)
+            If WNUM>0
+              For [F:ZCIA]ZCIA0
+                WTAB_AMT_METNAT(WNUM) += [F:SDD]QTY*[F:SDD]NETPRI
+              Next
+              For WNUM=1 To WNBSEC*WNBNAT
+                If WTAB_AMT(WNUM)<>0
+                  WMETIER = left$(WTAB_METIER_NAT(WNUM),instr(1,WTAB_METIER_NAT(WNUM),"|")-1)
+                  WAMT = WTAB_AMT_METNAT(WNUM)
+                  WNBECT += 1
+                  WHORODAT = format$("D:YYYYMMDDhhmmss",date$)
+                  WNOMFIC = WREPERT+"CIG_"+[F:ZCIA]STOFCY+[F:ZCIA]FCY+"_"+WHORODAT+".TXT"
+                  Openo WNOMFIC,0 Using [ZECT]
+                  adxirs = chr$(13)+chr$(10)
+                  adxifs = ";"
+                  If !WENTETE
+                    Gosub CREE_ENTETE_ECRITURE
+                    WENTETE = 1
+                  Endif
+                  Gosub CREE_LIGNE_ECRITURE
+                  Openo Using [ZECT]
+                  Gosub IMPORT_ECRITURE
+                Endif
+              Next
+            Endif
+          Next
+        Next
+      Endif
+    Next
+  Endif
+Next
+
+WMODULE = "V"
+For [F:ZCIA]ZCIA0(1) : # Pour chaque site de vente
+  Read [F:FCYV]FCY0=[F:ZCIA]STOFCY
+  If fstat=0
+    For [F:ZCIA]ZCIA0(2) : # Pour chaque site d'achat
+      Read [F:FCYA]FCY0=[F:ZCIA]FCY
+      If fstat=0
+        For [F:ZCIA]ZCIA0(3) : # Pour chaque section analytique métier
+          Raz WTAB_AMT_METNAT, WNBECT, WNBIMP, WENTETE
+          For [F:ZCIA]ZCIA0(4) : # Pour chaque nature achat
+            WMETIER = [F:ZCIA]CCE1
+            WNUM = find(WMETIER+"|"+[F:ZCIA]ZCNAACH,WTAB_METIER_NAT)
+            If WNUM>0
+              For [F:ZCIA]ZCIA0
+                WTAB_AMT_METNAT(WNUM) += [F:SDD]QTY*[F:SDD]NETPRI
+              Next
+              For WNUM=1 To WNBSEC*WNBNAT
+                If WTAB_AMT(WNUM)<>0
+                  WMETIER = left$(WTAB_METIER_NAT(WNUM),instr(1,WTAB_METIER_NAT(WNUM),"|")-1)
+                  WAMT = WTAB_AMT_METNAT(WNUM)
+                  WNBECT += 1
+                  WHORODAT = format$("D:YYYYMMDDhhmmss",date$)
+                  WNOMFIC = WREPERT+"CIG_"+[F:ZCIA]STOFCY+[F:ZCIA]FCY+"_"+WHORODAT+".TXT"
+                  Openo WNOMFIC,0 Using [ZECT]
+                  adxirs = chr$(13)+chr$(10)
+                  adxifs = ";"
+                  If !WENTETE
+                    Gosub CREE_ENTETE_ECRITURE
+                    WENTETE = 1
+                  Endif
+                  Gosub CREE_LIGNE_ECRITURE
+                  Openo Using [ZECT]
+                  Gosub IMPORT_ECRITURE
+                Endif
+              Next
+            Endif
+          Next
+        Next
+      Endif
+    Next
+  Endif
+Next
+
+Gosub FLAG_BL
+
+Return
+
+###################################################
+#### ACTIONS CHAMPS
+###################################################
+
+Subprog C_ZCIGJOU(VALEUR)
+Variable Char    VALEUR()
+#--- Journal compatible avec tous sites
+Call LECTURE("JOU",VALEUR,"") From CONTOBJ
+If [F:JOU]FCY<>""
+    GMESSAGE = "Ce journal est réservé à une société/un site. Sélection impossible."
+    mkstat=2
+Endif
+End
+
+Subprog C_ZCIGGTE(VALEUR)
+Variable Char    VALEUR()
+Call LECTURE("JOU",[M:ZCIG]ZCIGJOU,"") From CONTOBJ
+Call LECTURE("GTE",VALEUR,"") From CONTOBJ
+#If [F:GTE]AUZJOU([F:JOU]TYP-1)<>2
+#    GMESSAGE = [F:JOU]JOU-mess(8,106,1)
+#    mkstat=2
+#Endif
+End
+
+Subprog C_ZCIGCAT(VALEUR)
+Variable Integer VALEUR
+Call LECTURE("GTE",[M:ZCIG]ZCIGGTE,"") From CONTOBJ
+Case VALEUR
+ When 1 : # Réel
+    If [F:GTE]VCRREA=1
+        GMESSAGE = "Le type de pièce n'autorise pas cette catégorie."
+        mkstat=2
+    Endif
+ When 2,3 : # Simulation active ou non active
+    If [F:GTE]VCRSIM=1
+        GMESSAGE = "Le type de pièce n'autorise pas cette catégorie."
+        mkstat=2
+    Endif
+ When 4 : # Hors bilan
+    If [F:GTE]VCROUTBSE=1
+        GMESSAGE = "Le type de pièce n'autorise pas cette catégorie."
+        mkstat=2
+    Endif
+ When 5 : # Modèle
+    If [F:GTE]VCRMOD=1
+        GMESSAGE = "Le type de pièce n'autorise pas cette catégorie."
+        mkstat=2
+    Endif
+Endcase
+End
+

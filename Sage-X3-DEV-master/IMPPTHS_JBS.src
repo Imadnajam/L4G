@@ -1,0 +1,1823 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+###########################################################################
+# IMPPTHS : Import spécifique des réceptions en V140       MBT 12/11/2003 #
+# ----------------------------------------------------------------------- #
+# L'import de réception est un import spécifique, il permet d'importer    #
+# pour chaque ligne de réception le détail des entrées de stock           #
+# Cet import fonctionne :                                                 #
+#   - en création détaillée d'une réception                               #
+#   - en suppression totale d'une réception                               #
+# Les modifications de réception ne sont pas possibles par l'import !     #
+###########################################################################
+# Issue 96008 Particular cases for subcontract receipt are completed
+###########################################################################
+
+
+$ACTION
+If dim(GSTK_TRACE)>0 & GSTK_TRACE=2 & [L]ACTION<>"IMP_ZONE" & [L]ACTION<>"EXP_ZONE"
+  GSTK_ACT=[L]ACTION : GSTK_PGM="IMPPTHS" : Gosub TRACE_DETAILLEE From STKIMP
+Endif
+Case [L]ACTION
+  When "IMP_AVANT_OUVRE"
+    If !clalev([F:CFL])  Local File CPTFOOTLNK [CFL] : Endif
+  When "IMP_COMPILE"   : Gosub IMP_COMPILE
+  When "IMP_TRTSUP"    : Gosub IMP_TRTSUP
+  When "IMP_ZONE"      : Gosub IMP_ZONE
+  When "AP_IMPORT"     : Gosub AP_IMPORT
+  When "IMP_FERME"     : Gosub IMP_FERME
+  #-----
+  When "EXP_OUVRE"     : Gosub EXP_OUVRE   #From IMPPTH
+  When "EXPORT"        : Gosub EXPORT      #From IMPPTH
+  When "EXP_ZONE"      : Gosub EXP_ZONE    From IMPPTH
+Endcase
+Return
+
+
+###########################################################################
+#                                 IMPORT                                  #
+###########################################################################
+
+
+#-------------------------------------------------------------------------#
+# Début de la génération du traitement WWIxxxxxx, appelé par le SUBIMPOBJ #
+#-------------------------------------------------------------------------#
+$IMP_COMPILE
+Return
+
+
+#-----------------------------------------------------------------------#
+# Fin de la génération du traitement WWIxxxxxx, appelé par le SUBIMPOBJ #
+#-----------------------------------------------------------------------#
+$IMP_TRTSUP
+Return
+
+
+#-----------------------------------------------------------------------#
+#      Après chargement de la classe [F] effectué par le WWIxxxxxx      #
+# IMPFIC : Abréviation du fichier en cours PTH, PVF, CFL, PTD, CAL, STJ #
+#-----------------------------------------------------------------------#
+$AP_IMPORT
+If GSTK_TRSTYP<>3    # Issue 96008 GA 11/2014 restore parameters after EO receipt
+   GSTK_BASTAB="[M:PTH1]NBLIG" : # Nom variable bas tableau
+   GSTK_TRSTYP=3               : # Type mouvement (M.704)
+   GSTK_VCRTYP=6               : # Type pièce (M.701)
+Endif
+Return
+
+
+#-----------------------------------------------------------------#
+# Début import, étiquette appelée directement depuis le SUBIMPOBJ #
+#-----------------------------------------------------------------#
+$OUVRE
+# sr 08.11 bug 75878
+If dim(GPTH_SYMBOL2) < 0
+    Global Char     GPTH_SYMBOL2(30)  : # Sauvegarde de la commande sur la ligne en cours de saisie pour unlock si escape
+Endif
+# Issue 106508 - 2015-06-04 by SR : Landed Cost
+If dim(GCLE) > 0 : Raz GCLE : Endif
+
+GABREV="PTH"
+#----- Sélection de la transaction de réception -----#
+Call PARAM("","PTHTRS",GBIDC3) From ADOVAL : GPTRNUM=GBIDC3
+Read [PTR] PTR0=6;GPTRNUM
+If fstat
+  Filter [PTR] Where PTRTYP=6 & ENAFLG=2
+  Read [PTR] First
+  Filter [PTR]
+  If fstat
+    If GTRACE<>""
+      Call ECR_TRACE(mess(301,194,1),1) From GESECRAN
+    Endif
+    OK=0 : Return
+  Endif
+  GPTRNUM=[F:PTR]PTRNUM
+Endif
+GFLAG=GPTRNUM      : # Transaction de saisie sélectionnée
+[F:PTR]SRGWAIFLG=2 : # On force l'autorisation d'une réception à quai
+[F:PTR]PRNCOD1  =1 : # On force l'impression d'étiquettes à "Non"
+[F:PTR]PRNNBFLG1=1 : # On force le nbre d'impression à "Non"
+#----- Les classes écrans PTH0, PTH1 et PTH2 ne sont pas ouvertes en mode test -----#
+If !clalev([M:PTH0])  Local Mask PTH0   [PTH0] : Endif
+If !clalev([M:PTH1])  Local Mask PTH1   [PTH1] : Endif
+If !clalev([M:PTH2])  Local Mask PTH2   [PTH2] : Endif
+#-----
+[L]ACTION="OUVRE"   : Gosub ACTION From GOBJSUB : Gosub DEFAUT From WOPTH
+If !clalev([M:PTH9])  Local Mask PTH9   [PTH9] : Endif
+If !clalev([M:ADB])   Local Mask ADRBPR  [ADB] : Endif
+If !clalev([M:PCEE])  Local Mask PCEE   [PCEE] : Endif
+Gosub FLD_MODELE From TRTX3IMP
+#----- Principaux contrôles sur le modèle -----#
+If !find("[F:PTH]PRHFCY(0)",[M:AOE2]ZONMSK1)
+  #----- Le site de réception est obligatoire -----#
+  OK=0 : GERR=1 : GMESSAGE=mess(323,199,1)-"([F:PTH]PRHFCY)" : Return
+Elsif !find("[F:PTH]BPSNUM(0)",[M:AOE2]ZONMSK1)
+  #----- Le fournisseur est obligatoire -----#
+  OK=0 : GERR=1 : GMESSAGE=mess(323,199,1)-"([F:PTH]BPSNUM)" : Return
+Elsif  find("[F:PTD]POHNUM(0)",[M:AOE2]ZONMSK1) &
+&     !find("[F:PTD]POPLIN(0)",[M:AOE2]ZONMSK1) &
+&     !find("[F:PTD]ITMREF(0)",[M:AOE2]ZONMSK1)
+  #----- Si no commande, la ligne ou l'article est obligatoire -----#
+  OK=0 : GERR=1 : GMESSAGE=mess(323,199,1)-"([F:PTD]POPLIN / [F:PTD]ITMREF)" : Return
+Elsif  find("[F:PTD]SDHNUM(0)",[M:AOE2]ZONMSK1) &
+&     !find("[F:PTD]SDDLIN(0)",[M:AOE2]ZONMSK1)
+  #----- Si no livraison (inter-site), la ligne est obligatoire -----#
+  OK=0 : GERR=1 : GMESSAGE=mess(323,199,1)-"([F:PTD]SDDLIN)" : Return
+Elsif !find("[F:PTD]POHNUM(0)",[M:AOE2]ZONMSK1) &
+&     !find("[F:PTD]SDHNUM(0)",[M:AOE2]ZONMSK1)
+  If    !find("[F:PTD]ITMREF(0)",[M:AOE2]ZONMSK1)
+  #----- Si pas de cde et pas de livraison, référence article obligatoire -----#
+    OK=0 : GERR=1 : GMESSAGE=mess(323,199,1)-"([F:PTD]ITMREF)" : Return
+  Elsif !find("[F:PTD]QTYUOM(0)",[M:AOE2]ZONMSK1)
+  #----- Si pas de cde et pas de livraison, quantité obligatoire -----#
+    OK=0 : GERR=1 : GMESSAGE=mess(323,199,1)-"([F:PTD]QTYUOM)" : Return
+  Endif
+Endif
+#----- Variables locales -----#
+Local  Char     WGRPDEB(GLONVCR) : #71600
+Local  Char     WPTD_ITMREF(GLONITM)
+Local  Libelle  WPTD_SCSFLG : WPTD_SCSFLG=0
+Local  Libelle  WPTD_SCPFLG : WPTD_SCPFLG=0  # Issue 96008 GA 10/2014
+Local  Libelle  WPTD_TRSTYP : WPTD_TRSTYP=0  # Issue 96008 GA 10/2014
+Local  Integer  WPTD_NBLIG, WSTT_NOLIG, WSTT_NBLIG, WSAV_NBLIG, WDIF_NBLIG
+Local  Integer  OK_STJITMREF, OK_STJVCRLINORI, OK_STJTRSTYP   # Issue 96008 GA 10/2014
+Local  Integer  WSCM_NOLIG, WSCM_NBLIG                        # Issue 96008 GA 10/2014
+Local  Integer  WSCI_NOLIG, WSCI_NBLIG                        # Issue 96008 GA 10/2014
+Local  Integer  WNOL, I, J, K, L
+Local  Decimal  WCUM, WMT
+Local  Char     SYMBOL2(30)
+Local  Libelle  WTEST_COMPL, WTEST_ADR, WTEST_CEE
+#-----
+Local  Libelle  OK_BPOADD, OK_BPONAM(2), OK_BPOADDLIG(3)
+Local  Libelle  OK_BPOPOSCOD, OK_BPOCTY, OK_BPOSAT, OK_BPOCRY, OK_BPOCRYNAM
+#-----
+Local  Integer  OK_INVDTAVAT
+Local  Integer  PVF_INVDTA   (max(func AFNC.ACTIV("PFI"),20))
+#----- Variables locales spécifiques aux composants de sous-traitance -----#
+Local  Shortint NOL, SAVNOLIGN
+Local  Char     LUSCAV(2), LLBEFMT(GLONARP)
+Local  Integer  S, LDACCOE
+Global Shortint GMFGTRACE : # à virer ! (dépend de la GP)
+# Issue 122266 - 2017-03-30 by SR : import de réception Inter site
+Local Char SWPJTMSG(250)
+
+#-----
+# Issue 96008 GA 10/2014 [F:STJ]ITMREF and [F:STJ]TRSTYP are mandatory to import stock movement
+If find("STOJOU",[M:AOE2]FIL(0..[M:AOE2]NBRLIG-1)) #####################
+  Call TST_CHAMP("STJ","ITMREF"   ,OK_STJITMREF)     From SUBIMPOBJ
+  Call TST_CHAMP("STJ","VCRLINORI",OK_STJVCRLINORI)  From SUBIMPOBJ
+  Call TST_CHAMP("STJ","TRSTYP"   ,OK_STJTRSTYP)     From SUBIMPOBJ
+  If (OK_STJITMREF | OK_STJVCRLINORI) & OK_STJTRSTYP
+    If GMODU(8)=2 & dim(GPTRNUM)>0 & GPTRNUM<>""
+      #----- Generated mask for WO subcontract receipt -----#
+      If GVERSION>"1.6.4" # X3V6p18 Differed validations may cause some trouble here
+         Call CTRL_MASK(nomap,"WE6"+GPTRNUM+"3","[PSTT]") From TRTX3   # FQ 77679 GA 11/2011
+      Endif
+      #Local Mask="PTHPSTT" [PSTT]
+      Local Mask="WE6"+GPTRNUM+"3" [PSTT]
+    Endif
+    #----- Local mask for EO subcontract receipt -----#
+    Local Mask="PTHPSCM"  [PSCM]
+  Endif
+Endif
+
+Call TST_CHAMP("PVF","INVDTAVAT",OK_INVDTAVAT)  From SUBIMPOBJ
+#----- Test si besoin d'importer les informations complémentaires avec l'écran PTH9 [PTH9] -----#
+Raz [L]WTEST_COMPL
+If find("[F:PTH]BPSINV(0)"   ,[M:AOE2]ZONMSK1) |
+&  find("[F:PTH]BPAINV(0)"   ,[M:AOE2]ZONMSK1) |
+&  find("[F:PTH]BPRPAY(0)"   ,[M:AOE2]ZONMSK1) |
+&  find("[F:PTH]BPAPAY(0)"   ,[M:AOE2]ZONMSK1) |
+&  find("[F:PTH]MDL(0)"      ,[M:AOE2]ZONMSK1) |
+&  find("[F:PTH]BPTNUM(0)"   ,[M:AOE2]ZONMSK1) |
+&  find("[F:PTH]TOTGROWEI(0)",[M:AOE2]ZONMSK1) |
+&  find("[F:PTH]WEU(0)"      ,[M:AOE2]ZONMSK1) |
+&  find("[F:PTH]TOTNETWEI(0)",[M:AOE2]ZONMSK1) |
+&  find("[F:PTH]TOTVOL(0)"   ,[M:AOE2]ZONMSK1) |
+&  find("[F:PTH]VOU(0)"      ,[M:AOE2]ZONMSK1)
+  [L]WTEST_COMPL=1
+Endif
+#----- Test si besoin d'importer les informations adresse avec l'écran ADRBPR [ADB] -----#
+Raz [L]WTEST_ADR
+[L]OK_BPOADD      =find("[F:PTH]BPOADD(0)"   ,[M:AOE2]ZONMSK1)
+[L]OK_BPONAM(0)   =find("[F:PTH]BPONAM(0)"   ,[M:AOE2]ZONMSK1)
+[L]OK_BPONAM(1)   =find("[F:PTH]BPONAM(1)"   ,[M:AOE2]ZONMSK1)
+[L]OK_BPOADDLIG(0)=find("[F:PTH]BPOADDLIG(0)",[M:AOE2]ZONMSK1)
+[L]OK_BPOADDLIG(1)=find("[F:PTH]BPOADDLIG(1)",[M:AOE2]ZONMSK1)
+[L]OK_BPOADDLIG(2)=find("[F:PTH]BPOADDLIG(2)",[M:AOE2]ZONMSK1)
+[L]OK_BPOPOSCOD   =find("[F:PTH]BPOPOSCOD"   ,[M:AOE2]ZONMSK1)
+[L]OK_BPOCTY      =find("[F:PTH]BPOCTY(0)"   ,[M:AOE2]ZONMSK1)
+[L]OK_BPOSAT      =find("[F:PTH]BPOSAT(0)"   ,[M:AOE2]ZONMSK1)
+[L]OK_BPOCRY      =find("[F:PTH]BPOCRY(0)"   ,[M:AOE2]ZONMSK1)
+[L]OK_BPOCRYNAM   =find("[F:PTH]BPOCRYNAM(0)",[M:AOE2]ZONMSK1)
+[L]WTEST_ADR  = OK_BPOADD + OK_BPONAM(0) + OK_BPONAM(1)
+[L]WTEST_ADR += OK_BPOADDLIG(0) + OK_BPOADDLIG(1) + OK_BPOADDLIG(2)
+[L]WTEST_ADR += OK_BPOPOSCOD + OK_BPOCTY + OK_BPOSAT + OK_BPOCRY + OK_BPOCRYNAM
+#----- Test si besoin d'importer les informations douanières avec l'écran PCEE [PCEE] -----#
+Raz [L]WTEST_CEE
+If find("[F:PTH]EECICT(0)",[M:AOE2]ZONMSK1) |
+&  find("[F:PTH]ICTCTY(0)",[M:AOE2]ZONMSK1) |
+&  find("[F:PTH]FFWNUM(0)",[M:AOE2]ZONMSK1) |
+&  find("[F:PTH]FFWADD(0)",[M:AOE2]ZONMSK1) |
+&  find("[F:PTH]EECNUM(0)",[M:AOE2]ZONMSK1) |
+&  find("[F:PTH]EECLOC(0)",[M:AOE2]ZONMSK1) |
+&  find("[F:PTH]EECTRN(0)",[M:AOE2]ZONMSK1) |
+&  find("[F:PTH]EECNAT(0)",[M:AOE2]ZONMSK1) |
+&  find("[F:PTH]EECSCH(0)",[M:AOE2]ZONMSK1)
+  [L]WTEST_CEE=1
+Endif
+
+
+Global Integer  GCCE_STJ
+#----- Test si besoin d'importer les axes analytiques avec l'écran STOANA [STA] -----#
+Raz GCCE_STJ
+For J=1 To GNBDIE
+#  If evalue("find('[F:STJ]CCE"+num$(J)+"(0)',[M:AOE2]ZONMSK1)")          # hcb 70092
+   If evalue("find('[F:STJ]CCE("+num$(J)+")',[M:AOE2]ZONMSK1)")           # hcb 70092
+     GCCE_STJ=1 : Break
+  Endif
+Next J
+
+#----- Gestion des textes -----#
+Gosub DECLARE_TEXTE From TRTX3IMP
+G_IMPORT=1 : Gosub OUVRE_TEXTE From IMPPTH
+#----- Globales à definir pour import stock -----#
+Global Char     GSTK_ACTION(20)                               : # Nom de l'action
+Global Char     GSTK_BASTAB(20) : GSTK_BASTAB="[M:PTH1]NBLIG" : # Nom variable bas tableau
+Global Libelle  GSTK_TRSTYP     : GSTK_TRSTYP=3               : # Type mouvement (M.704)
+Global Libelle  GSTK_VCRTYP     : GSTK_VCRTYP=6               : # Type pièce (M.701)
+Global Libelle  GSTK_TRACE      : GSTK_TRACE =1               : # Trace détaillée si =2
+#-----
+If GSTOTRACE>2  GSTK_TRACE=2 : Endif
+#-----
+If GSTK_TRACE=2
+  Call ECR_TRACE(mess(27,115,1)-"OUVRE"+space$(17)+"From IMPPTHS",0) From GESECRAN
+Endif
+#-----
+GSTK_ACTION="OUVRE" : Gosub ACTION From STKIMP
+[L]WSTK_ABRTTR="PTR" : # Abréviation table transaction de saisie
+#----- Changement pseudo table CPTFOOTLNK par CPTANALIN bis -----#
+If clalev([F:CFL])  Close Local File [CFL] : Endif
+Local File CPTANALIN [CFL]
+#-----
+# Issue 96008 GA 04/2015 for subcontract receipt import
+Local Char LBOI(GLONFEN)
+LBOI=""
+
+Return
+
+
+#--------------------------------------------------------------------------------------#
+# Nouveau document à importer, appelé directement depuis le traitement généré WWIxxxxx #
+#--------------------------------------------------------------------------------------#
+$RAZCRE
+If GSTK_TRACE=2
+  GSTK_ACT="RAZCRE" : GSTK_PGM="IMPPTHS" : Gosub TRACE_DETAILLEE From STKIMP
+Endif
+GREP="C"
+Raz [M:PTH0], [M:PTH1], [M:PTH2], [M:PTH9], [M:PCEE]
+Raz [L]WPTD_ITMREF, [L]WPTD_SCSFLG, [L]WPTD_NBLIG, [L]WSTT_NOLIG
+Raz [L]WPTD_SCPFLG, [L]WPTD_TRSTYP  # Issue 96008 GA 10/2014
+If GSTK_TRACE=2
+  GSTK_ACT="RAZCRE" : GSTK_PGM="GOBJSUB" : Gosub TRACE_DETAILLEE From STKIMP
+Endif
+[L]ACTION="RAZCRE"   : Gosub ACTION From GOBJSUB : Gosub DEFAUT From WOPTH
+GSTK_ACTION="RAZCRE" : Gosub ACTION From STKIMP
+Raz PVF_INVDTA
+Return
+
+
+#------------------------------------------------------------------------------------#
+# Chargement masques écrans, appelé directement depuis le traitement généré WWIxxxxx #
+#------------------------------------------------------------------------------------#
+$SAIMSK
+# Issue 116875 - 2016-06-28 by SR : Si une erreur est détectée précédemment, il ne faut plus rien faire ici, sinon
+# ça RAZ l'erreur, et du coup, Le fichier .err n'est pas créé.
+  If GOK < 1 : Return : Endif
+# End issue 116875
+If GREP="A"  Return : Endif
+If GSTK_TRACE=2
+  GSTK_ACT="SAIMSK" : GSTK_PGM="IMPPTHS" : Gosub TRACE_DETAILLEE From STKIMP
+Endif
+Case IMPFIC
+  When "PTH"
+    #----- Test rupture sur ligne document ----- Pour sous-traitance
+    #If [L]WPTD_NBLIG
+      If [L]WPTD_SCSFLG=2    # Issue 96008 GA 10/2014 WO or EO ?
+         Gosub UNLOAD_PSTT
+      Elsif [L]WPTD_SCPFLG=2
+         # Issue X3-59162 - 2017-10-27 by SR : On peut avoir 29 dans GSTK_TRSTYP si des STOJOU matière ont été importés
+         # On remet 3 pour faire passer les contrôles stock sur les mouvements d'entrée
+         # et on se repositionne sur les bons buffer ITM et ITF
+         GSTK_TRSTYP = 3
+         If [M:ENT]ITMREF <> ""
+           If [F:ITM]ITMREF<>[M:ENT]ITMREF
+              Read [ITM] ITM0=[M:ENT]ITMREF
+              If fstat  Raz [F:ITM] : Endif
+           Endif
+           If [F:ITF]ITMREF<>[M:ENT]ITMREF | [F:ITF]STOFCY<>[M:ENT]STOFCY
+               Read [F:ITF] ITF0=[M:ENT]ITMREF;[M:ENT]STOFCY
+               If fstat  Raz [F:ITF] : Endif
+           Endif
+         Endif
+         Gosub UNLOAD_PSCM
+      Endif
+    #Endif
+    If GSTK_NBLIG
+      GSTK_ACTION="RUPT_LIGDOC" : Gosub ACTION From STKIMP : # Autres articles gérés stock
+    Endif
+    #-----
+    Gosub IMPORT_TEXTE From IMPPTH : # Import des textes entête, pied
+    Default File [PTH]  : # Voir si utile ?
+    #----- Ecran entête réception -----#
+    If GSTK_TRACE=2
+      GSTK_ACT="SAIMSK" : GSTK_PGM="W0PTH0" : Gosub TRACE_DETAILLEE From STKIMP
+    Endif
+    Default Mask [PTH0]
+    GNBAFF=0
+    Setmode INBAFF,IAFFCOD,IAFFMASK,IAFFCHP,IAFFIND,IAFFTXT,IAFFRANG,IAFFOPT1,IAFFOPT2
+    Call SAIMSK("PTH","IMP_ZONE","SUBIMPOBJ") From W0PTH0
+    If mkstat  NBERR+=1 : Call TRACE2(2,GMESSIMP,-10) From SUBIMPOBJ : Endif
+    If GREP="A"
+      REP="A" : Actzo [PTH0]RCPDAT, BPSNUM, BPSNDE, NDEDAT, CUR, CHGTYP, SRGLOCDEF
+    Endif
+    Setmode
+    If GREP="A"  Return : Endif
+    If mkstat  GREP="" : REP="" : mkstat=0 : GOK=0 : Return : Endif
+    #----- Ecran lignes réception -----#
+    If GSTK_TRACE=2
+      GSTK_ACT="SAIMSK" : GSTK_PGM="W0PTH1" : Gosub TRACE_DETAILLEE From STKIMP
+    Endif
+    Default Mask [PTH1]
+    GNBAFF=0
+    Setmode INBAFF,IAFFCOD,IAFFMASK,IAFFCHP,IAFFIND,IAFFTXT,IAFFRANG,IAFFOPT1,IAFFOPT2
+    Call SAIMSK("PTH","IMP_ZONE","SUBIMPOBJ") From W0PTH1
+    If mkstat  NBERR+=1 : Call TRACE2(2,GMESSIMP,-10) From SUBIMPOBJ : Endif
+    Setmode
+    If mkstat  GREP="" : REP="" : mkstat=0 : GOK=0 : Return : Endif
+    #----- Ecran valorisation réception -----#
+    If GSTK_TRACE=2
+      GSTK_ACT="SAIMSK" : GSTK_PGM="W0PTH2" : Gosub TRACE_DETAILLEE From STKIMP
+    Endif
+    Default Mask [PTH2]
+    GNBAFF=0
+    Setmode INBAFF,IAFFCOD,IAFFMASK,IAFFCHP,IAFFIND,IAFFTXT,IAFFRANG,IAFFOPT1,IAFFOPT2
+    Call SAIMSK("PTH","IMP_ZONE","SUBIMPOBJ") From W0PTH2
+    If mkstat  NBERR+=1 : Call TRACE2(2,GMESSIMP,-10) From SUBIMPOBJ : Endif
+    Setmode
+    If mkstat  GREP="" : REP="" : mkstat=0 : GOK=0 : Return : Endif
+    #----- Ecran complément réception -----#
+    If [L]WTEST_COMPL
+      If GSTK_TRACE=2
+        GSTK_ACT="SAIMSK" : GSTK_PGM="W0PTH9" : Gosub TRACE_DETAILLEE From STKIMP
+      Endif
+      [M:PTH9]=[M:PTHC]
+      Default Mask [PTH9]
+      GNBAFF=0
+      Setmode INBAFF,IAFFCOD,IAFFMASK,IAFFCHP,IAFFIND,IAFFTXT,IAFFRANG,IAFFOPT1,IAFFOPT2
+      Call SAIMSK("PTH","IMP_ZONE","SUBIMPOBJ") From W0PTH9
+      If mkstat  NBERR+=1 : Call TRACE2(2,GMESSIMP,-10) From SUBIMPOBJ : Endif
+      Setmode
+      If mkstat  GREP="" : REP="" : mkstat=0 : GOK=0 : Return : Endif
+      [M:PTHC]=[M:PTH9]
+    Endif
+    #----- Ecran adresse -----#
+    If [L]WTEST_ADR
+      If GSTK_TRACE=2
+        GSTK_ACT="SAIMSK" : GSTK_PGM="W0ADRBPR" : Gosub TRACE_DETAILLEE From STKIMP
+      Endif
+      [M:ADB]=[M:AD68]
+      #----- Raz masque et lecture BPARTNER si nécessaire -----#
+      If [M:ADB]ADBBPR<>[M:PTH0]BPSNUM  Raz [M:ADB] : Endif
+      If [F:BPR]BPRNUM<>[M:PTH0]BPSNUM
+        Read [BPR] BPR0=[M:PTH0]BPSNUM
+        If fstat  Raz [F:BPR] : Endif
+      Endif
+      [M:ADB]ADBBPR=[M:PTH0]BPSNUM
+      [M:ADB]ADBTRT=0
+      If [M:ADB]BPAADD=""  [M:ADB]BPAADD=[F:BPR]BPAADD : Endif
+      #----- Lecture de l'adresse si nécessaire -----#
+      If [M:ADB]BPAADD=""  [M:ADB]BPAADD=[F:BPR]BPAADD : Endif
+      If [M:ADB]ADBFLG=0
+        Read [BPA] BPA0=1;[M:PTH0]BPSNUM;[M:ADB]BPAADD
+        If fstat  Raz [F:BPA] : Endif
+        [M:ADB]BPRNAM(0)    = [F:BPR]BPRNAM(0)
+        [M:ADB]BPRNAM(1)    = [F:BPR]BPRNAM(1)
+        [M:ADB]BPAADDLIG(0) = [F:BPA]BPAADDLIG(0)
+        [M:ADB]BPAADDLIG(1) = [F:BPA]BPAADDLIG(1)
+        [M:ADB]BPAADDLIG(2) = [F:BPA]BPAADDLIG(2)
+        [M:ADB]CRY          = [F:BPA]CRY
+        [M:ADB]CRYNAM       = [F:BPA]CRYNAM
+        [M:ADB]SAT          = [F:BPA]SAT
+        [M:ADB]POSCOD       = [F:BPA]POSCOD
+        [M:ADB]CTY          = [F:BPA]CTY
+        [M:ADB]ADBBPR       = [F:BPR]BPRNUM
+        [M:ADB]ADBFLG       = 1
+      Endif
+      #-----
+      Default Mask [ADB]
+      Setmode INBAFF,IAFFCOD,IAFFMASK,IAFFCHP,IAFFIND,IAFFTXT,IAFFRANG,IAFFOPT1,IAFFOPT2
+      Call SAIMSK("PTH","IMP_ZONE","SUBIMPOBJ") From W0ADRBPR
+      If mkstat  NBERR+=1 : Call TRACE2(2,GMESSIMP,-10) From SUBIMPOBJ : Endif
+      Setmode
+      If mkstat  GREP="" : REP="" : mkstat=0 : GOK=0 : Return : Endif
+      [M:AD68]=[M:ADB]
+      [M:AD68]ADBFLG=2
+    Endif
+    #----- Ecran informations douanières -----#
+    If [L]WTEST_CEE
+      If GSTK_TRACE=2
+        GSTK_ACT="SAIMSK" : GSTK_PGM="W0PCEE" : Gosub TRACE_DETAILLEE From STKIMP
+      Endif
+      [M:PCEE]=[M:PCEX]
+      Default Mask [PCEE]
+      GNBAFF=0
+      Setmode INBAFF,IAFFCOD,IAFFMASK,IAFFCHP,IAFFIND,IAFFTXT,IAFFRANG,IAFFOPT1,IAFFOPT2
+      Call SAIMSK("PTH","IMP_ZONE","SUBIMPOBJ") From W0PCEE
+      If mkstat  NBERR+=1 : Call TRACE2(2,GMESSIMP,-10) From SUBIMPOBJ : Endif
+      Setmode
+      If mkstat  GREP="" : REP="" : mkstat=0 : GOK=0 : Return : Endif
+      [M:PCEX]=[M:PCEE]
+    Endif
+    #----- Traitement des textes entête et pied -----#
+    If GREP="C"  Gosub IMP_ZONE_TEXTE From IMPPTH : Endif
+    #----- Traitement champs invisibles -----#
+    If find("[F:PTH]TRSCOD(0)",[M:AOE2]ZONMSK1)
+      [M:PTH0]TRSCOD=[F:PTH]TRSCOD
+    Endif
+    If find("[F:PTH]ENTCOD(0)",[M:AOE2]ZONMSK1)
+      [M:PTH0]ENTCOD=[F:PTH]ENTCOD
+    Endif
+    #-----
+    GSTK_TRSCOD=[M:PTH0]TRSCOD
+    GSTK_ENTCOD=[M:PTH0]ENTCOD
+    [L]WSTK_BPRNUM=[M:PTH0]BPSNUM
+  When "PTD"
+      # Issue X3-59162 - 2017-10-27 by SR : On peut avoir 29 dans GSTK_TRSTYP si des STOJOU matière ont été importés
+      # On remet 3 pour faire passer les contrôles stock sur les mouvements d'entrée
+      # et on se repositionne sur les bons buffer ITM et ITF
+      GSTK_TRSTYP = 3
+      If [M:ENT]ITMREF <> ""
+          If [F:ITM]ITMREF<>[M:ENT]ITMREF
+             Read [ITM] ITM0=[M:ENT]ITMREF
+             If fstat  Raz [F:ITM] : Endif
+          Endif
+          If [F:ITF]ITMREF<>[M:ENT]ITMREF | [F:ITF]STOFCY<>[M:ENT]STOFCY
+             Read [F:ITF] ITF0=[M:ENT]ITMREF;[M:ENT]STOFCY
+             If fstat  Raz [F:ITF] : Endif
+          Endif
+       Endif
+    #----- Test rupture sur ligne document -----#
+    If GSTK_NBLIG
+      GSTK_ACTION="RUPT_LIGDOC" : Gosub ACTION From STKIMP : # Autres articles gérés stock
+    Endif
+    #-----
+    Gosub IMPORT_TEXTE From IMPPTH : # Import des textes ligne
+    If [M:PTH1]NBLIG=0
+      Gosub SETDEV From TRTDIV  : GDEV1(1)=[M:PTH0]CUR
+      Call AS_NBLIG From SUBPTH : If mkstat  Return : Endif
+    Endif
+    [M:PTH1]NBLIG+=1
+    nolign=[M:PTH1]NBLIG : indice=nolign-1
+    #----- Traitement champs invisibles référence livraison -----#
+    Raz [L]WDIF_NBLIG
+    If find("[F:PTD]SDHNUM(0)",[M:AOE2]ZONMSK1) & [F:PTD]SDHNUM<>""
+      [M:PTH1]SDHNUM(nolign-1)=[F:PTD]SDHNUM : # Numéro livraison inter-sites
+      [F:SDD]SDHNUM=[F:PTD]SDHNUM
+      [M:PTH1]SDDLIN(nolign-1)=[F:PTD]SDDLIN : # Ligne livraison inter-sites
+      [F:SDD]SDDLIN=[F:PTD]SDDLIN
+      If GSTK_TRACE=2
+        GSTK_ACT="PICKE_LIV" : GSTK_PGM="TRTACHPIC1" : Gosub TRACE_DETAILLEE From STKIMP
+      Endif
+      GPTH_PICK=1 : [L]WSAV_NBLIG=[M:PTH1]NBLIG
+      [M:PTH1]NBLIG-=1 : Gosub PICKE_LIV From TRTACHPIC1
+      GPTH_PICK=0 : [L]WDIF_NBLIG=[M:PTH1]NBLIG-[L]WSAV_NBLIG : [M:PTH1]NBLIG=[L]WSAV_NBLIG
+      If mkstat  GREP="" : REP="" : mkstat=0 : GOK=0 : Return : Endif
+      nolign=[M:PTH1]NBLIG : indice=nolign-1
+      status=75
+    Else
+      status=73
+    Endif
+    # Issue 108538 - 2015-06-02 by SR : Landed Cost
+    #----- Traitement champs invisibles référence Expédition -----#
+    Raz [L]WDIF_NBLIG
+    If find("[F:PTD]SHIPNUM(0)",[M:AOE2]ZONMSK1) & [F:PTD]SHIPNUM<>""
+      [M:PTH1]SHIPNUM(nolign-1)=[F:PTD]SHIPNUM : # Numéro expédition
+      [F:SHD]SHIPNUM=[F:PTD]SHIPNUM
+      [M:PTH1]SHIPLIN(nolign-1)=[F:PTD]SHIPLIN : # Ligne expédition
+      [F:SHD]SHIPLIN=[F:PTD]SHIPLIN
+      If GSTK_TRACE=2
+        GSTK_ACT="PICKE_SHIP" : GSTK_PGM="TRTACHPIC1" : Gosub TRACE_DETAILLEE From STKIMP
+      Endif
+      GPTH_PICK=1 : [L]WSAV_NBLIG=[M:PTH1]NBLIG
+      [M:PTH1]NBLIG-=1 : Gosub PICKE_SHIP From TRTACHPIC1
+      GPTH_PICK=0 : [L]WDIF_NBLIG=[M:PTH1]NBLIG-[L]WSAV_NBLIG : [M:PTH1]NBLIG=[L]WSAV_NBLIG
+      If mkstat  GREP="" : REP="" : mkstat=0 : GOK=0 : Return : Endif
+      nolign=[M:PTH1]NBLIG : indice=nolign-1
+      status=75
+    Else
+      status=73
+    Endif
+    # End issue 108538
+   # Issue 96008 GA 10/2014 WO or EO ?
+    #If [L]WPTD_NBLIG  # Issue 96008 GA 04/2015 when 1=normal row or 2=Parent product BOM
+    If [F:PTD]LINTYP<=2
+      If [F:PTD]VCRTYPORI=0 & find("[F:PTD]POHNUM(0)",[M:AOE2]ZONMSK1) & [F:PTD]POHNUM<>""
+         Read [POQ]POQ0=[F:PTD]POHNUM;[F:PTD]POPLIN
+         If fstat Raz [F:POQ]
+         Elsif find([F:POQ]VCRTYPORI,10,36)<>0
+            [M:PTH1]VCRTYPORI(nolign-1)=[F:POQ]VCRTYPORI
+            [M:PTH1]VCRNUMORI(nolign-1)=[F:POQ]VCRNUMORI
+            [M:PTH1]VCRLINORI(nolign-1)=[F:POQ]VCRLINORI
+            [M:PTH1]VCRSEQORI(nolign-1)=[F:POQ]VCRSEQORI
+            [M:PTH1]LINTYP(nolign-1)=[F:POQ]LINTYP
+         Endif
+       Endif
+    Endif
+    Default Mask [PTH1]
+    #-----
+    WNOL=nolign-1       : # Utile pour le traitement de "CAL"
+    Default File [PTD]  : # Voir si utile ?
+    If GSTK_TRACE=2
+      GSTK_ACT="SAI_NBLIG" : GSTK_PGM="W0PTH1" : Gosub TRACE_DETAILLEE From STKIMP
+    Endif
+    Default Mask [PTH1]
+    GNBAFF=0
+    Setmode INBAFF,IAFFCOD,IAFFMASK,IAFFCHP,IAFFIND,IAFFTXT,IAFFRANG,IAFFOPT1,IAFFOPT2
+    Call SAI_NBLIG("PTD","IMP_ZONE","SUBIMPOBJ") From W0PTH1
+
+    Local Integer SAVNOL : SAVNOL=[M:PTH1]NBLIG-1       #  Issue 96008 GA 04/2015
+    [L]WPTD_NBLIG=[M:PTH1]NBLIG  # Issue 96008 GA 05/2015
+
+    # Issue 84244 - 2012-08-31 by SR : Récupérer les lignes si sous-traitance
+    If [M:PTH1]NBCRELIG>0
+      [M:PTH1]NBLIG+=[M:PTH1]NBCRELIG
+      Raz [M:PTH1]NBCRELIG
+      #  Issue 96008 GA 04/2015 case partial receipt
+      If [M:PTH1]QTYPUU(SAVNOL)<>[F:POQ]QTYPUU-[F:POQ]RCPQTYPUU
+        [M:PTH1]PREQTYPUU(SAVNOL)=0     # force qty recalculation
+        Call CALCUL_COMPOSANTS(SAVNOL) From SUBPTHD
+      Endif
+    Endif
+
+    If mkstat  NBERR+=1 : Call TRACE2(2,GMESSIMP,-10) From SUBIMPOBJ : Endif
+    # sr 08.11 bug 75878 délocker la commande si besoin
+    If mkstat  & GPTH_SYMBOL2<>""
+        Unlock=GPTH_SYMBOL2
+    Endif
+    Setmode
+    If mkstat  GREP="" : REP="" : mkstat=0 : GOK=0 : Return : Endif
+    [M:PTH1]NBLIG+=[L]WDIF_NBLIG
+    #----- à cause des articles de sous-traitance -----#
+    # Issue 96008 GA 06/2015 wrong product for EO: [M:PTH1]NBLIG replaced by [L]WPTD_NBLIG
+    If [F:ITM]ITMREF<>[M:PTH1]ITMREF([L]WPTD_NBLIG-1)
+      Read [ITM] ITM0=[M:PTH1]ITMREF([L]WPTD_NBLIG-1)
+      If fstat  Raz [F:ITM] : Endif
+    Endif
+
+    #If [M:PTH1]VCRTYPORI([M:PTH1]NBLIG-1)=10    # Issue 88813 & 88671 GA 03/2013
+    If [L]WPTD_NBLIG>0 & [M:PTH1]VCRTYPORI([L]WPTD_NBLIG-1)=10     # Issue 96008 GA 05/2015
+        [L]WPTD_ITMREF=[F:ITM]ITMREF
+        [L]WPTD_SCSFLG=[F:ITM]SCSFLG
+        [L]WPTD_SCPFLG = 1                           # Issue 96008 GA 10/2014
+        GSTK_BASTAB="[M:PSTT]NBLIG" : # Nom variable bas tableau
+        Call CHARG_STT([L]WPTD_NBLIG-1) From SUBPTHC # Issue 96008 GA 05/2015 (parameter changed)
+
+    #Elsif [M:PTH1]VCRTYPORI([M:PTH1]NBLIG-1)=36    # Issue 96008 GA 10/2014
+    Elsif [L]WPTD_NBLIG>0 & [M:PTH1]VCRTYPORI([L]WPTD_NBLIG-1)=36     # Issue 96008 GA 05/2015
+        GSTK_BASTAB="[M:PTH1]NBLIG" : # Nom variable bas tableau
+        [L]WPTD_SCPFLG = [F:ITM]SCPFLG
+        [L]WPTD_SCSFLG = [F:ITM]SCSFLG
+        If [F:ITM]SCPFLG=2      [L]WPTD_ITMREF = [F:ITM]ITMREF # keep subcontracted product
+        Elsif [M:PSCM]ORINOL>0  [L]WPTD_ITMREF = [M:PTH1]ITMREF([M:PSCM]ORINOL-1)
+        Elsif [L]WPTD_NBLIG>0   [L]WPTD_ITMREF = [M:PTH1]ITMREF([L]WPTD_NBLIG-1)
+        Endif
+        [L]WPTD_SCSFLG = 1
+        # Issue X3-59162 - 2017-10-20 by SR : Si et seulement si STOJOU non importé
+        If find("STOJOU",[M:AOE2]FIL(0..[M:AOE2]NBRLIG-1))=0
+            Call CHARG_STT([L]WPTD_NBLIG-1) From SUBPTHC # Issue 96008 GA 05/2015 (parameter changed)
+        Endif
+    Else
+        GSTK_BASTAB="[M:PTH1]NBLIG" : # Nom variable bas tableau
+        [L]WPTD_ITMREF = [F:ITM]ITMREF
+        [L]WPTD_SCSFLG = 1
+        [L]WPTD_SCPFLG = 1                      # Issue 96008 GA 10/2014
+    Endif
+    [L]WSTK_ABRMSK=mid$(GSTK_BASTAB,4,instr(1,GSTK_BASTAB,"]")-4)
+    #----- Traitement des textes ligne -----#
+    If GREP="C"  Gosub IMP_ZONE_TEXTE From IMPPTH : Endif
+  When "CAL"
+    #---------------------------------------------------------------------#
+    # Traitement des comptes et sections analytiques des lignes réception #
+    #            left$([M:AOE1]FLGLNK(SEPNUM-1),5)='"PID"'                #
+    #---------------------------------------------------------------------#
+    [F:CAL]ABRFIC="PTD"
+    [F:CAL]VCRTYP=0
+    Call IMPORT_ACCCCE(WNOL,"[M:PTH1]LINACC","","[M:PTH1]CCE") From TRTX3CPT
+    nolign=WNOL+1 : status=75 : # Modif élément
+    #-----
+    If GSTK_TRACE=2
+      GSTK_ACT="SAI_NBLIG" : GSTK_PGM="W0PTH1" : Gosub TRACE_DETAILLEE From STKIMP
+    Endif
+    Default Mask [PTH1]
+    indice=nolign-1 : mkstat=0
+    GNBAFF=0
+    Setmode INBAFF,IAFFCOD,IAFFMASK,IAFFCHP,IAFFIND,IAFFTXT,IAFFRANG,IAFFOPT1,IAFFOPT2
+    Call SAI_NBLIG("CAL","IMP_ZONE","SUBIMPOBJ") From W0PTH1
+    If mkstat  NBERR+=1 : Call TRACE2(2,GMESSIMP,-10) From SUBIMPOBJ : Endif
+    Setmode
+    If mkstat  GREP="" : REP="" : mkstat=0 : GOK=0 : Return : Endif
+    #-----
+  When "STJ"
+    #----- Opération de sous-traitance d'OF - WO subcontract operation -----#
+    If OK_STJTRSTYP
+       [L]WPTD_TRSTYP = [F:STJ]TRSTYP
+       GSTK_TRSTYP    = [F:STJ]TRSTYP
+    Else
+       # Issue 108319 - 2015-05-19 by SR : [L]WPTD_TRSTYP can be empty
+       If [L]WPTD_TRSTYP <> 0
+          GSTK_TRSTYP    = [L]WPTD_TRSTYP
+       Else
+          GSTK_TRSTYP    = 3
+       Endif
+       # End issue 108319
+    Endif
+    # Document type for stock movement  (m701)
+    Case GSTK_TRSTYP
+      When 5       : GSTK_VCRTYP=15            # WO subcontract receipt - Production reporting
+                     GSTK_BASTAB="[M:PSTT]NBLIG"
+      When 29      : GSTK_VCRTYP=6             # EO subcontract receipt - Stock issue
+                     GSTK_BASTAB="[M:PSCM]NBMAT"
+      When Default : GSTK_VCRTYP=6             # EO subcontract receipt - Stock receipt
+                     GSTK_BASTAB="[M:PTH1]NBLIG"
+    Endcase
+    [L]WSTK_ABRMSK=mid$(GSTK_BASTAB,4,instr(1,GSTK_BASTAB,"]")-4)
+    If OK_STJITMREF | OK_STJVCRLINORI
+      If [L]WPTD_SCSFLG=2
+        # Issue 96008 GA 10/2014 moved source code for better readability
+         Gosub IMPORT_STJ_WO
+      Elsif [L]WPTD_SCPFLG=2 | GSTK_TRSTYP=29
+        # Issue 96008 GA 10/2014 new source code moved for better readability
+      #----- Si quantités < 0, sortie sous-traitance : on n'en tient pas compte -----#
+        #If [M:PTH1]VCRTYPORI([M:PTH1]NBLIG-1)=36 & [F:STJ]QTYPCU<0
+        #  Return # Issue 88813 & 88671 GA 03/2013
+        #Endif
+         Gosub IMPORT_STJ_EO
+        # Issue 108319 - 2015-05-19 by SR : Call Inventory management for Standard receipts
+      Else
+        GSTK_ACTION="SAIMSK" : Gosub ACTION From STKIMP
+      Endif
+    Else
+        GSTK_ACTION="SAIMSK" : Gosub ACTION From STKIMP
+    # End issue 108319
+    Endif
+    # Issue X3-53666 - 2017-11-09 by SR : Délocker la commande si erreur
+    If GOK = 0  & GPTH_SYMBOL2<>""
+        Unlock=GPTH_SYMBOL2
+    Endif
+  When "PVF"
+    #----------------------------------------#
+    # Traitement des éléments de facturation #
+    #----------------------------------------#
+    If [F:PVF]INVDTA<>0
+      If [M:PTH2]NBFAC>0
+        K=find([F:PVF]INVDTA,[M:PTH2]INVDTA(0..[M:PTH2]NBFAC-1))
+        If K & OK_INVDTAVAT
+          If (GREP<>"C" | find([F:PVF]INVDTA,PVF_INVDTA(0..[M:PTH2]NBFAC-1)))
+            If [M:PTH2]INVDTAVAT(K-1)<>[F:PVF]INVDTAVAT
+              L=find([F:PVF]INVDTA,[M:PTH2]INVDTA(K..[M:PTH2]NBFAC-1))
+              If L
+                K+=L
+                If [M:PTH2]INVDTAVAT(K-1)<>[F:PVF]INVDTAVAT
+                  L=find([F:PVF]INVDTA,[M:PTH2]INVDTA(K..[M:PTH2]NBFAC-1))
+                  If L
+                    K+=L
+                    If [M:PTH2]INVDTAVAT(K-1)<>[F:PVF]INVDTAVAT
+                      L=find([F:PVF]INVDTA,[M:PTH2]INVDTA(K..[M:PTH2]NBFAC-1))
+                      If L
+                        K+=L
+                        If [M:PTH2]INVDTAVAT(K-1)<>[F:PVF]INVDTAVAT
+                          K=0
+                        Endif
+                      Else
+                        K=0
+                      Endif
+                    Endif
+                  Else
+                    K=0
+                  Endif
+                Endif
+              Else
+                K=0
+              Endif
+            Endif
+          Endif
+        Endif
+      Else
+        K=0
+      Endif
+      #-----
+      If K=0
+        PVF_INVDTA([M:PTH2]NBFAC)=[F:PVF]INVDTA
+        [M:PTH2]NBFAC+=1
+        [F:PVF]IND=[M:PTH2]NBFAC
+        nolign=[M:PTH2]NBFAC : status=73 : # Nouvel élément
+      Else
+        PVF_INVDTA(K-1)=[F:PVF]INVDTA
+        [F:PVF]IND=K
+        nolign=K : status=75 : # Modif élément
+      Endif
+      #-----
+      If GSTK_TRACE=2
+        GSTK_ACT="SAI_NBFAC" : GSTK_PGM="W0PTH2" : Gosub TRACE_DETAILLEE From STKIMP
+      Endif
+      Default Mask [PTH2]
+      indice=nolign-1 : mkstat=0
+      GNBAFF=0
+      Setmode INBAFF,IAFFCOD,IAFFMASK,IAFFCHP,IAFFIND,IAFFTXT,IAFFRANG,IAFFOPT1,IAFFOPT2
+      Call SAI_NBFAC("PVF","IMP_ZONE","SUBIMPOBJ") From W0PTH2
+      If mkstat  NBERR+=1 : Call TRACE2(2,GMESSIMP,-10) From SUBIMPOBJ : Endif
+      Setmode
+      If mkstat  GREP="" : REP="" : mkstat=0 : GOK=0 : Return : Endif
+    Endif
+    #-----
+  When "CFL"
+    #----------------------------------------------------------------------------#
+    # Traitement des comptes et sections analytiques des éléments de facturation #
+    #                 left$([M:AOE1]FLGLNK(SEPNUM-1),5)='"PVF"'                  #
+    #----------------------------------------------------------------------------#
+    [F:CFL]ABRFIC="PVF"
+    [F:CFL]VCRTYP=8
+    [F:CAL]=[F:CFL]
+    Call IMPORT_ACCCCE([F:PVF]IND-1,"[M:PTH2]ACC","[M:PTH2]DSP","[M:PTH2]PFICCE")    From TRTX3CPT
+    nolign=[F:PVF]IND : status=75 : # Modif élément
+
+    #-----
+    If GSTK_TRACE=2
+      GSTK_ACT="SAI_NBFAC" : GSTK_PGM="W0PTH2" : Gosub TRACE_DETAILLEE From STKIMP
+    Endif
+    Default Mask [PTH2]
+    indice=nolign-1 : mkstat=0
+    GNBAFF=0
+    Setmode INBAFF,IAFFCOD,IAFFMASK,IAFFCHP,IAFFIND,IAFFTXT,IAFFRANG,IAFFOPT1,IAFFOPT2
+    Call SAI_NBFAC("CFL","IMP_ZONE","SUBIMPOBJ") From W0PTH2
+    If mkstat  NBERR+=1 : Call TRACE2(2,GMESSIMP,-10) From SUBIMPOBJ : Endif
+    Setmode
+    If mkstat  GREP="" : REP="" : mkstat=0 : GOK=0 : Return : Endif
+Endcase
+Return
+
+
+#-----------------------------------------#
+# Equivalent à la saisie d'un champ fiche #
+# --------------------------------------- #
+# IMPFIC : Abréviation du fichier         #
+# IMPMSK : Nom de l'écran en cours        #
+# IMPZON : Nom du champ en cours          #
+# IMPMOD : Déclenche l'Après_modif        #
+# OK     : Conditionne IMP_ZONE standard  #
+#-----------------------------------------#
+# Issue 84130 - 2013-02-21 by SR : Gérer zones impactantes sur PTH2
+$IMP_ZONE
+If GREP="A"  Return : Endif
+If dim([L]WTST_CHAMP)<1  Local Libelle  WTST_CHAMP : Endif
+Case IMPFIC
+  When "PTH"
+    If find("[F:PTH]"+IMPZON+"(0)",[M:AOE2]ZONMSK1) | IMPMSK="ADRBPR"
+      If GSTK_TRACE=2
+        GSTK_ACT="IMP_ZONE("+IMPZON+")" : GSTK_PGM="IMPPTHS"
+        Gosub TRACE_DETAILLEE From STKIMP
+      Endif
+      Case IMPMSK
+        When "PTH0"
+          If evalue("[M:PTH0]"+IMPZON+"("+num$(indice)+")")<>evalue("[F:PTH]"+IMPZON)
+            Assign "[M:PTH0]"+IMPZON+"("+num$(indice)+")" With evalue("[F:PTH]"+IMPZON)
+            IMPMOD=1
+          Endif
+          OK=0
+        When "PTH1"
+          If evalue("[M:PTH1]"+IMPZON+"("+num$(indice)+")")<>evalue("[F:PTH]"+IMPZON)
+            Assign "[M:PTH1]"+IMPZON+"("+num$(indice)+")" With evalue("[F:PTH]"+IMPZON)
+            IMPMOD=1
+          Endif
+          OK=0
+        When "PTH2"
+          #---- Test pour ne pas traiter les éléments et les taxes maintenant -----#
+          Case IMPZON
+            When "NBFAC"   : mkstat=1 : Return : # Ne pas exécuter la boucle d'import des éléments
+            When "NBTAX"   : mkstat=1 : Return : # Ne pas exécuter la boucle d'import des taxes
+          Endcase
+          If evalue("[M:PTH2]"+IMPZON+"("+num$(indice)+")")<>evalue("[F:PTH]"+IMPZON)
+            Assign "[M:PTH2]"+IMPZON+"("+num$(indice)+")" With evalue("[F:PTH]"+IMPZON)
+            IMPMOD=1
+          Endif
+          OK=0
+        When "PTH9"
+          If evalue("[M:PTH9]"+IMPZON+"("+num$(indice)+")")<>evalue("[F:PTH]"+IMPZON)
+            Assign "[M:PTH9]"+IMPZON+"("+num$(indice)+")" With evalue("[F:PTH]"+IMPZON)
+            IMPMOD=1
+          Endif
+          OK=0
+        When "ADRBPR"
+          Case IMPZON
+            When "BPAADD"
+              [M:ADB]BPAADD=[F:PTH]BPOADD
+            When "BPRNAM"
+              [M:ADB]BPRNAM(indice)   =[F:PTH]BPONAM(indice)
+            When "BPAADDLIG"
+              [M:ADB]BPAADDLIG(indice)=[F:PTH]BPOADDLIG(indice)
+            When "POSCOD"
+              [M:ADB]POSCOD=[F:PTH]BPOPOSCOD
+            When "CTY"
+              [M:ADB]CTY   =[F:PTH]BPOCTY
+            When "SAT"
+              [M:ADB]SAT   =[F:PTH]BPOSAT
+            When "CRY"
+              [M:ADB]CRY   =[F:PTH]BPOCRY
+            When "CRYNAM"
+              [M:ADB]CRYNAM=[F:PTH]BPOCRYNAM
+          Endcase
+        When "PCEE"
+          If evalue("[M:PCEE]"+IMPZON+"("+num$(indice)+")")<>evalue("[F:PTH]"+IMPZON)
+            Assign "[M:PCEE]"+IMPZON+"("+num$(indice)+")" With evalue("[F:PTH]"+IMPZON)
+            IMPMOD=1
+          Endif
+          OK=0
+      Endcase
+    Endif
+  When "PTD"
+    Case IMPZON
+      When "LINACC1","LINACC2","LINACC3","LINACC4","LINACC5",
+&          "LINACC6","LINACC7","LINACC8","LINACC9","LINACC10",
+&          "CCE1", "CCE2", "CCE3", "CCE4", "CCE5", "CCE6", "CCE7", "CCE8", "CCE9", "CCE10",
+&          "CCE11","CCE12","CCE13","CCE14","CCE15","CCE16","CCE17","CCE18","CCE19","CCE20"
+        #----- Pas de contrôle si les comptes et sections sont importés avec "CAL" -----#
+        If find("CPTANALIN",[M:AOE1]FLGFIL(0..[M:AOE1]NBRFLG))
+          OK=0 : mkstat=1 : # Zones non concernées par PRECEIPTD
+        Endif
+        #-----
+      When "WSOLDE"
+        If find("PTD-*65",[M:AOE2]ZONMSK1)
+          If GSTK_TRACE=2
+            GSTK_ACT="IMP_ZONE("+IMPZON+")" : GSTK_PGM="IMPPTHS"
+            Gosub TRACE_DETAILLEE From STKIMP
+          Endif
+          If [M:PTH1]WSOLDE(indice)<>val(GIMP(65))
+            [M:PTH1]WSOLDE(indice)=val(GIMP(65)) : IMPMOD=1
+          Endif
+          OK=0
+        Endif
+      When "WSHDSOLDE" # Issue 108538 - 2015-06-02 by SR : Landed Cost
+        If find("PTD-*66",[M:AOE2]ZONMSK1)
+          If GSTK_TRACE=2
+            GSTK_ACT="IMP_ZONE("+IMPZON+")" : GSTK_PGM="IMPPTHS"
+            Gosub TRACE_DETAILLEE From STKIMP
+          Endif
+          If [M:PTH1]WSHDSOLDE(indice)<>val(GIMP(66))
+            [M:PTH1]WSHDSOLDE(indice)=val(GIMP(66)) : IMPMOD=1
+          Endif
+          OK=0
+        Endif : # End issue 108538
+      When "VAT1"
+        If find("[F:PTD]VAT(0)",[M:AOE2]ZONMSK1)
+          If GSTK_TRACE=2
+            GSTK_ACT="IMP_ZONE("+IMPZON+")" : GSTK_PGM="IMPPTHS"
+            Gosub TRACE_DETAILLEE From STKIMP
+          Endif
+          If [M:PTH1]VAT1(indice)<>[F:PTD]VAT(0)
+            [M:PTH1]VAT1(indice)=[F:PTD]VAT(0)   : IMPMOD=1
+          Endif
+          OK=0
+        Endif
+      When "VAT2"
+        If find("[F:PTD]VAT(1)",[M:AOE2]ZONMSK1)
+          If GSTK_TRACE=2
+            GSTK_ACT="IMP_ZONE("+IMPZON+")" : GSTK_PGM="IMPPTHS"
+            Gosub TRACE_DETAILLEE From STKIMP
+          Endif
+          If [M:PTH1]VAT2(indice)<>[F:PTD]VAT(1)
+            [M:PTH1]VAT2(indice)=[F:PTD]VAT(1)   : IMPMOD=1
+          Endif
+          OK=0
+        Endif
+      When "VAT3"
+        If find("[F:PTD]VAT(2)",[M:AOE2]ZONMSK1)
+          If GSTK_TRACE=2
+            GSTK_ACT="IMP_ZONE("+IMPZON+")" : GSTK_PGM="IMPPTHS"
+            Gosub TRACE_DETAILLEE From STKIMP
+          Endif
+          If [M:PTH1]VAT3(indice)<>[F:PTD]VAT(2)
+            [M:PTH1]VAT3(indice)=[F:PTD]VAT(2)   : IMPMOD=1
+          Endif
+          OK=0
+        Endif
+       # Issue 94009 - 2013-10-30 by MUARN : Déplacé dans When default
+#      When  "GROPRI","QTYUOM","QTYVOU","QTYWEU","UOM","WEU","VOU"
+#         [M:PTH1]WSTCUPD(indice) = 2
+      When Default
+       # Issue 94009 - 2013-10-30 by MUARN : zone impactante structure de coût
+        If find(IMPZON,"GROPRI","QTYUOM","QTYVOU","QTYWEU","UOM","WEU","VOU")
+          [M:PTH1]WSTCUPD(indice) = 2
+        Endif
+        If find("[F:PTD]"+IMPZON+"(0)",[M:AOE2]ZONMSK1)
+          If GSTK_TRACE=2
+            GSTK_ACT="IMP_ZONE("+IMPZON+")" : GSTK_PGM="IMPPTHS"
+            Gosub TRACE_DETAILLEE From STKIMP
+          Endif
+          If evalue("[M:PTH1]"+IMPZON+"("+num$(indice)+")<>[F:PTD]"+IMPZON)
+            Assign "[M:PTH1]"+IMPZON+"("+num$(indice)+")" With evalue("[F:PTD]"+IMPZON)
+            IMPMOD=1
+          Endif
+          OK=0
+        Endif
+    Endcase
+  When "CAL"
+    #----- La zone présente dans le modèle a déjà été chargée par IMPORT_ACCCCE du $SAIMSK
+    If find("[F:CAL]"+IMPZON+"(0)",[M:AOE2]ZONMSK1)
+      If GSTK_TRACE=2
+        GSTK_ACT="IMP_ZONE("+IMPZON+")" : GSTK_PGM="IMPPTHS"
+        Gosub TRACE_DETAILLEE From STKIMP
+      Endif
+      IMPMOD=1
+    Endif
+    OK=0
+    #-----
+  When "STJ"
+    GSTK_ACTION="IMP_ZONE" : Gosub ACTION From STKIMP
+  When "PVF"
+    Case IMPZON
+      When "ACC1","ACC2","ACC3","ACC4","ACC5","ACC6","ACC7","ACC8","ACC9","ACC10","DSP",
+&          "PFICCE1", "PFICCE2", "PFICCE3", "PFICCE4", "PFICCE5", "PFICCE6", "PFICCE7",
+&          "PFICCE8", "PFICCE9", "PFICCE10","PFICCE11","PFICCE12","PFICCE13","PFICCE14",
+&          "PFICCE15","PFICCE16","PFICCE17","PFICCE18","PFICCE19","PFICCE20"
+        #----- Pas de contrôle si les comptes et sections sont importés avec "CFL" -----#
+        If find("CPTFOOTLNK",[M:AOE1]FLGFIL(0..[M:AOE1]NBRFLG))
+          OK=0 : mkstat=1 : # Zones non concernées par PVCRFOOT
+        Endif
+        #-----
+      When Default
+        #----- C'est une remise sur taxe (Settlement discount) -----#
+        If IMPZON="INVORDAMT" & dim([M:PTH2]DISVATFLG)>0 & [M:PTH2]DISVATFLG(nolign-1)=2
+          If [F:PVF]INVORDAMT=0 & [F:PVF]INVDTAAMT<>0
+            [M:PTH2]INVORDAMT(indice)=[F:PVF]INVDTAAMT
+            IMPMODE=1 : OK=0
+            Return
+          Endif
+        Endif
+        #----- Chargement de la zone si présente dans le modèle -----#
+        If find("[F:PVF]"+IMPZON+"(0)",[M:AOE2]ZONMSK1)
+          If GSTK_TRACE=2
+            GSTK_ACT="IMP_ZONE("+IMPZON+")" : GSTK_PGM="IMPPTHS"
+            Gosub TRACE_DETAILLEE From STKIMP
+          Endif
+          #-----
+          If evalue("[M:PTH2]"+IMPZON+"("+num$(indice)+")")<>evalue("[F:PVF]"+IMPZON)
+            Assign "[M:PTH2]"+IMPZON+"("+num$(indice)+")" With evalue("[F:PVF]"+IMPZON)
+            IMPMOD=1
+          Endif
+          OK=0
+        Endif
+        #-----
+    Endcase
+  When "CFL"
+    #----- La zone présente dans le modèle a déjà été chargée par IMPORT_ACCCCE du $SAIMSK
+    If find("[F:CFL]"+IMPZON+"(0)",[M:AOE2]ZONMSK1)
+      If GSTK_TRACE=2
+        GSTK_ACT="IMP_ZONE("+IMPZON+")" : GSTK_PGM="IMPPTHS"
+        Gosub TRACE_DETAILLEE From STKIMP
+      Endif
+      #-----
+      IMPMOD=1
+    Endif
+    OK=0
+    #-----
+Endcase
+Return
+
+
+#----------------------------------------------------------------------------#
+# Enregistrement du document importé, appelé directement depuis le SUBIMPOBJ #
+#----------------------------------------------------------------------------#
+$VALID
+If GSTK_TRACE=2
+  GSTK_ACT='VALID(GREP="'+GREP+'")' : GSTK_PGM="IMPPTHS" : Gosub TRACE_DETAILLEE From STKIMP
+Endif
+If GREP=""  Raz [L]WPTD_NBLIG, GSTK_NBLIG  : Return : Endif
+[L]OK=1 : Raz GERREUR
+If GREP="C"
+  #----- Test rupture sur ligne document pour sous-traitance -----#
+  If [L]WPTD_NBLIG
+    If [L]WPTD_SCSFLG=2    # Issue 96008 GA 10/2014 WO or EO ?
+       Gosub UNLOAD_PSTT
+    Elsif [L]WPTD_SCPFLG=2
+      # Issue X3-59162 - 2017-10-27 by SR : On peut avoir 29 dans GSTK_TRSTYP si des STOJOU matière ont été importés
+      # On remet 3 pour faire passer les contrôles stock sur les mouvements d'entrée
+      # et on se repositionne sur les bons buffer ITM et ITF
+      GSTK_TRSTYP = 3
+      If [F:ITM]ITMREF<>[M:ENT]ITMREF
+          Read [ITM] ITM0=[M:ENT]ITMREF
+          If fstat  Raz [F:ITM] : Endif
+       Endif
+       If [F:ITF]ITMREF<>[M:ENT]ITMREF | [F:ITF]STOFCY<>[M:ENT]STOFCY
+          Read [F:ITF] ITF0=[M:ENT]ITMREF;[M:ENT]STOFCY
+          If fstat  Raz [F:ITF] : Endif
+       Endif
+       Gosub UNLOAD_PSCM
+    Endif
+  Endif
+  #----
+  GSTK_ACTION="VALID" : Gosub ACTION From STKIMP
+  If ![L]OK
+    If GMESSAGE<>""  Call ECR_TRACE(GMESSAGE,1) From GESECRAN : Raz GMESSAGE : Endif
+    GOK=0 : Goto FIN_GENPTH
+  Endif
+  #-----
+  # Issue X3-59162 - 2017-10-27 by SR : Peut avoir été changé pour la SST
+  Default Mask [PTH1]
+  If GSTK_TRACE=2
+    GSTK_ACT="VERIF_CRE" : GSTK_PGM="GOBJSUB" : Gosub TRACE_DETAILLEE From STKIMP
+  Endif
+  [L]ACTION="VERIF_CRE" : Gosub ACTION From GOBJSUB
+  #--- Bug 71029
+  If ![L]OK  GOK=0 : Goto FIN_GENPTH : Endif
+  #If ![L]OK  GOK=0 : Gosub TRACE_CTL From SUBIMPOBJ : Goto FIN_GENPTH : Endif   # hcb 87116
+  #---
+Elsif GREP="A"
+  If GSTK_TRACE=2
+    GSTK_ACT="LIENS" : GSTK_PGM="GOBJSUB" : Gosub TRACE_DETAILLEE From STKIMP
+  Endif
+  [L]ACTION="LIENS" : Gosub ACTION From GOBJSUB
+  If [M:PTH1]NBLIG=0  GOK=0 : Goto FIN_GENPTH : Endif
+  [L]SYMBOL2="PTH"+[M:PTH0]PTHNUM : Lock=[L]SYMBOL2
+  If fstat
+    Call ECR_TRACE("$PRECEIPT"-[M:PTH0]PTHNUM-mess(10,100,1),1) From GESECRAN
+    GOK=0 : Goto FIN_GENPTH
+  Endif
+  ################ Ce qu'il faudrait faire pour être "Clean" mais problème avec [DIA] ###
+  #Local Char    CLECUR1(GLONID1) , CLECUR2(GLONID2)(0..16)
+  #[L]CLECUR1=[M:PTH0]PTHNUM : Raz [L]CLECUR2
+  #Call ANUCOD("PTH",CLECUR1,CLECUR2,OK) From GOBJACT
+  #Default File [PTH]
+  #GREP=""
+  #If OK
+  #  Call TRACE_COR("PTH",CLECUR1,CLECUR2,"A") From GOBJET
+  #  Call ANNULE("PTH",CLECUR1,CLECUR2) From GOBJTXT
+  #  Call ANNULE("PTH",CLECUR1,CLECUR2) From SUBALI
+  #  CLECUR1 = "" : CLECUR2 = ""
+  #Endif
+  #Goto FIN_GENPTH
+  #######################################################################################
+  If GSTK_TRACE=2
+    GSTK_ACT="VERF_ANU" : GSTK_PGM="GOBJSUB" : Gosub TRACE_DETAILLEE From STKIMP
+  Endif
+  [L]ACTION="VERF_ANU" : Gosub ACTION From GOBJSUB
+  If ![L]OK
+    If GMESSAGE<>""  Call ECR_TRACE(GMESSAGE,1) From GESECRAN : Raz GMESSAGE : Endif
+    Unlock=[L]SYMBOL2
+    GOK=0 : Goto FIN_GENPTH
+  Endif
+Endif
+Call DEBTRANS From GLOCK
+#-----
+$TR_GENPTH
+GOK=1
+Raz WGRPDEB : #71600
+If GSTK_TRACE=2
+  GSTK_ACT="Trbegin" : GSTK_PGM="" : Gosub TRACE_DETAILLEE From STKIMP
+Endif
+#<---------MODIFICATION JBS DU 12-07-2019----------
+# Commentaire : Mise en commentaire car on est déjà dans une transaction
+#Trbegin [PTH], [PTD]
+#------------------------------------------------->
+  If GREP="C"
+    #----- Rechargement des informations complémentaires -----#
+    If [L]WTEST_COMPL
+      If [M:PTH9]BPSINV   <>""  [M:PTHC]BPSINV   =[M:PTH9]BPSINV    : Endif
+      If [M:PTH9]BPAINV   <>""  [M:PTHC]BPAINV   =[M:PTH9]BPAINV    : Endif
+      If [M:PTH9]BPRPAY   <>""  [M:PTHC]BPRPAY   =[M:PTH9]BPRPAY    : Endif
+      If [M:PTH9]BPAPAY   <>""  [M:PTHC]BPAINV   =[M:PTH9]BPAINV    : Endif
+      If [M:PTH9]MDL      <>""  [M:PTHC]MDL      =[M:PTH9]MDL       : Endif
+      If [M:PTH9]BPTNUM   <>""  [M:PTHC]BPTNUM   =[M:PTH9]BPTNUM    : Endif
+      If [M:PTH9]TOTGROWEI<>0   [M:PTHC]TOTGROWEI=[M:PTH9]TOTGROWEI : Endif
+      If [M:PTH9]WEU      <>""  [M:PTHC]WEU      =[M:PTH9]WEU       : Endif
+      If [M:PTH9]TOTNETWEI<>0   [M:PTHC]TOTNETWEI=[M:PTH9]TOTNETWEI : Endif
+      If [M:PTH9]TOTVOL   <>0   [M:PTHC]TOTVOL   =[M:PTH9]TOTVOL    : Endif
+      If [M:PTH9]VOU      <>""  [M:PTHC]VOU      =[M:PTH9]VOU       : Endif
+    Endif
+    #----- Rechargement de l'adresse fournisseur expéditeur -----#
+    If [L]WTEST_ADR
+      If [L]OK_BPOADD  [M:AD68]=[M:ADB] : Endif
+      If [L]OK_BPONAM(0)     [M:AD68]BPRNAM(0)   =[M:ADB]BPRNAM(0)    : [M:AD68]ADBFLG=2 : Endif
+      If [L]OK_BPONAM(1)     [M:AD68]BPRNAM(1)   =[M:ADB]BPRNAM(1)    : [M:AD68]ADBFLG=2 : Endif
+      If [L]OK_BPOADDLIG(0)  [M:AD68]BPAADDLIG(0)=[M:ADB]BPAADDLIG(0) : [M:AD68]ADBFLG=2 : Endif
+      If [L]OK_BPOADDLIG(1)  [M:AD68]BPAADDLIG(1)=[M:ADB]BPAADDLIG(1) : [M:AD68]ADBFLG=2 : Endif
+      If [L]OK_BPOADDLIG(2)  [M:AD68]BPAADDLIG(2)=[M:ADB]BPAADDLIG(2) : [M:AD68]ADBFLG=2 : Endif
+      If [L]OK_BPOPOSCOD     [M:AD68]POSCOD      =[M:ADB]POSCOD       : [M:AD68]ADBFLG=2 : Endif
+      If [L]OK_BPOCTY        [M:AD68]CTY         =[M:ADB]CTY          : [M:AD68]ADBFLG=2 : Endif
+      If [L]OK_BPOSAT        [M:AD68]SAT         =[M:ADB]SAT          : [M:AD68]ADBFLG=2 : Endif
+      If [L]OK_BPOCRY        [M:AD68]CRY         =[M:ADB]CRY          : [M:AD68]ADBFLG=2 : Endif
+      If [L]OK_BPOCRYNAM     [M:AD68]CRYNAM      =[M:ADB]CRYNAM       : [M:AD68]ADBFLG=2 : Endif
+    Endif
+    #----- Rechargement des onformations douanières -----#
+    If [L]WTEST_CEE
+      If [M:PCEE]EECICT<>""  [M:PCEX]EECICT=[M:PCEE]EECICT : Endif
+      If [M:PCEE]ICTCTY<>""  [M:PCEX]ICTCTY=[M:PCEE]ICTCTY : Endif
+      If [M:PCEE]FFWNUM<>""  [M:PCEX]FFWNUM=[M:PCEE]FFWNUM : Endif
+      If [M:PCEE]FFWADD<>""  [M:PCEX]FFWADD=[M:PCEE]FFWADD : Endif
+      If GACTDEB=2
+        If [M:PCEE]EECNUM<>""  [M:PCEX]EECNUM=[M:PCEE]EECNUM : Endif
+        If [M:PCEE]EECLOC<>0   [M:PCEX]EECLOC=[M:PCEE]EECLOC : Endif
+        If [M:PCEE]EECTRN<>0   [M:PCEX]EECTRN=[M:PCEE]EECTRN : Endif
+        If [M:PCEE]EECNAT<>""  [M:PCEX]EECNAT=[M:PCEE]EECNAT : Endif
+        If [M:PCEE]EECSCH<>""  [M:PCEX]EECSCH=[M:PCEE]EECSCH : Endif
+      Endif
+    Endif
+    #-----
+    Raz [F:PTH], [F:PTD]
+    [F:PTH]=[M:PTH0]
+    [F:PTH]=[M:PTH1]
+    [F:PTH]=[M:PTH2]
+    Default File [PTH]
+    If GSTK_TRACE=2
+      GSTK_ACT="INICRE" : GSTK_PGM="GOBJSUB" : Gosub TRACE_DETAILLEE From STKIMP
+    Endif
+    [L]ACTION="INICRE"   : Gosub ACTION From GOBJSUB
+    If GOK<0  Goto ROLL_GENPTH  Elsif !GOK  Goto AB_GENPTH : Endif
+    If GSTK_TRACE=2
+      GSTK_ACT="Write [PTH]" : GSTK_PGM="" : Gosub TRACE_DETAILLEE From STKIMP
+    Endif
+    [F:PTH]CREUSR=GUSER
+    [F:PTH]CREDAT=date$
+    Write [PTH]
+    If fstat  GOK=0 : Call FSTA("PTH") From GLOCK : Goto AB_GENPTH : Endif
+    If GSTK_TRACE=2
+      GSTK_ACT="CREATION" : GSTK_PGM="GOBJSUB" : Gosub TRACE_DETAILLEE From STKIMP
+    Endif
+    [L]ACTION="CREATION" : Gosub ACTION From GOBJSUB
+    If GOK<0  Goto ROLL_GENPTH  Elsif !GOK  Goto AB_GENPTH : Endif
+    #----- Mise à jour du suivi workflow -----#
+    #71600
+    If GOK=1
+      Call WRKGLOB(170,[F:PTH]PTHNUM,"PRECEIPT","") From GOBJACT
+      Call WORKPLUS(2,"PTH","C",[F:PTH]PTHNUM,"",0,1,0,WGRPDEB) From AWRK
+      If GOK<0  Goto ROLL_GENPTH  Elsif !GOK  Goto AB_GENPTH : Endif
+    Endif
+    #-----
+    If GSTK_TRACE=2
+      GSTK_ACT="Commit" : GSTK_PGM="" : Gosub TRACE_DETAILLEE From STKIMP
+     #GMESSAGE="---"-mess(5,126,1)-"Commit ("+mess(117,198,1)-[F:PTH]PTHNUM-mess(224,197,1)+")"
+     #Call ECR_TRACE(GMESSAGE,0) From GESECRAN : Raz GMESSAGE
+    Endif
+  Elsif GREP="A"
+    Default Mask [PTH1]
+    Default File [PTH]
+    If GSTK_TRACE=2
+      GSTK_ACT="ANNULE" : GSTK_PGM="GOBJSUB" : Gosub TRACE_DETAILLEE From STKIMP
+    Endif
+    [L]ACTION="ANNULE" : Gosub ACTION From GOBJSUB
+    If GOK<0  Goto ROLL_GENPTH  Elsif !GOK  Goto AB_GENPTH : Endif
+    If GSTK_TRACE=2
+      GSTK_ACT="Delete [PTH]" : GSTK_PGM="" : Gosub TRACE_DETAILLEE From STKIMP
+    Endif
+    Delete [PTH] Where PTHNUM=[M:PTH0]PTHNUM
+    If fstat  GOK=0 : Call FSTA("PTH") From GLOCK : Goto AB_GENPTH : Endif
+    If GSTK_TRACE=2
+      GSTK_ACT="Commit" : GSTK_PGM="" : Gosub TRACE_DETAILLEE From STKIMP
+    Endif
+  Endif
+#<---------MODIFICATION JBS DU 12-07-2019----------
+# Commentaire : Mise en commentaire car on est déjà dans une transaction
+#Commit
+#------------------------------------------------->
+Case GREP
+  When "C" : Call TRACE( 0,mess(6,701,1)-[F:PTH]PTHNUM)  From SUBIMPOBJ
+  When "M" : Call TRACE( 1,mess(6,701,1)-[M:PTH0]PTHNUM) From SUBIMPOBJ : # Pas activé !
+  When "A" : Call TRACE(-1,mess(6,701,1)-[M:PTH0]PTHNUM) From SUBIMPOBJ
+Endcase
+If GREP="C"
+  If GSTK_TRACE=2
+    GSTK_ACT="APRES_CRE" : GSTK_PGM="GOBJSUB" : Gosub TRACE_DETAILLEE From STKIMP
+  Endif
+  [L]ACTION="APRES_CRE" : Gosub ACTION From GOBJSUB
+  #----- Envoi des messages groupe workflow -----#
+  #71600
+  If WGRPDEB<>""  Call ENVOI_GROUPE(WGRPDEB) From AWRK : WGRPDEB="" : Endif
+  #-----
+Elsif GREP="A"
+  Unlock=[L]SYMBOL2
+  If GSTK_TRACE=2
+    GSTK_ACT="AP_ANNULE" : GSTK_PGM="GOBJSUB" : Gosub TRACE_DETAILLEE From STKIMP
+  Endif
+  [L]ACTION="AP_ANNULE" : Gosub ACTION From GOBJSUB
+  #----- Mise à jour du suivi workflow -----#
+  #71600
+  Call WRKGLOB(172,[M:PTH0]PTHNUM,"PRECEIPT","") From GOBJACT
+  Call WORKFLOW(2,"PTH","A",[M:PTH0]PTHNUM)      From AWRK
+  #-----
+Endif
+Goto FIN_GENPTH
+#-----
+$ROLL_GENPTH
+If GSTK_TRACE=2
+  GSTK_ACT="Rollback" : GSTK_PGM="" : Gosub TRACE_DETAILLEE From STKIMP
+Endif
+#<---------MODIFICATION JBS DU 12-07-2019----------
+# Commentaire : Mise en commentaire car on est déjà dans une transaction
+#Rollback
+#------------------------------------------------->
+Call ROLL From GLOCK
+If GROLL
+  If GREP="C"
+    If GSTK_TRACE=2
+      GSTK_ACT="AB_CREATION" : GSTK_PGM="GOBJSUB" : Gosub TRACE_DETAILLEE From STKIMP
+    Endif
+    [L]ACTION="AB_CREATION" : Gosub ACTION From GOBJSUB
+  Elsif GREP="A"
+    Unlock=[L]SYMBOL2
+  Endif
+  Goto FIN_GENPTH
+Else
+  Goto TR_GENPTH
+Endif
+#-----
+$AB_GENPTH
+If GSTK_TRACE=2
+  GSTK_ACT="Rollback" : GSTK_PGM="" : Gosub TRACE_DETAILLEE From STKIMP
+Endif
+#<---------MODIFICATION JBS DU 12-07-2019----------
+# Commentaire : Mise en commentaire car on est déjà dans une transaction
+#Rollback
+#------------------------------------------------->
+If GREP="C"
+  If GSTK_TRACE=2
+    GSTK_ACT="AB_CREATION" : GSTK_PGM="GOBJSUB" : Gosub TRACE_DETAILLEE From STKIMP
+  Endif
+  [L]ACTION="AB_CREATION" : Gosub ACTION From GOBJSUB
+  #----- Suppression des message groupe workflow -----#
+  #71600
+  If WGRPDEB<>""  Call VIRE_GROUPE(WGRPDEB)  From AWRK : WGRPDEB="" : Endif
+  #-----
+  Goto FIN_GENPTH
+Elsif GREP="A"
+  Unlock=[L]SYMBOL2
+Endif
+#-----
+$FIN_GENPTH
+Return
+
+
+#------------#
+# Fin import #
+#------------#
+$IMP_FERME
+GREP=""
+If GSTK_TRACE=2
+  GSTK_ACT="FERME" : GSTK_PGM="GOBJSUB" : Gosub TRACE_DETAILLEE From STKIMP
+Endif
+[L]ACTION="FERME"       : Gosub ACTION From GOBJSUB : Gosub DEFAUT From WOPTH
+GSTK_ACTION="IMP_FERME" : Gosub ACTION From STKIMP
+# sr 08.11 Bug 75878
+If dim(GPTH_SYMBOL2)>0    Kill GPTH_SYMBOL2    : Endif
+Kill GSTK_ACTION, GSTK_BASTAB, GSTK_TRSTYP, GSTK_VCRTYP, GSTK_TRACE
+# Issue 96008 GA 04/2015 for subcontract receipt import
+Kill LBOI
+Return
+
+
+#--------------------------------------------------------------------#
+# Import Line STJ for WO subcontract operation                       #
+#--------------------------------------------------------------------#
+$IMPORT_STJ_WO
+Default Mask [PSTT]
+Local Integer WRET
+If [L]WPTD_TRSTYP=0
+   [L]WPTD_TRSTYP=5     # WO stock receipt for subcontracted product
+Endif
+#----- Nouvelle ligne de document sous-traitance -----#
+#If ![L]WPTD_NBLIG
+  [L]WPTD_NBLIG=[M:PTH1]NBLIG
+  Gosub LOAD_PSTT
+  #----- Erreur lors du chargement de l'écran de sous-traitance ! -----#
+  If mkstat
+    Raz mkstat, [L]WPTD_NBLIG
+    Call ECR_TRACE([L]WPTD_ITMREF-mess(306,194,1),1) From GESECRAN
+    GOK=0 : Return
+  Endif
+#Endif
+#----- Aucun article lancé pour cet article de sous-traitance ! -----#
+If [M:PSTT]NBLIG=0
+  Call ECR_TRACE([L]WPTD_ITMREF-mess(304,194,1),1) From GESECRAN
+  GOK=0 : Return
+Endif
+#----- Recherche de la ligne détail sous-traitance concernée -----#
+#If !find("[F:STJ]ITMREF(0)",[M:AOE2]ZONMSK1)
+#  [L]WSTT_NOLIG=1
+#Elsif !find("[F:STJ]VCRLINORI(0)",[M:AOE2]ZONMSK1)
+#  [L]WSTT_NOLIG=find([F:STJ]ITMREF,[M:PSTT]ITMREF(J..[M:PSTT]NBLIG-1))
+#Else
+#  Raz J
+#  While J<[M:PSTT]NBLIG
+#    K=find([F:STJ]ITMREF,[M:PSTT]ITMREF(J..[M:PSTT]NBLIG-1))
+#    If K=0
+#      J=[M:PSTT]NBLIG
+#    Elsif [M:PSTT]MFGLIN(J+(K-1))=[F:STJ]VCRLINORI
+#      K=J+4 : J=[M:PSTT]NBLIG
+#    Else
+#      J+=K : K=0
+#    Endif
+#  Wend
+#  [L]WSTT_NOLIG=K
+If OK_STJITMREF & [F:STJ]ITMREF<>""            # Issue 96008 GA 10/2014
+  # Find current product
+   [L]WSTT_NOLIG=find([F:STJ]ITMREF,[M:PSTT]ITMREF(0..[M:PSTT]NBLIG-1))
+Elsif OK_STJVCRLINORI & [F:STJ]VCRLINORI<>0
+  # Find current product rownum
+  [L]WSTT_NOLIG=find([F:STJ]VCRLINORI,[M:PSTT]MFGLIN(0..[M:PSTT]NBLIG-1))
+Else
+  # No mean to find current product row, take the first one
+  [L]WSTT_NOLIG=1
+Endif
+#----- Détail stock sous-traitance non affecté à un article lancé ! -----#
+If [L]WSTT_NOLIG=0 | [L]WSTT_NOLIG>[M:PSTT]NBLIG
+  Call ECR_TRACE([L]WPTD_ITMREF-mess(305,194,1),1) From GESECRAN
+  GOK=0 : Return
+Endif
+#----- Chargement NBLIG et nolign -----#
+#[L]WSTT_NBLIG=[M:PSTT]NBLIG : # Save nb rows before replacing it
+#[M:PSTT]NBLIG=[L]WSTT_NOLIG : # Current line becomes last tab line (???)
+nolign=[L]WSTT_NOLIG        : # Current line
+
+#----- Current ITM, ITF and SRU must be set -----#
+If [F:ITM]ITMREF<>[M:PSTT]ITMREF(nolign-1)
+  Read [F:ITM] ITM0=[M:PSTT]ITMREF(nolign-1)
+  If fstat  Raz [F:ITM] : Endif
+Endif
+If [F:ITF]ITMREF<>[M:PSTT]ITMREF(nolign-1)
+  Read [F:ITF] ITF0=[M:PSTT]ITMREF(nolign-1);[M:PSTT]STOFCY
+  If fstat  Raz [F:ITF] : Endif
+Endif
+# [L]WPTD_TRSTYP = 5 => WO subcontract receipt
+Call LECSRU([M:PSTT]STOFCY,[F:ITM]TCLCOD, [L]WPTD_TRSTYP, "", "",WRET) From STKLIB
+
+#----- Si quantités nulles, ligne détail sous-traitance à supprimer -----#
+If [F:STJ]QTYPCU=0 & [F:STJ]QTYSTU=0
+  Call AM_QTYUOM([F:STJ]QTYPCU) From TRTPSAISTT
+  #Return
+Else
+  If dim([M:PSTT]LOC)>0
+     If [F:STJ]LOC<>""     [M:PSTT]LOC(nolign-1)   =[F:STJ]LOC    Endif
+  Endif
+  If dim([M:PSTT]LOT)>0
+     If [F:STJ]LOT<>""     [M:PSTT]LOT(nolign-1)   =[F:STJ]LOT    Endif
+     If [F:STJ]BPSLOT<>""  [M:PSTT]BPSLOT(nolign-1)=[F:STJ]BPSLOT Endif
+  Endif
+  If dim([M:PSTT]SLO)>0 & dim([M:PSTT]NBSLO)>0
+    If [F:STJ]SLO<>""     [M:PSTT]SLO(nolign-1)   =[F:STJ]SLO    Endif
+    If [F:ITM]LOTMGTCOD=4                            # Issue 96008 GA 06/2015
+       If [F:STJ]SLO=""
+#         [M:PSTT]SLO(nolign-1)="00001"                              # hcb 50151
+          [M:PSTT]SLO(nolign-1) = format$("N0:"+num$(GLONSLO),1)     # hcb 50151
+        Endif
+       If [M:PSTT]NBSLO(nolign-1)=0  [M:PSTT]NBSLO(nolign-1)=1     Endif
+    Endif
+  Endif
+  If [F:STJ]STA<>""        [M:PSTT]STA(nolign-1)   =[F:STJ]STA    Endif
+  Call AM_UOM([F:STJ]PCU) From TRTPSAISTT
+  Call AM_QTYUOM([F:STJ]QTYPCU) From TRTPSAISTT
+Endif
+Gosub AAPRES_NBLIG From TRTPSAISTT
+
+#-----
+# Issue 96008 GA 10/2014 stock mvt already updated from TRTPSAISTT
+#GSTK_ACTION="SAIMSK" : Gosub ACTION From STKIMP
+#[M:PSTT]NBLIG=[L]WSTT_NBLIG : # Restore total nb rows
+Return
+
+#--------------------------------------------------------------------#
+# Nouvelle ligne de document : Début chargement écran sous-traitance #
+#--------------------------------------------------------------------#
+$LOAD_PSTT
+If GSTK_TRACE=2
+  GSTK_ACT="LOAD_PSTT" : GSTK_PGM="IMPPTHS" : Gosub TRACE_DETAILLEE From STKIMP
+Endif
+[L]LBOI     ="WIPTH"+GFLAG
+[L]NOL      =[M:PTH1]NBLIG-1
+[L]SAVNOLIGN=[M:PTH1]NBLIG
+If !clalev([F:PWS])   Local File  PWRKSTT     [PWS]  : Endif
+If !clalev([F:SCH])   Local File  SCHEDULING  [SCH]  : Endif
+If !clalev([F:MFG])   Local File  MFGHEAD     [MFG]  : Endif
+If !clalev([F:MFI])   Local File  MFGITM      [MFI]  : Endif
+If !clalev([F:OPS])   Local File  OPERATIONS  [OPS]  : Endif
+Gosub DEB_SAISTT From TRTPSAISTT : If mkstat  Return : Endif
+# Issue 96008 GA 06/2015 suite code review - [M:PSTT]NBMAT was wrong
+[L]WSTT_NBLIG=max([M:PSTT]NBLIG,[M:ENT]NBLIG)
+Return
+
+
+#---------------------------------------------------------------------#
+# Rupture sur ligne de document : Traitement fin écran sous-traitance #
+#---------------------------------------------------------------------#
+$UNLOAD_PSTT
+Raz [L]WPTD_NBLIG
+If GSTK_TRACE=2
+  GSTK_ACT="UNLOAD_PSTT" : GSTK_PGM="IMPPTHS" : Gosub TRACE_DETAILLEE From STKIMP
+Endif
+Gosub FIN_SAISTT From TRTPSAISTT
+nolign=[L]SAVNOLIGN
+# Issue 96008 GA 04/2015 suite code review
+Raz [L]WSTT_NBLIG
+Raz [M:PSCM]
+Return
+
+# Issue 96008 GA 10/2014
+#--------------------------------------------------------------------#
+# Import Line STJ for WO subcontract operation                       #
+#--------------------------------------------------------------------#
+$IMPORT_STJ_EO
+#----- Ordre de sous-traitance d'OF - EO subcontract Order -----#
+[L]WPTD_TRSTYP=[F:STJ]TRSTYP
+If [L]WPTD_TRSTYP=0 & ([F:STJ]QTYPCU<0 | [F:STJ]QTYSTU<0)
+   [L]WPTD_TRSTYP=29    # EO stock issue for component
+Elsif [L]WPTD_TRSTYP=0 & ([F:STJ]QTYPCU>0 | [F:STJ]QTYSTU>0)
+   [L]WPTD_TRSTYP=3     # EO stock receipt for subcontracted product
+Endif
+
+If   [L]WPTD_TRSTYP=29                     # Stock issue   for EO
+  #----- new subcontract stock issue -----#
+  If [M:PSCM]NBMAT=0 # Issue 96008 GA 04/2015 suite functionnal tests
+    Default Mask [PSCM]
+    Gosub LOAD_PSCM
+    #----- Erreur lors du chargement de l'écran de sous-traitance ! -----#PWS
+    If mkstat
+      Raz mkstat, [L]WPTD_NBLIG
+      Call ECR_TRACE([L]WPTD_ITMREF-mess(306,194,1),1) From GESECRAN
+      GOK=0 : Return
+    Endif
+  Endif
+  Gosub IMPORT_STJ_EO_SOR
+#
+  # Issue 96008 GA 10/2014 stock mvt already updated from TRTPSAISCM
+  #GSTK_ACTION="SAIMSK" : Gosub ACTION From STKIMP
+Else [L]WPTD_TRSTYP=3                      # Stock receipt for EO
+    Default Mask [PTH1]
+    Gosub IMPORT_STJ_EO_ENT
+  #
+  # Issue 96008 GA 06/2015 stock mvt already updated from TRTPSAISCM
+  #GSTK_ACTION="SAIMSK" : Gosub ACTION From STKIMP
+Endif
+Return
+
+# Issue 96008 GA 10/2014
+#--------------------------------------------------------------------#
+# EO receipt New stock issue for component [F:STJ]ITMREF             #
+#--------------------------------------------------------------------#
+$LOAD_PSCM
+If GSTK_TRACE=2
+  GSTK_ACT="LOAD_PSCM" : GSTK_PGM="IMPPTHS" : Gosub TRACE_DETAILLEE From STKIMP
+Endif
+[L]LBOI     ="WIPTH"+GFLAG
+[L]NOL      =[M:PTH1]NBLIG-1
+[L]SAVNOLIGN=[M:PTH1]NBLIG
+If !clalev([F:PWS])   Local File  PWRKSTT     [PWS]  : Endif
+If !clalev([F:SCO])   Local File  SCOHEAD     [SCO]  : Endif
+If !clalev([F:SCI])   Local File  SCOITM      [SCI]  : Endif
+If !clalev([F:SCS])   Local File  SCOSRV      [SCS]  : Endif
+If !clalev([F:SCM])   Local File  SCOMAT      [SCM]  : Endif
+#[L]WPTD_NBLIG=[M:PTH1]NBLIG ????
+Gosub DEB_SAIPSCM From TRTPSAISCM : If mkstat  Return : Endif
+# Issue 96008 GA 04/2015 suite code review & functionnal tests
+[L]WSCM_NBLIG=max([M:PSCM]NBMAT,[M:SOW]NBLIG)
+Return
+
+# Issue 96008 GA 10/2014
+#--------------------------------------------------------------------#
+# EO receipt New stock receipt line for component [F:STJ]ITMREF      #
+#--------------------------------------------------------------------#
+$IMPORT_STJ_EO_ENT
+Default Mask [PTH1]
+Local Integer WRET
+# Issue X3-59162 - 2017-10-20 by SR
+Local Integer NOL,WSAV_NBLIG
+WSAV_NBLIG = [M:PTH1]NBLIG
+
+If [L]WPTD_TRSTYP=0
+   [L]WPTD_TRSTYP=3     # EO stock receipt for subcontracted product
+Endif
+
+# Issue X3-59162 - 2017-10-20 by SR : WPTD_NBLIG =n° ligne du dernier article lancé importé
+# donc pas besoin de cette recherche
+#If OK_STJITMREF & [F:STJ]ITMREF<>"" & [L]WPTD_NBLIG>0            # Issue 96008 GA 06/2015
+#  # Find current product [L]WPTD_NBLIG curent receipt in [M:PTH1]
+#   [L]WSCI_NOLIG=find([F:STJ]ITMREF,[M:PTH1]ITMREF([L]WPTD_NBLIG-1..[M:PTH1]NBLIG-1))
+#Elsif OK_STJVCRLINORI & [F:STJ]VCRLINORI<>0 & [L]WPTD_NBLIG>0
+#  # Find current EO rownum
+#  [L]WSCI_NOLIG=find([F:STJ]VCRLINORI,[M:PTH1]VCRLINORI([L]WPTD_NBLIG-1..[M:PTH1]NBLIG-1))
+#Else
+#  # No mean to find current product row, take the first one
+#  [L]WSCI_NOLIG=1
+#Endif
+If [L]WPTD_NBLIG > 0
+  WSCI_NOLIG = [L]WPTD_NBLIG
+Else
+  WSCI_NOLIG = 1
+Endif
+
+If [L]WSCI_NOLIG<1 Return Endif
+#----- Chargement nolign -----#
+nolign=[L]WSCI_NOLIG        : # Current line
+
+#----- Current ITM, ITF and SRU must be set -----#
+If [F:ITM]ITMREF<>[M:PTH1]ITMREF(nolign-1)
+  Read [F:ITM] ITM0=[M:PTH1]ITMREF(nolign-1)
+  If fstat  Raz [F:ITM] : Endif
+Endif
+If [F:ITF]ITMREF<>[M:PTH1]ITMREF(nolign-1)
+  Read [F:ITF] ITF0=[M:PTH1]ITMREF(nolign-1);[M:PTH0]PRHFCY
+  If fstat  Raz [F:ITF] : Endif
+Endif
+# [L]WPTD_TRSTYP = 3 => EO subcontract receipt
+Call LECSRU([M:PTH0]PRHFCY,[F:ITM]TCLCOD, [L]WPTD_TRSTYP, "", "",WRET) From STKLIB
+
+#----- Si quantités nulles, ligne détail sous-traitance à supprimer -----#
+If [F:STJ]QTYPCU=0 & [F:STJ]QTYSTU=0
+  Call AM_QTYUOM([F:STJ]QTYPCU) From SUBPTH
+  #Return
+Else
+  If dim([M:PTH1]LOC)>0                              # Issue 96008 GA 06/2015
+     If [F:STJ]LOC<>""     [M:PTH1]LOC(nolign-1)   =[F:STJ]LOC    Endif
+  Endif
+  If [F:STJ]STA<>""        [M:PTH1]STA(nolign-1)   =[F:STJ]STA    Endif
+  If dim([M:PTH1]LOT)>0                              # Issue 96008 GA 06/2015
+     If [F:STJ]LOT<>""     [M:PTH1]LOT(nolign-1)   =[F:STJ]LOT    Endif
+     If [F:STJ]BPSLOT<>""  [M:PTH1]BPSLOT(nolign-1)=[F:STJ]BPSLOT Endif
+  Endif
+  If dim([M:PTH1]SLO)>0                              # Issue 96008 GA 06/2015
+    If [F:STJ]SLO<>""     [M:PTH1]SLO(nolign-1)   =[F:STJ]SLO    Endif
+    If [F:ITM]LOTMGTCOD=4                            # Issue 96008 GA 06/2015
+       If [F:STJ]SLO=""   [M:PTH1]SLO(nolign-1)="00001" Endif
+       If [M:PTH1]NBSLO(nolign-1)=0  [M:PTH1]NBSLO(nolign-1)=1     Endif
+    Endif
+  Endif
+  # Issue 110635 - 2016-01-27 by MUARN : perte WSTOFLG
+  #Call AM_UOM([F:STJ]PCU) From SUBPTH
+  Call AM_QTYUOM([F:STJ]QTYPCU) From SUBPTH
+Endif
+# Issue X3-59162 - 2017-10-20 by SR : Si STOJOU importé Appel au traitement standard d'import des mouvements de stock
+NOL = nolign-1
+[L]WPTD_SCSFLG = 1
+#Call CHARG_STT(NOL) From SUBPTHC # Issue 96008 GA 05/2015 (parameter changed)
+[M:PTH1]NBLIG = [L]WPTD_NBLIG
+GSTK_ACTION="SAIMSK" : Gosub ACTION From STKIMP
+[M:PTH1]NBLIG = WSAV_NBLIG
+# Il reste à enregistrer l'article lancé dans PWS
+Gosub ENR_PWS
+# End issue X3-59162
+# Issue 96008 GA 04/2015 suite code review
+[L]WSCI_NBLIG=[M:ENT]NBLIG
+
+Return
+
+# Issue X3-59162 - 2017-10-27 by SR : enregistrement de l'article lancé dans PWS
+$ENR_PWS
+Local   Integer  WSCICLE
+#-----------------------------------------#
+# Chargement du ficher des sous-traitance #
+#-----------------------------------------#
+[F:PWS]VCRTYP   =36                   : # GA 04/2006
+[F:PWS]VCRNUM   =[M:PTH1]VCRNUMORI(NOL)
+WSCICLE = [M:PTH1]WSTOSEQ(NOL)+[M:PTH1]VCRLINORI(NOL)
+[F:PWS]VCRLIN   =WSCICLE                                                      # Issue 90806 avant [M:PSCM]SCILIN
+[F:PWS]VCRSEQ   =0
+[F:PWS]WSTOSEQ  =[M:PTH1]WSTOSEQ  (NOL)
+[F:PWS]WLOCSEQ  =[M:PTH1]WLOCSEQ  (NOL)
+[F:PWS]MVTDES   =[M:PTH1]MVTDES   (NOL)
+[F:PWS]TRSTYP   =3
+[F:PWS]TRSCOD   =[M:PTH0]TRSCOD
+[F:PWS]TRSFAM   =[M:PTH1]TRSFAM   (NOL)
+[F:PWS]UOM      =[M:PTH1]UOM      (NOL)
+[F:PWS]QTYUOM   =[M:PTH1]QTYUOM   (NOL)
+[F:PWS]STU      =[M:PTH1]STU      (NOL)
+[F:PWS]QTYSTU   =[M:PTH1]QTYSTU   (NOL)
+[F:PWS]UOMSTUCOE=[M:PTH1]UOMSTUCOE(NOL)
+[F:PWS]RRRQTYSTU=[M:PTH1]RRRQTYSTU(NOL)
+[F:PWS]QQQQTYSTU=0
+[F:PWS]MAXQTYRCP=[M:PTH1]MAXQTYRCP(NOL)
+If dim([F:PWS]ITMREF)>0 [F:PWS]ITMREF=[M:PTH1]ITMREF(NOL) Endif
+If [M:PTH1]QTYUOM(NOL)=0
+  [F:PWS]WSTOFLG  =2
+Else
+  [F:PWS]WSTOFLG  =[M:PTH1]WSTOFLG(NOL)
+Endif
+If dim([F:PWS]ECCVALMAJ)>0 & dim([M:PTH1]ECCVALMAJ)>0
+    [F:PWS]ECCVALMAJ=[M:PTH1]ECCVALMAJ(NOL)
+    [F:PWS]ECCVALMIN=[M:PTH1]ECCVALMIN(NOL)
+Endif
+Call WRITE_PWS("PTH") From PWSLIB
+Return
+# End issue X3-59162
+
+
+#--------------------------------------------------------------------#
+# Import Line STJ for EO subcontract issue (component)               #
+#--------------------------------------------------------------------#
+$IMPORT_STJ_EO_SOR
+Default Mask [PSCM]
+Local Integer WRET
+If [L]WPTD_TRSTYP=0
+   [L]WPTD_TRSTYP=29     # EO stock issue for subcontracted product
+Endif
+
+If OK_STJITMREF & [F:STJ]ITMREF<>""            # Issue 96008 GA 10/2014
+  # Find current product
+   [L]WSCM_NOLIG=find([F:STJ]ITMREF,[M:PSCM]ITMREF(0..[M:PSCM]NBMAT-1))
+Elsif OK_STJVCRLINORI & [F:STJ]VCRLINORI<>0
+  # Find current product rownum
+  [L]WSCM_NOLIG=find([F:STJ]VCRLINORI,[M:PSCM]SCMLIN(0..[M:PSCM]NBMAT-1))
+Else
+  # No mean to find current product row, take the first one
+  [L]WSCM_NOLIG=0
+Endif
+
+If [L]WPTD_ITMREF="" & [M:PSCM]ORINOL>0
+   [L]WPTD_ITMREF=[M:PTH1]ITMREF([M:PSCM]ORINOL-1)
+Endif
+#----- Ajout matière non prévue - Unexpected material  -----#
+If [L]WSCM_NOLIG=0 # & dim([M:PSCM]ITMREF)>=[M:PSCM]NBMAT
+   If [F:STJ]STOFCY=""
+      [F:STJ]STOFCY = [M:PSCM]PRHFCY
+   Endif
+   If [F:STJ]ITMREF="" | [F:STJ]STOFCY=""
+      Call ECR_TRACE([L]WPTD_ITMREF-mess(85,195,1)-"Ko"-[F:STJ]ITMREF-[F:STJ]STOFCY,1) From GESECRAN
+      GOK=0 : Return
+   Else
+      Call ECR_TRACE([L]WPTD_ITMREF-mess(85,195,1)-"Ok"-[F:STJ]ITMREF-[F:STJ]STOFCY,0) From GESECRAN
+   Endif
+   [M:PSCM]NBMAT+=1
+   [L]WSCM_NOLIG=[M:PSCM]NBMAT
+   Local Shortint IMAT : IMAT=[M:PSCM]NBMAT-1
+   [M:PSCM]BOMSEQ(IMAT)=0
+   [M:PSCM]ITMREF(IMAT)=[F:STJ]ITMREF
+   [M:PSCM]STOFCY(IMAT)=[F:STJ]STOFCY
+Endif
+If [L]WSCM_NOLIG<1 Return Endif
+#----- Chargement nolign -----#
+nolign=[L]WSCM_NOLIG        : # Current line
+
+#----- Current ITM, ITF and SRU must be set -----#
+If [F:ITM]ITMREF<>[M:PSCM]ITMREF(nolign-1)
+  Read [F:ITM] ITM0=[M:PSCM]ITMREF(nolign-1)
+  If fstat  Raz [F:ITM] : Endif
+Endif
+If [F:ITF]ITMREF<>[M:PSCM]ITMREF(nolign-1)
+  Read [F:ITF] ITF0=[M:PSCM]ITMREF(nolign-1);[M:PSCM]STOFCY(nolign-1)
+  If fstat  Raz [F:ITF] : Endif
+Endif
+# [L]WPTD_TRSTYP = 29 => EO material issue
+Call LECSRU([M:PSCM]STOFCY(nolign-1),[F:ITM]TCLCOD, [L]WPTD_TRSTYP, "", "",WRET) From STKLIB
+
+#----- Ajout matière non prévue - Unexpected material  -----#
+If [M:PSCM]BOMSEQ(nolign-1)=0
+   [M:PSCM]MATSTA(nolign-1)=2
+   [M:PSCM]LIKQTYCOD(nolign-1)=2 # 2=Forfait - Fixed qty
+   [M:PSCM]STOMGTCOD(nolign-1)=[F:ITF]STOMGTCOD
+   [M:PSCM]STOCODL  (nolign-1)=1     # Always "Immediate" instead of [F:ITF]STOCOD
+   [M:PSCM]NEGSTO   (nolign-1)=[F:ITM]NEGSTO
+   [M:PSCM]TCLCOD   (nolign-1)=[F:ITM]TCLCOD
+   [M:PSCM]STU(nolign-1)=[F:ITM]STU
+   If [F:STJ]PCU = [F:ITM]STU | [F:STJ]PCU="" | [F:STJ]PCUSTUCOE=0
+      [M:PSCM]RETQTY(nolign-1)=-max(abs([F:STJ]QTYPCU),abs([F:STJ]QTYSTU))
+   Else
+      [M:PSCM]RETQTY(nolign-1)=[F:STJ]QTYPCU*[F:STJ]PCUSTUCOE
+   Endif
+   [M:PSCM]SCMRETQTY(nolign-1)=[M:PSCM]RETQTY(nolign-1)
+   [M:PSCM]ALLSTA   (nolign-1)=1
+   [M:PSCM]CLEFLG   (nolign-1)=2
+Endif
+Local Decimal WUSEQTY
+If [F:STJ]PCU = [F:ITM]STU | [F:STJ]PCU="" | [F:STJ]PCUSTUCOE=0
+   WUSEQTY=max(abs([F:STJ]QTYPCU),abs([F:STJ]QTYSTU))
+Else
+   WUSEQTY=abs([F:STJ]QTYPCU*[F:STJ]PCUSTUCOE)
+Endif
+#----- when Null qty: row has to be deleted -----#
+If [F:STJ]QTYPCU=0 & [F:STJ]QTYSTU=0
+  Call AM_USEQTY([F:STJ]QTYPCU) From TRTPSAISCM
+  #Return
+Else
+  If [F:STJ]STOFCY<>""                          [M:PSCM]STOFCY(nolign-1)=[F:STJ]STOFCY Endif
+  If dim([M:PSCM]LOC)>0 & [F:STJ]LOC<>""        [M:PSCM]LOC(nolign-1)   =[F:STJ]LOC    Endif
+  If dim([M:PSCM]LOT)>0 & [F:STJ]LOT<>""        [M:PSCM]LOT(nolign-1)   =[F:STJ]LOT    Endif
+  If dim([M:PSCM]SLO)>0 & [F:STJ]SLO<>""        [M:PSCM]SLO(nolign-1)   =[F:STJ]SLO    Endif
+  If dim([M:PSCM]STA)>0 & [F:STJ]STA<>""        [M:PSCM]STA(nolign-1)   =[F:STJ]STA    Endif
+  If dim([M:PSCM]BPSLOC)>0 & [F:STJ]BPSLOT<>""  [M:PSCM]BPSLOT(nolign-1)=[F:STJ]BPSLOT Endif
+
+  # idem AM_ITMREF (TRTPSAISCM) init for stock functions
+   Call INIZONSOR("PSCM",[M:PSCM]ITMREF(nolign-1),[M:PSCM]STOFCY(nolign-1),nolign-1,
+&                  [M:PSCM]TRSTYP,[M:PSCM]TRSCODS,"") From STKECR
+   If dim([M:PSCM]LOC)>0
+      Call STKINIEMPS([M:PSCM]LOC(nolign-1)) From STKLOC
+   Endif
+  # idem CTRL_SCOFLG (SUBSCM)
+   If [M:PSCM]STOMGTCOD(nolign-1)=2
+      Local Decimal WDIS
+      Local Integer WRET
+      # available stock on this Site/Location
+      Call LECITV2([F:STJ]STOFCY,[F:STJ]ITMREF,WRET) From MFGLIB
+      Call STODISALL([F:STJ]STOFCY,[F:STJ]ITMREF,36,1,2,1,2,"","",WDIS,WRET) From STKALL
+      [M:PSCM]AVAQTY(nolign-1) = WDIS + [M:PSCM]ALLQTY(nolign-1)
+   Endif
+
+  # Calls TRT
+  Call AM_USEQTY(WUSEQTY) From TRTPSAISCM
+Endif
+# Calculate stock issue in [M:SOW]
+Gosub AAPRES_NBMAT From TRTPSAISCM
+
+# Write stock issue in [F:PWS] to be reused by MAJ_STK From SCOSTKLIB
+Gosub ENR_PWS_SCMD From SUBPTHC
+#-----
+# Issue 96008 GA 04/2015 suite code review
+[L]WSCM_NBLIG=[M:SOW]NBLIG
+Return
+
+# Issue 96008 GA 10/2014
+#---------------------------------------------------------------------#
+# Rupture sur ligne de document : Traitement fin écran sous-traitance #
+#---------------------------------------------------------------------#
+$UNLOAD_PSCM
+Raz [L]WPTD_NBLIG
+If GSTK_TRACE=2
+  GSTK_ACT="UNLOAD_PSCM" : GSTK_PGM="IMPPTHS" : Gosub TRACE_DETAILLEE From STKIMP
+Endif
+Gosub FIN_SAIPSCM From TRTPSAISCM
+nolign=[L]SAVNOLIGN
+# Issue 96008 GA 04/2015 suite code review
+Raz [L]WSCM_NBLIG
+Raz [L]WSCI_NBLIG
+Raz [M:PSCM]
+Return
+
+
+##########################################################################
+#                                   EXPORT                               #
+##########################################################################
+
+
+#-----------------------------------------------------------------#
+# Début export, étiquette appelée directement depuis le SUBEXPOBJ #
+#-----------------------------------------------------------------#
+$EXP_OUVRE
+#----- Gestion dess textes -----#
+Gosub EXP_OUVRE From IMPPTH
+#-----
+If GMODU(8)=2
+    # Issue 96008 GA 10/2014 [F:MKO] needed for export of STJ movements on WO
+   If !clalev([F:MKO]) : Local File MFGOPETRK [MKO] : Endif
+Endif
+Return
+
+
+#---------------------------------------------------#
+# Après lecture d'un enregistrement (entête, ligne) #
+# ------------------------------------------------- #
+# EXPFIC : Abréviation du fichier en cours          #
+#---------------------------------------------------#
+$EXPORT
+Case EXPFIC
+  When "PTH"
+    If G_ENT
+       Gosub EXP_RAZ_T1 From TRTX3IMP
+       If dim([F:PTH]TEX1)>0 & [F:PTH]TEX1<>""
+          G_CLE_CLOB=[F:PTH]TEX1   : Gosub EXP_TEXTE From TRTX3IMP : Gosub EXP_T1 From TRTX3IMP
+       Endif
+    Endif
+    If G_PIE
+       Gosub EXP_RAZ_T2 From TRTX3IMP
+       If dim([F:PTH]TEX2)>0 & [F:PTH]TEX2<>""
+          G_CLE_CLOB=[F:PTH]TEX2   : Gosub EXP_TEXTE From TRTX3IMP : Gosub EXP_T2 From TRTX3IMP
+       Endif
+    Endif
+  When "PTD"
+    If [F:PTD]LINTYP>2
+       Raz OK
+    Elsif G_DET
+       Gosub EXP_RAZ_T3 From TRTX3IMP
+       If dim([F:PTD]LINTEX)>0 & [F:PTD]LINTEX<>""
+          G_CLE_CLOB=[F:PTD]LINTEX : Gosub EXP_TEXTE From TRTX3IMP : Gosub EXP_T3 From TRTX3IMP
+       Endif
+    Endif
+    # Issue 96008 GA 10/2014 [F:MKO] row needed for export of STJ movements on WO
+    If [F:PTD]VCRTYPORI=10
+       Raz [F:MKO]
+       For [F:MKO] Where PTHNUM=[F:PTD]PTHNUM & PTDLIN=[F:PTD]PTDLIN
+         Break
+       Next
+    Endif
+  When "MKO"
+  When "STJ"
+    # Issue 96008 GA 04/2015 no stock issue concerning WO, only stock entry
+    If [F:STJ]VCRTYPORI=10 & [F:STJ]TRSTYP<>5
+       OK=0 : Return
+    Endif
+Endcase
+Return
+

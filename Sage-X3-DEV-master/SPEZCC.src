@@ -1,0 +1,297 @@
+#<AdxTL>@(#)5.0.0.0 $Revision$
+#################################################### SPEZCC
+#################################################### 13/03/2013
+
+$ACTION
+Case ACTION
+ When "OUVRE" : Gosub OUVRE
+ When "FILTRE" : Gosub FILTRE
+ When "RAZCRE" : Gosub RAZCRE
+ When "INICRE" : Gosub INICRE
+ When "CREATION" : Gosub CREATION
+ When "APRES_CRE" : Gosub APRES_CRE
+ When "LIENS" : Gosub LIENS
+ When "MODIF" : Gosub MODIF
+ When Default
+Endcase
+Return
+
+#################################################### OUVRE
+
+$OUVRE
+If clalev([F:BPC])=0 : Local File BPCUSTOMER : Endif
+If clalev([F:BPR])=0 : Local File BPARTNER : Endif
+If clalev([F:BCG])=0 : Local File BPCCATEG : Endif
+If clalev([F:BPA])=0 : Local File BPADDRESS : Endif
+If clalev([F:TCY])=0 : Local File TABCOUNTRY : Endif
+If clalev([F:BPD])=0 : Local File BPDLVCUST : Endif
+If GZBPABPC=""
+    GMESSAGE="Le paramètre Code adresse Client n'est pas renseigné."
+    OK=0
+    GERR=1
+    Return
+Endif
+If GZBANCPT=""
+    GMESSAGE="Le paramètre Code Banque Comptoir n'est pas renseigné."
+    OK=0
+    GERR=1
+    Return
+Endif
+If GZCATBPC=""
+    GMESSAGE="Le paramètre Catégorie client n'est pas renseigné."
+    OK=0
+    GERR=1
+    Return
+Else
+    Read [F:BCG]BCG0=GZCATBPC
+    If fstat
+        GMESSAGE="Erreur de lecture de la Catégorie client."
+        OK=0
+        GERR=1
+        Return
+    Elsif [F:BCG]REFCOU=""
+        GMESSAGE="La Catégorie client n'a pas de compteur automatique."
+        OK=0
+        GERR=1
+        Return
+    Endif
+Endif
+Return
+
+#################################################### FILTRE
+
+$FILTRE
+If GZCATBPC=""
+    FILTSUP = "1=2"
+Else
+    FILTSUP = "[F:BPC]BCGCOD='"+GZCATBPC+"'"
+Endif
+Return
+
+#################################################### RAZCRE
+
+$RAZCRE
+[M:ZCC0]BCGCOD = GZCATBPC
+[M:ZCC1]CRY = [F:BCG]CRY
+[M:ZCC1]BPAADD = GZBPABPC
+Diszo [M:ZCC0]BPCNUM
+Affzo [M:ZCC0]
+Affzo [M:ZCC1]
+Return
+
+#################################################### INICRE
+
+$INICRE
+# Récupération du compteur
+Local Integer WSTAT
+Local Char WBPCNUM(GLONBPC)
+Call NUMERO([F:BCG]REFCOU,"",date$,"",WBPCNUM,WSTAT) From SUBANM
+If WSTAT=0
+    [M:ZCC0]BPCNUM = WBPCNUM
+    Affzo [M:ZCC0]BPCNUM
+Else
+    GMESSAGE=mess(60,199,1)
+    GERR=1
+    GOK=0
+    Return
+Endif
+# Alimentation de BPCUSTOMER
+[F:BPC] = [F:BCG]
+[F:BPC] = [M:ZCC0]
+[F:BPC] = [M:ZCC1]
+[F:BPC]BPCNUM = WBPCNUM
+[F:BPC]BPCPYR = WBPCNUM
+[F:BPC]BPCGRU = WBPCNUM
+[F:BPC]BPCINV = WBPCNUM
+[F:BPC]BPAINV = GZBPABPC
+[F:BPC]BPCSTA = 2
+[F:BPC]BPCTYP = 1
+[F:BPC]COPNBR = 1
+[F:BPC]ZSOMMEIL = 1
+Return
+
+#################################################### CREATION
+
+$CREATION
+# Création de la fiche BPARTNER
+Raz [F:BPR]
+[F:BPR]BPRNUM = [M:ZCC0]BPCNUM
+[F:BPR] = [F:BCG]
+[F:BPR]BETFCY = 1
+[F:BPR]BPAADD = GZBPABPC
+[F:BPR]BPCFLG = 2
+[F:BPR]BPRACC = 1
+[F:BPR]BPRNAM(0) = [M:ZCC0]BPCNAM
+[F:BPR]BPSFLG = 1
+[F:BPR]BPTFLG = 1
+[F:BPR]CREDAT = date$
+[F:BPR]CREUSR = GUSER
+[F:BPR]DOOFLG = 1
+[F:BPR]FCTFLG = 1
+[F:BPR]PPTFLG = 1
+[F:BPR]PRVFLG = 1
+[F:BPR]REPFLG = 1
+[F:BPR]ENAFLG = 2
+Write [F:BPR]
+If fstat
+    GMESSAGE="Erreur de création de la fiche Tiers. Création annulée."
+    GOK=0
+    Return
+Endif
+# Création de la fiche BPADDRESS
+Raz [F:BPA]
+[F:BPA]BPATYP = 1
+[F:BPA]BPANUM = [M:ZCC0]BPCNUM
+[F:BPA]BPAADD = GZBPABPC
+[F:BPA] = [M:ZCC1]
+[F:BPA]BPAADDFLG = 2
+[F:BPA]CREDAT = date$
+[F:BPA]CREUSR = GUSER
+[F:BPA]ZDEPPLAT = 1
+[F:BPA]ZDETAILTRI = 1
+[F:BPA]ZTAXEGOAC = 1
+[F:BPA]ZTYPPASS = 1
+Write [F:BPA]
+If fstat
+    GMESSAGE="Erreur de création de la fiche Adresse. Création annulée."
+    GOK=0
+    Return
+Endif
+# Création de la fiche BPDLVCUST
+Raz [F:BPD]
+[F:BPD]BPCNUM = [M:ZCC0]BPCNUM
+[F:BPD]BPAADD = GZBPABPC
+[F:BPD]BPDNAM = [M:ZCC0]BPCNAM
+[F:BPD]CREDAT = date$
+[F:BPD]CREUSR = GUSER
+[F:BPD] = [F:BCG]
+Write [F:BPD]
+If fstat
+    GMESSAGE="Erreur de création de la fiche Client livré. Création annulée."
+    GOK=0
+    Return
+Endif
+Return
+
+#################################################### APRES_CRE
+
+$APRES_CRE
+# Grizo [M:ZCC0]
+# Grizo [M:ZCC1]
+Actzo [M:ZCC0]BPCNUM
+Return
+
+#################################################### LIENS
+
+$LIENS
+# Grizo [M:ZCC0]
+# Grizo [M:ZCC1]
+Actzo [M:ZCC0]BPCNUM
+Read [F:BPA]BPA0=1;[M:ZCC0]BPCNUM;GZBPABPC
+If fstat=0
+    [M:ZCC1] = [F:BPA]
+Endif
+Affzo [M:ZCC1]
+Return
+
+#################################################### MODIF
+
+$MODIF
+# Création de la fiche BPARTNER
+Read [F:BPR]BPR0=[M:ZCC0]BPCNUM
+If fstat=0
+    [F:BPR]BPRNAM(0) = [M:ZCC0]BPCNAM
+    [F:BPR]UPDDAT = date$
+    [F:BPR]UPDUSR = GUSER
+    Rewrite [F:BPR]
+    If fstat
+        GMESSAGE="Erreur de mise à jour de la fiche Tiers. Modification annulée."
+        GOK=0
+        Return
+    Endif
+Else
+    Raz [F:BPR]
+    [F:BPR]BPRNUM = [M:ZCC0]BPCNUM
+    [F:BPR] = [F:BCG]
+    [F:BPR]BETFCY = 1
+    [F:BPR]BPAADD = GZBPABPC
+    [F:BPR]BPCFLG = 2
+    [F:BPR]BPRACC = 1
+    [F:BPR]BPRNAM(0) = [M:ZCC0]BPCNAM
+    [F:BPR]BPSFLG = 1
+    [F:BPR]BPTFLG = 1
+    [F:BPR]CREDAT = date$
+    [F:BPR]CREUSR = GUSER
+    [F:BPR]DOOFLG = 1
+    [F:BPR]FCTFLG = 1
+    [F:BPR]PPTFLG = 1
+    [F:BPR]PRVFLG = 1
+    [F:BPR]REPFLG = 1
+    [F:BPR]ENAFLG = 2
+    Write [F:BPR]
+    If fstat
+        GMESSAGE="Erreur de création de la fiche Tiers. Modification annulée."
+        GOK=0
+        Return
+    Endif
+Endif
+# Création de la fiche BPADDRESS
+Read [F:BPA]BPA0=1;[M:ZCC0]BPCNUM;GZBPABPC
+If fstat=0
+    [F:BPA] = [M:ZCC1]
+    [F:BPA]UPDDAT = date$
+    [F:BPA]UPDUSR = GUSER
+    Rewrite [F:BPA]
+    If fstat
+        GMESSAGE="Erreur de mise à jour de la fiche Adresse. Modification annulée."
+        GOK=0
+        Return
+    Endif
+Else
+    Raz [F:BPA]
+    [F:BPA]BPATYP = 1
+    [F:BPA]BPANUM = [M:ZCC0]BPCNUM
+    [F:BPA]BPAADD = GZBPABPC
+    [F:BPA] = [M:ZCC1]
+    [F:BPA]BPAADDFLG = 2
+    [F:BPA]CREDAT = date$
+    [F:BPA]CREUSR = GUSER
+    [F:BPA]ZDEPPLAT = 1
+    [F:BPA]ZDETAILTRI = 1
+    [F:BPA]ZTAXEGOAC = 1
+    [F:BPA]ZTYPPASS = 1
+    Write [F:BPA]
+    If fstat
+        GMESSAGE="Erreur de création de la fiche Adresse. Modification annulée."
+        GOK=0
+        Return
+    Endif
+Endif
+# Création de la fiche BPDLVCUST
+Read [F:BPD]BPD0=[M:ZCC0]BPCNUM;GZBPABPC
+If fstat=0
+    [F:BPD]BPDNAM = [M:ZCC0]BPCNAM
+    [F:BPD]UPDDAT = date$
+    [F:BPD]UPDUSR = GUSER
+    Rewrite [F:BPD]
+    If fstat
+        GMESSAGE="Erreur de mise à jour de la fiche Client livré. Modification annulée."
+        GOK=0
+        Return
+    Endif
+Else
+    Raz [F:BPD]
+    [F:BPD]BPCNUM = [M:ZCC0]BPCNUM
+    [F:BPD]BPAADD = GZBPABPC
+    [F:BPD]BPDNAM = [M:ZCC0]BPCNAM
+    [F:BPD]CREDAT = date$
+    [F:BPD]CREUSR = GUSER
+    [F:BPD] = [F:BCG]
+    Write [F:BPD]
+    If fstat
+        GMESSAGE="Erreur de création de la fiche Client livré. Modification annulée."
+        GOK=0
+        Return
+    Endif
+Endif
+Return

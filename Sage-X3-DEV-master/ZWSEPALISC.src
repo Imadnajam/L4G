@@ -1,0 +1,1701 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+############################################################################
+# SCRIPT       : ZWSEPALISC                                                #
+# AUTEUR       : Jérôme BEAUFILS                                           #
+# CREATION     : 09/09/2019                                                #
+# MODIFICATION : 09/09/2019                                                #
+# COMMENTAIRE  :                                                           #
+# Ce script contient les webservices accessible depuis le site Web EPALIS  #
+# suite à la mise en place de la collecte multi-chargeur                   #
+############################################################################
+
+############################################################################
+# Ce web service permet de récupérer tous les dépôts modifiés depuis la
+# dernière synchronisation
+Subprog SYNC_DEPOT_X32EPI(WZDEPNUM,WZDEPNAM,WZTYPDEP,WZADRESSE1,WZADRESSE2,WZADRESSE3,WZCITY,WZPOSCOD,WZPAYSISO,WZTEL,WZMOB,WZFAX
+&,WZMAIL,WZLOGINEPI,WZSEUIL,WZINFOCONTACT,WZSIRET,WZNAF,WZDESNAF,WZNBSALARIE,WZTYPENT,WZTVA,WZCODCLTFAC,WZCODFOU,WZFCY)
+
+  Variable Char    WZDEPNUM()(0..1999)
+  Variable Char    WZDEPNAM()(0..1999)
+  Variable Integer WZTYPDEP(0..1999)
+  Variable Char    WZADRESSE1()(0..1999)
+  Variable Char    WZADRESSE2()(0..1999)
+  Variable Char    WZADRESSE3()(0..1999)
+  Variable Char    WZCITY()(0..1999)
+  Variable Char    WZPOSCOD()(0..1999)
+  Variable Char    WZPAYSISO()(0..1999)
+  Variable Char    WZTEL()(0..1999)
+  Variable Char    WZMOB()(0..1999)
+  Variable Char    WZFAX()(0..1999)
+  Variable Char    WZMAIL()(0..1999)
+  Variable Char    WZLOGINEPI()(0..1999)
+  Variable Integer WZSEUIL(0..1999)
+  Variable Char    WZINFOCONTACT()(0..1999)
+  Variable Char    WZSIRET()(0..1999)
+  Variable Char    WZNAF()(0..1999)
+  Variable Char    WZDESNAF()(0..1999)
+  Variable Char    WZNBSALARIE()(0..1999)
+  Variable Integer WZTYPENT(0..1999)
+  Variable Char    WZTVA()(0..1999)
+  Variable Char    WZCODCLTFAC()(0..1999)
+  Variable Char    WZCODFOU()(0..1999)
+  Variable Char    WZFCY()(0..1999)
+
+If clalev([F:ZDPO])=0 : Local File ZDEPOT     [ZDPO] : Endif
+Local Integer WLIG : WLIG = 0
+For [F:ZDPO]ZDPO0 Where [F:ZDPO]ZASYNCHRO=2 and left$([F:ZDPO]ZDEPNUM,3)<>"DEP"
+  WZDEPNUM(WLIG)      = [F:ZDPO]ZDEPNUM
+  WZDEPNAM(WLIG)      = [F:ZDPO]ZDEPNAM
+  WZTYPDEP(WLIG)      = [F:ZDPO]ZTYPDEP
+  WZADRESSE1(WLIG)    = [F:ZDPO]ZADRESSE(0)
+  WZADRESSE2(WLIG)    = [F:ZDPO]ZADRESSE(1)
+  WZADRESSE3(WLIG)    = [F:ZDPO]ZADRESSE(2)
+  WZCITY(WLIG)        = [F:ZDPO]ZCITY
+  WZPOSCOD(WLIG)      = [F:ZDPO]ZPOSCOD
+  WZPAYSISO(WLIG)     = [F:ZDPO]ZPAYSISO
+  WZTEL(WLIG)         = [F:ZDPO]ZTEL
+  WZMOB(WLIG)         = [F:ZDPO]ZMOB
+  WZFAX(WLIG)         = [F:ZDPO]ZFAX
+  WZMAIL(WLIG)        = [F:ZDPO]ZMAIL
+  WZLOGINEPI(WLIG)    = [F:ZDPO]ZLOGEPI
+  WZSEUIL(WLIG)       = [F:ZDPO]ZSEUIL
+  WZINFOCONTACT(WLIG) = [F:ZDPO]ZINFOCONTACT
+  WZSIRET(WLIG)       = [F:ZDPO]ZSIRET
+  WZNAF(WLIG)         = [F:ZDPO]ZNAF
+  WZDESNAF(WLIG)      = [F:ZDPO]ZDESNAF
+  WZNBSALARIE(WLIG)   = [F:ZDPO]ZNBSALARIE
+  WZTYPENT(WLIG)      = [F:ZDPO]ZTYPENT
+  WZTVA(WLIG)         = [F:ZDPO]ZTVA
+  WZCODCLTFAC(WLIG)   = [F:ZDPO]ZCODCLTFAC
+  WZCODFOU(WLIG)      = [F:ZDPO]ZCODFOU
+  WZFCY(WLIG)         = [F:ZDPO]ZFCY
+  WLIG += 1
+  [F:ZDPO]ZASYNCHRO=1
+  Rewrite [F:ZDPO]
+  If(WLIG>1999)Then
+    Break
+  Endif
+Next
+End
+
+############################################################################
+# Ce web service permet de récupérer tous les chantiers modifiés depuis la
+# dernière synchronisation
+Subprog SYNC_CHANTIER_X32EPI(WZDEPNUM,WZCHANUM,WSITECOLL)
+  Value Char       WZDEPNUM
+  Variable Char    WZCHANUM()(0..1999)
+  Variable Char    WSITECOLL()(0..1999)
+
+Local Char WCRITERE(250)
+WCRITERE = "[F:ZCHA]ZASYNCHRO=2 & left$([F:ZCHA]ZCHANUM,3)<>'CHA'"
+If(WZDEPNUM<>"")Then
+  WCRITERE += " & [F:ZCHA]ZDEPNUM='" + WZDEPNUM + "'"
+Endif
+If clalev([F:ZCHA])=0 : Local File ZCHANTIER  [ZCHA] : Endif
+Local Integer WLIG : WLIG = 0
+For [F:ZCHA]ZCHA0 Where evalue(WCRITERE)
+  WZCHANUM(WLIG)     = [F:ZCHA]ZCHANUM
+  WSITECOLL(WLIG)    = [F:ZCHA]ZFCY
+  WLIG += 1
+  [F:ZCHA]ZASYNCHRO=1
+  Rewrite [F:ZCHA]
+  If(WLIG>1999)Then
+    Break
+  Endif
+Next
+End
+
+############################################################################
+# Ce web service permet de savoir si un dépôt existe RESULT=1
+Subprog GET_DEPOT_EXIST(WDEPNUM,RESULT)
+  Value Char WDEPNUM
+  Variable Integer RESULT
+  Local Integer RESULT : RESULT = 0 #Fiche a créer
+  If clalev([F:ZDPO])=0 : Local File ZDEPOT [F:ZDPO]  : Endif
+  Read[F:ZDPO]ZDPO0=WDEPNUM
+  If(fstat=0)Then
+    RESULT = 1 # Fiche à modifier
+  Endif
+End
+
+############################################################################
+# Ce web service permet de savoir si un chantier existe RESULT=1
+Subprog GET_CHANTIER_EXIST(WCHANUM,RESULT)
+  Value Char WCHANUM
+  Variable Integer RESULT
+  Local Integer RESULT : RESULT = 0 #Fiche a créer
+  If clalev([F:ZCHA])=0 : Local File ZCHANTIER [F:ZCHA]  : Endif
+  Read[F:ZCHA]ZCHA0=WCHANUM
+  If(fstat=0)Then
+    RESULT = 1 # Fiche à modifier
+  Endif
+End
+
+############################################################################
+# Ce web service permet de mettre à jour ou de créer une ligne dans la table ZCHGMULTICHG
+Subprog SET_MAJ_CHG(WZCMCNUM,WZCODCHARG,WZCODCLT,WQTERECEP,WTRIAFAIRE,WNUMEPI,WFORCEDECONS,WRESULT,WINFO)
+  Value Char WZCMCNUM
+  Value Char WZCODCHARG
+  Value Char WZCODCLT
+  Value Decimal WQTERECEP
+  Value Integer WTRIAFAIRE
+  Value Char WNUMEPI
+  Value Integer WFORCEDECONS
+  Variable Integer WRESULT
+  Variable Char WINFO
+  Local Integer WMAJ : WMAJ = 0
+
+WRESULT = 1
+WINFO = "Traitement réussi"
+#On commence par regarder si l'enregistrement existe
+If clalev([F:ZCMC])=0   : Local File ZCOLMULTICHG [F:ZCMC]   : Endif
+If clalev([F:ZMC])=0    : Local File ZCHGMULTICHG [F:ZMC]    : Endif
+If clalev([F:ZMC2])=0   : Local File ZCHGMULTICHG [F:ZMC2]   : Endif
+If clalev([F:ZAI])=0    : Local File ZADREPI      [F:ZAI]    : Endif
+Read[F:ZCMC]ZCMC=WZCMCNUM
+If(fstat=0)Then
+  Read[F:ZMC]ZMC1=WZCMCNUM;WZCODCHARG;WZCODCLT
+  If(fstat=0)Then
+    #l'enregistrement existe, on va donc le modifier et mettre le flag de synchronisation à oui
+    If([F:ZCMC]DATEVAL=[0/0/0])Then
+      If(WQTERECEP>0)Then
+        [F:ZMC]QTERECEP = WQTERECEP
+        WMAJ = 1
+      Endif
+      If(WTRIAFAIRE=1 or WTRIAFAIRE=2)Then
+        [F:ZMC]TRIAFAIRE = WTRIAFAIRE
+        WMAJ = 1
+      Endif
+      If(WNUMEPI<>"")Then
+        [F:ZMC]NUMEPI = WNUMEPI
+        WMAJ = 1
+      Endif
+      If(WMAJ=1)Then
+        [F:ZMC]SYNCHEPI=2
+        Rewrite[F:ZMC]
+        If(fstat<>0)Then
+          WRESULT = 0
+          WINFO = "Impossible ! Erreur lors de la sauvegarde de l'enregistrement. (err n° " + num$(fstat) + ")."
+        Endif
+      Endif
+    Else
+      WRESULT = 0
+      WINFO = "Impossible ! l'étape de réception de la collecte multi-chargeur est validée."
+    Endif
+  Else
+    #On est dans le cas où il n'y a pas d'enregistrement, il faut donc le créer.
+    If([F:ZCMC]DATEVAL=[0/0/0])Then
+      Raz[F:ZMC]
+      If(WQTERECEP>0)Then
+        [F:ZMC]QTERECEP = WQTERECEP
+        WMAJ = 1
+      Endif
+      If(WTRIAFAIRE=1 or WTRIAFAIRE=2)Then
+        [F:ZMC]TRIAFAIRE = WTRIAFAIRE
+        WMAJ = 1
+      Endif
+      If(WNUMEPI<>"")Then
+        [F:ZMC]NUMEPI = WNUMEPI
+        WMAJ = 1
+      Endif
+      If(WMAJ=1)Then
+        [F:ZMC]SYNCHEPI  = 2
+        [F:ZMC]ZCMCNUM   = WZCMCNUM
+        [F:ZMC]ZCODCHARG = WZCODCHARG
+        [F:ZMC]ZCODCLT   = WZCODCLT
+        #On va récupérer le nom du Client chargeur
+        Read[F:ZAI]ZAI0=WZCODCHARG;WZCODCLT
+        If(fstat=0)Then
+          [F:ZMC]ZNOMCLT = [F:ZAI]ZNOMCLT
+        Endif
+        #On va maintenant récupérer le prochain N° de ligne
+        Local Integer WNUMLIGMAX : WNUMLIGMAX = 0
+        For [F:ZMC2]ZMC0 Where [F:ZMC2]ZCMCNUM=WZCMCNUM
+          If([F:ZMC2]ZCMCLIN>WNUMLIGMAX)Then
+            WNUMLIGMAX = [F:ZMC2]ZCMCLIN
+          Endif
+        Next
+        [F:ZMC]ZCMCLIN = WNUMLIGMAX+1000
+        [F:ZMC]FORCEDECONST = WFORCEDECONS
+        Write[F:ZMC]
+        If(fstat<>0)Then
+          WRESULT = 0
+          WINFO = "Impossible ! Erreur lors de la sauvegarde de l'enregistrement. (err n° " + num$(fstat) + ")."
+        Endif
+      Endif
+    Else
+      WRESULT = 0
+      WINFO = "Impossible ! l'étape de réception de la collecte multi-chargeur est validée."
+    Endif
+  Endif
+Endif
+End
+
+############################################################################
+# Ce web service permet de mettre à jour ou de créer une ligne dans la table ZRECMULTICHG
+Subprog SET_MAJ_REC(WZCMCNUM,WZCODCHARG,WZCODCLT,WITMREF,WQTY,WRESULT,WINFO)
+  Value Char WZCMCNUM
+  Value Char WZCODCHARG
+  Value Char WZCODCLT
+  Value Char WITMREF
+  Value Decimal WQTY
+  Variable Integer WRESULT
+  Variable Char WINFO
+  Local Integer WMAJ : WMAJ = 0
+
+WRESULT = 1
+WINFO = "Traitement réussi"
+If clalev([F:ZCMC])=0   : Local File ZCOLMULTICHG [F:ZCMC]   : Endif
+If clalev([F:ZMC])=0    : Local File ZCHGMULTICHG [F:ZMC]    : Endif
+If clalev([F:ZRMC])=0   : Local File ZRECMULTICHG [F:ZRMC]   : Endif
+#On commence par récupérer l'enregistrement de la collecte
+Read[F:ZCMC]ZCMC=WZCMCNUM
+If(fstat=0)Then
+  If([F:ZCMC]DATEVAL=[0/0/0])Then
+    #On va récupérer les informations de la ligne de la table ZCHGMULTICHG coorespondant au chargeur et au client chargeur
+    Read[F:ZMC]ZMC1=WZCMCNUM;WZCODCHARG;WZCODCLT
+    If(fstat=0)Then
+      #On va regarder s'il existe l'enregistrement de réception
+      Read[F:ZRMC]ZRMC0=WZCMCNUM;[F:ZMC]ZCMCLIN;WITMREF
+      If(fstat=0)Then
+        #Un enregistrement existe, on va le modifier
+        If(WQTY>=0)Then
+          [F:ZRMC]QTY = WQTY
+          [F:ZRMC]SYNCHEPI = 2
+          Rewrite[F:ZRMC]
+          If(fstat<>0)Then
+            WRESULT = 0
+            WINFO = "Impossible ! Erreur lors de la sauvegarde de l'enregistrement. (err n° " + num$(fstat) + ")."
+          Endif
+        Endif
+      Else
+        #Il n'y a pas d'enregistrement, on va donc en créer un
+        Raz[F:ZRMC]
+        [F:ZRMC]ZCMCNUM  = WZCMCNUM
+        [F:ZRMC]ZCMCLIN  = [F:ZMC]ZCMCLIN
+        [F:ZRMC]ITMREF   = WITMREF
+        [F:ZRMC]QTY      = WQTY
+        [F:ZRMC]SYNCHEPI = 2
+        Write[F:ZRMC]
+        If(fstat<>0)Then
+          WRESULT = 0
+          WINFO = "Impossible ! Erreur lors de la sauvegarde de l'enregistrement. (err n° " + num$(fstat) + ")."
+        Endif
+      Endif
+    Else
+      WRESULT = 0
+      WINFO = "Impossible ! Il n'existe pas de ligne pour ce chargeur et ce client chargeur dans cette collecte."
+    Endif
+  Else
+    WRESULT = 0
+    WINFO = "Impossible ! l'étape de réception de la collecte multi-chargeur est validée."
+  Endif
+Else
+  WRESULT = 0
+  WINFO = "Impossible ! Erreur lors de la récupération des informations de la collecte."
+Endif
+End
+
+############################################################################
+# Ce web service permet de mettre à jour ou de créer une ligne dans la table ZTRIMULTICHG
+Subprog SET_MAJ_TRI(WZCMCNUM,WZCODCHARG,WZCODCLT,WITMREF,WQTEOK,WQTEKC,WQTEHS,WRESULT,WINFO)
+  Value Char WZCMCNUM
+  Value Char WZCODCHARG
+  Value Char WZCODCLT
+  Value Char WITMREF
+  Value Decimal WQTEOK
+  Value Decimal WQTEKC
+  Value Decimal WQTEHS
+  Variable Integer WRESULT
+  Variable Char WINFO
+  Local Integer WMAJ : WMAJ = 0
+
+WRESULT = 1
+WINFO = "Traitement réussi"
+If clalev([F:ZCMC])=0   : Local File ZCOLMULTICHG [F:ZCMC]   : Endif
+If clalev([F:ZMC])=0    : Local File ZCHGMULTICHG [F:ZMC]    : Endif
+If clalev([F:ZTMC])=0   : Local File ZTRIMULTICHG [F:ZTMC]   : Endif
+If clalev([F:ZTMC2])=0  : Local File ZTRIMULTICHG [F:ZTMC2]  : Endif
+#On commence par récupérer l'enregistrement de la collecte
+Read[F:ZCMC]ZCMC=WZCMCNUM
+If(fstat=0)Then
+  If([F:ZCMC]DATEVAL<>[0/0/0])Then
+    #On va maintenant regarder que le tri n'a pas déjà été validé
+    Read[F:ZMC]ZMC1=WZCMCNUM;WZCODCHARG;WZCODCLT
+    If(fstat=0)Then
+      If([F:ZMC]DATEVALTRI=[0/0/0])Then
+        #On va maintenant regarder si la ligne existe déjà ou pas
+        Read[F:ZTMC]ZTMC1=WZCMCNUM;WZCODCHARG;WZCODCLT;WITMREF
+        If(fstat=0)Then
+          #On est dans le cas où un enregistrement existe dans la table ZTRIMULTICHG [F:ZTMC]
+          If(WQTEOK>=0)Then
+            [F:ZTMC]QTEOK = WQTEOK
+            WMAJ = 1
+          Endif
+          If(WQTEKC>=0)Then
+            [F:ZTMC]QTEKC = WQTEKC
+            WMAJ = 1
+          Endif
+          If(WQTEHS>=0)Then
+            [F:ZTMC]QTEHS = WQTEHS
+            WMAJ = 1
+          Endif
+          If(WMAJ=1)Then
+            [F:ZTMC]SYNCHEPI = 2
+            Rewrite[F:ZTMC]
+            If(fstat<>0)Then
+              WRESULT = 0
+              WINFO = "Impossible ! Erreur lors de la sauvegarde de l'enregistrement. (err n° " + num$(fstat) + ")."
+            Endif
+          Endif
+        Else
+          #On est dans le cas où il n'y a pas d'enregistrement existant dans la table ZTRIMULTICHG [F:ZTMC]
+          #On va maintenant récupérer le prochain N° de ligne
+          Local Integer WNUMLIGMAX : WNUMLIGMAX = 0
+          For [F:ZTMC2]ZTMC0 Where [F:ZTMC2]ZCMCNUM=WZCMCNUM
+            If([F:ZTMC2]ZCMCLIN>WNUMLIGMAX)Then
+              WNUMLIGMAX = [F:ZTMC2]ZCMCLIN
+            Endif
+          Next
+          Raz[F:ZTMC]
+          [F:ZTMC]ZCMCNUM   = WZCMCNUM
+          [F:ZTMC]ZCMCLIN   = WNUMLIGMAX+1000
+          [F:ZTMC]ZCODCHARG = WZCODCHARG
+          [F:ZTMC]ZCODCLT   = WZCODCLT
+          [F:ZTMC]ITMREF    = WITMREF
+          [F:ZTMC]QTEOK     = WQTEOK
+          [F:ZTMC]QTEKC     = WQTEKC
+          [F:ZTMC]QTEHS     = WQTEHS
+          [F:ZTMC]USR       = "WEB"
+          [F:ZTMC]DATEOPE   = date$
+          [F:ZTMC]HEUREOPE  = time$
+          [F:ZTMC]SYNCHEPI  = 2
+          Write[F:ZTMC]
+          If(fstat<>0)Then
+            WRESULT = 0
+            WINFO = "Impossible ! Erreur lors de la sauvegarde de l'enregistrement. (err n° " + num$(fstat) + ")."
+          Endif
+        Endif
+      Else
+        WRESULT = 0
+        WINFO = "Impossible ! L'étape de tri pour ce client chargeur est déjà validée."
+      Endif
+    Else
+      WRESULT = 0
+      WINFO = "Impossible ! Erreur lors de la récupération des informations de la ligne du client chargeur."
+    Endif
+  Else
+    WRESULT = 0
+    WINFO = "Impossible ! l'étape de réception de la collecte multi-chargeur n'est pas validée."
+  Endif
+Else
+  WRESULT = 0
+  WINFO = "Impossible ! Erreur lors de la récupération des informations de la collecte."
+Endif
+End
+
+############################################################################
+# Ce web service permet de récupérer la valeur du sémaphore de réception d'une collecte multi-collecte
+Subprog GET_SEMA_REC(WZCMCNUM,WRESULT,WINFO)
+  Value Char WZCMCNUM
+  Variable Integer WRESULT
+  Variable Char WINFO
+
+WRESULT = 1
+WINFO = "Traitement réussi"
+If clalev([F:ZCMC])=0   : Local File ZCOLMULTICHG [F:ZCMC]   : Endif
+#On va récupérer les informations de l'enregistrement de la collecte
+Read[F:ZCMC]ZCMC=WZCMCNUM
+If(fstat=0)Then
+  WRESULT = [F:ZCMC]SEMAREC
+  If(WRESULT=0)Then
+    WRESULT = 1
+  Endif
+  WINFO = mess(WRESULT,6360,1)
+Else
+  WRESULT = 0
+  WINFO = "Impossible ! Erreur lors de la récupération des informations de la collecte."
+Endif
+End
+
+############################################################################
+# Ce web service permet de récupérer la valeur du sémaphore de tri d'une collecte multi-collecte
+Subprog GET_SEMA_TRI(WZCMCNUM,WZCODCHARG,WZCODCLT,WRESULT,WINFO)
+  Value Char WZCMCNUM
+  Value Char WZCODCHARG
+  Value Char WZCODCLT
+  Variable Integer WRESULT
+  Variable Char WINFO
+
+WRESULT = 1
+WINFO = "Traitement réussi"
+If clalev([F:ZMC])=0    : Local File ZCHGMULTICHG [F:ZMC]    : Endif
+#On va récupérer les informations de l'enregistrement lié au client chargeur
+Read[F:ZMC]ZMC1=WZCMCNUM;WZCODCHARG;WZCODCLT
+If(fstat=0)Then
+  WRESULT = [F:ZMC]SEMATRI
+  If(WRESULT=0)Then
+    WRESULT = 1
+  Endif
+  WINFO = mess(WRESULT,6360,1)
+Else
+  WRESULT = 0
+  WINFO = "Impossible ! Erreur lors de la récupération des informations liées au client chargeur."
+Endif
+End
+
+############################################################################
+# Ce web service permet de positionner la valeur du sémaphore de réception d'une collecte multi-collecte
+Subprog SET_SEMA_REC(WZCMCNUM,WSEMA,WRESULT,WINFO)
+  Value Char WZCMCNUM
+  Value Integer WSEMA
+  Variable Integer WRESULT
+  Variable Char WINFO
+
+WRESULT = 1
+WINFO = "Traitement réussi"
+If clalev([F:ZCMC])=0   : Local File ZCOLMULTICHG [F:ZCMC]   : Endif
+#On va commencer paar essayer de vérrouiller l'enregistrement
+SYMBOLE = "ZCMC~"+WZCMCNUM
+Lock =SYMBOLE With lockwait = 0
+If(fstat=0)Then
+  #On va positionner le sémaphore
+  #On va récupérer les informations de l'enregistrement de la collecte
+  Read[F:ZCMC]ZCMC=WZCMCNUM
+  If(fstat=0)Then
+    [F:ZCMC]SEMAREC = WSEMA
+    Rewrite[F:ZCMC]
+    If(fstat<>0)Then
+      WRESULT = 0
+      WINFO = "Impossible ! Erreur lors de la sauvegarde de l'enregistrement. (err n° " + num$(fstat) + ")."
+    Endif
+  Else
+    WRESULT = 0
+    WINFO = "Impossible ! Erreur lors de la récupération des informations de la collecte."
+  Endif
+  Unlock =SYMBOLE
+Else
+  WRESULT = 0
+  WINFO = "Impossible d'effectuer le traitement car la collecte multi-chargeur est vérrouillée."
+Endif
+End
+
+############################################################################
+# Ce web service permet de positionner la valeur du sémaphore de réception d'une collecte multi-collecte
+Subprog SET_SEMA_TRI(WZCMCNUM,WZCODCHARG,WZCODCLT,WSEMA,WRESULT,WINFO)
+  Value Char WZCMCNUM
+  Value Char WZCODCHARG
+  Value Char WZCODCLT
+  Value Integer WSEMA
+  Variable Integer WRESULT
+  Variable Char WINFO
+
+WRESULT = 1
+WINFO = "Traitement réussi"
+If clalev([F:ZMC])=0    : Local File ZCHGMULTICHG [F:ZMC]    : Endif
+#On va commencer paar essayer de vérrouiller l'enregistrement
+SYMBOLE = "ZCMC~"+WZCMCNUM
+Lock =SYMBOLE With lockwait = 0
+If(fstat=0)Then
+  #On va positionner le sémaphore
+  #On va récupérer les informations de l'enregistrement de la collecte
+  Read[F:ZMC]ZMC1=WZCMCNUM;WZCODCHARG;WZCODCLT
+  If(fstat=0)Then
+    [F:ZMC]SEMATRI = WSEMA
+    Rewrite[F:ZMC]
+    If(fstat<>0)Then
+      WRESULT = 0
+      WINFO = "Impossible ! Erreur lors de la sauvegarde de l'enregistrement. (err n° " + num$(fstat) + ")."
+    Endif
+  Else
+    WRESULT = 0
+    WINFO = "Impossible ! Erreur lors de la récupération des informations liées au client chargeur."
+  Endif
+  Unlock =SYMBOLE
+Else
+  WRESULT = 0
+  WINFO = "Impossible d'effectuer le traitement car la collecte multi-chargeur est vérrouillée."
+Endif
+End
+
+############################################################################
+# Ce web service permet de récupérer les enregistrements de la table ZCHGMULTICHG qui sont à mettre à jour dans EPALIS
+Subprog GET_MAJ_CHG(WZCMCNUM,WTABZCMCNUM,WTABZCODCHARG,WTABZCODCLT,WTABZNOMCLT,WTABQTERECEP,WTABTRIAFAIRE,WTABDATEVALTRI,WTABZACTNUM,WTABDATETRI,WTABHEUREVALTRI,WTABNUMEPI,WTABFORCEDECONS)
+  Value Char       WZCMCNUM
+  Variable Char    WTABZCMCNUM()(0..49)
+  Variable Char    WTABZCODCHARG()(0..49)
+  Variable Char    WTABZCODCLT()(0..49)
+  Variable Char    WTABZNOMCLT()(0..49)
+  Variable Decimal WTABQTERECEP(0..49)
+  Variable Integer WTABTRIAFAIRE(0..49)
+  Variable Date    WTABDATEVALTRI(0..49)
+  Variable Char    WTABZACTNUM()(0..49)
+  Variable Date    WTABDATETRI(0..49)
+  Variable Char    WTABHEUREVALTRI()(0..49)
+  Variable Char    WTABNUMEPI()(0..49)
+  Variable Integer WTABFORCEDECONS(0..49)
+
+If clalev([F:ZMC])=0    : Local File ZCHGMULTICHG [F:ZMC]    : Endif
+Local Integer WLIG : WLIG = 0
+For [F:ZMC]ZMC0 Where [F:ZMC]ZCMCNUM=WZCMCNUM and [F:ZMC]SYNCHEPI<>2
+  WTABZCMCNUM(WLIG)     = [F:ZMC]ZCMCNUM
+  WTABZCODCHARG(WLIG)   = [F:ZMC]ZCODCHARG
+  WTABZCODCLT(WLIG)     = [F:ZMC]ZCODCLT
+  WTABZNOMCLT(WLIG)     = [F:ZMC]ZNOMCLT
+  WTABQTERECEP(WLIG)    = [F:ZMC]QTERECEP
+  WTABTRIAFAIRE(WLIG)   = [F:ZMC]TRIAFAIRE
+  WTABDATEVALTRI(WLIG)  = [F:ZMC]DATEVALTRI
+  WTABZACTNUM(WLIG)     = [F:ZMC]ZACTNUM
+  WTABDATETRI(WLIG)     = [F:ZMC]DATETRI
+  WTABHEUREVALTRI(WLIG) = [F:ZMC]HEUREVALTRI
+  WTABNUMEPI(WLIG)      = [F:ZMC]NUMEPI
+  WTABFORCEDECONS(WLIG) = [F:ZMC]FORCEDECONST
+  WLIG += 1
+  [F:ZMC]SYNCHEPI = 2
+  Rewrite [F:ZMC]
+  If(WLIG>49)Then
+    Break
+  Endif
+Next
+End
+
+############################################################################
+# Ce web service permet de récupérer les enregistrements de la table ZRECMULTICHG qui sont à mettre à jour dans EPALIS
+Subprog GET_MAJ_REC(WZCMCNUM,WTABZCMCNUM,WTABZCODCHARG,WTABZCODCLT,WTABITMREF,WTABQTY)
+  Value Char       WZCMCNUM
+  Variable Char    WTABZCMCNUM()(0..99)
+  Variable Char    WTABZCODCHARG()(0..99)
+  Variable Char    WTABZCODCLT()(0..99)
+  Variable Char    WTABITMREF()(0..99)
+  Variable Decimal WTABQTY(0..99)
+
+If clalev([F:ZR2S])=0    : Local File ZREC2SYNC [F:ZR2S]      : Endif
+If clalev([F:ZRMC])=0    : Local File ZRECMULTICHG [F:ZRMC]   : Endif
+Local Integer WLIG : WLIG = 0
+For [F:ZR2S]ZR2S0 Where [F:ZR2S]ZCMCNUM=WZCMCNUM
+  WTABZCMCNUM(WLIG)     = [F:ZR2S]ZCMCNUM
+  WTABZCODCHARG(WLIG)   = [F:ZR2S]ZCODCHARG
+  WTABZCODCLT(WLIG)     = [F:ZR2S]ZCODCLT
+  WTABITMREF(WLIG)      = [F:ZR2S]ITMREF
+  WTABQTY(WLIG)         = [F:ZR2S]QTY
+  WLIG += 1
+  Update [F:ZRMC] Where ZCMCNUM=WZCMCNUM and ZCMCLIN=[F:ZR2S]ZCMCLIN and ITMREF=[F:ZR2S]ITMREF With SYNCHEPI=2
+  If(WLIG>99)Then
+    Break
+  Endif
+Next
+End
+
+############################################################################
+# Ce web service permet de récupérer les enregistrements de la table ZTRIMULTICHG qui sont à mettre à jour dans EPALIS
+Subprog GET_MAJ_TRI(WZCMCNUM,WTABZCMCNUM,WTABZCODCHARG,WTABZCODCLT,WTABITMREF,WTABQTEOK,WTABQTEKC,WTABQTEHS,WTABUSR,WTABDATEOPE,WTABHEUREOPE)
+  Value Char       WZCMCNUM
+  Variable Char    WTABZCMCNUM()(0..499)
+  Variable Char    WTABZCODCHARG()(0..499)
+  Variable Char    WTABZCODCLT()(0..499)
+  Variable Char    WTABITMREF()(0..499)
+  Variable Decimal WTABQTEOK(0..499)
+  Variable Decimal WTABQTEKC(0..499)
+  Variable Decimal WTABQTEHS(0..499)
+  Variable Char    WTABUSR()(0..499)
+  Variable Date    WTABDATEOPE(0..499)
+  Variable Char    WTABHEUREOPE()(0..499)
+
+If clalev([F:ZTMC])=0   : Local File ZTRIMULTICHG [F:ZTMC]   : Endif
+Local Integer WLIG : WLIG = 0
+For [F:ZTMC]ZTMC1 Where [F:ZTMC]ZCMCNUM=WZCMCNUM and [F:ZTMC]SYNCHEPI<>2
+  WTABZCMCNUM(WLIG)   = [F:ZTMC]ZCMCNUM
+  WTABZCODCHARG(WLIG) = [F:ZTMC]ZCODCHARG
+  WTABZCODCLT(WLIG)   = [F:ZTMC]ZCODCLT
+  WTABITMREF(WLIG)    = [F:ZTMC]ITMREF
+  WTABQTEOK(WLIG)     = [F:ZTMC]QTEOK
+  WTABQTEKC(WLIG)     = [F:ZTMC]QTEKC
+  WTABQTEHS(WLIG)     = [F:ZTMC]QTEHS
+  WTABUSR(WLIG)       = [F:ZTMC]USR
+  WTABDATEOPE(WLIG)   = [F:ZTMC]DATEOPE
+  WTABHEUREOPE(WLIG)  = [F:ZTMC]HEUREOPE
+  WLIG += 1
+  [F:ZTMC]SYNCHEPI = 2
+  Rewrite [F:ZTMC]
+  If(WLIG>499)Then
+    Break
+  Endif
+Next
+End
+
+############################################################################
+# Ce web service permet de récupérer toutes les collectes multi-chargeur à synchroniser
+Subprog GET_EPX2SYNC(WTABZCMCNUM,WSYNCCOL,WSYNCCHG,WSYNCREC,WSYNCTRI)
+  Variable Char    WTABZCMCNUM()(0..499)
+  Variable Integer WSYNCCOL(0..499)
+  Variable Integer WSYNCCHG(0..499)
+  Variable Integer WSYNCREC(0..499)
+  Variable Integer WSYNCTRI(0..499)
+
+If clalev([F:ZE2S])=0   : Local File ZEPX2SYNC [F:ZE2S]   : Endif
+Local Integer WLIG : WLIG = 0
+For [F:ZE2S]ZE2S0
+  WTABZCMCNUM(WLIG)   = [F:ZE2S]ZCMCNUM
+  WSYNCCOL(WLIG)      = [F:ZE2S]SYNC_COL
+  WSYNCCHG(WLIG)      = [F:ZE2S]SYNC_CHG
+  WSYNCREC(WLIG)      = [F:ZE2S]SYNC_REC
+  WSYNCTRI(WLIG)      = [F:ZE2S]SYNC_TRI
+  WLIG += 1
+  If(WLIG>499)Then
+    Break
+  Endif
+Next
+End
+
+############################################################################
+# Ce web service permet de valider l'étape de réception de la collecte multi-chargeur
+Subprog SET_VAL_REC(WZCMCNUM,WRESULT,WINFO)
+  Value Char WZCMCNUM
+  Variable Integer WRESULT
+  Variable Char WINFO
+
+  Local Integer WNUMLIG
+  Local Integer WNBENR
+  Local Integer WSTAT
+  Local Char WSEQ(15)
+  WRESULT = 1
+  WINFO = "Traitement réussi"
+  If clalev([F:ZCMC])=0   : Local File ZCOLMULTICHG [F:ZCMC] : Endif
+  If clalev([F:ZMC])=0    : Local File ZCHGMULTICHG [F:ZMC]  : Endif
+  If clalev([F:ZRMC])=0   : Local File ZRECMULTICHG [F:ZRMC] : Endif
+  If clalev([F:ZARE])=0   : Local File ZARTRECEP    [F:ZARE] : Endif
+  If clalev([F:ZCE])=0    : Local File ZCHEPI       [F:ZCE]  : Endif
+  If clalev([F:BPC])=0    : Local File BPCUSTOMER   [F:BPC]  : Endif
+  If clalev([F:ZAI])=0    : Local File ZADREPI      [F:ZAI]  : Endif
+  If clalev([F:ZDPO])=0   : Local File ZDEPOT       [F:ZDPO] : Endif
+  If clalev([F:ZTE])=0    : Local File ZTEMPEPI     [F:ZTE]  : Endif
+  If clalev([F:ZPRC])=0   : Local File ZPALREC      [ZPRC]   : Endif
+  Local Integer WERR : WERR = 0
+
+  Read[F:ZCMC]ZCMC=WZCMCNUM
+  If(fstat=0)Then
+    #On commence par regarder si l'étape de réception n'a pas déjà été validée
+    If([F:ZCMC]DATEVAL=[0/0/0])Then
+      #On va regarder si dans la liste des chargeur de la multi-collecte il y a un chargeur dont le champ ZSYNCEPI=2
+      #Si c'est le cas, alors les champs Date enlèvement et qté enlèvement seront obligatoire
+      For [F:ZMC]ZMC0 Where [F:ZMC]ZCMCNUM=WZCMCNUM
+        Read[F:BPC]BPC0=[F:ZMC]ZCODCHARG
+        If(fstat=0)Then
+          If([F:BPC]ZSYNCEPI=2)Then
+            WCHGEPI = 1
+            Break
+          Endif
+        Endif
+      Next
+      #On ne peut valider les réceptions de cette collecte uniquement si la date d'enlèvement et la date de réception sont renseignées
+      If([F:ZCMC]DATECOL<>[0/0/0]
+& and ([F:ZCMC]DATEENL<>[0/0/0] or WCHGEPI=0)
+& and [F:ZCMC]DATERECEP<>[0/0/0]
+& and [F:ZCMC]QTYANN>0
+& and ([F:ZCMC]QTYENL>0 or ([F:ZCMC]QTYENL=0 and WCHGEPI=0))
+& and [F:ZCMC]QTYREC>0
+&)Then
+        #On va faire l'opération au travers d'une transaction
+        Local Integer WERR : WERR = 0
+#      Trbegin [F:ZCMC],[F:ZZAT]
+        #Il va falloir ici alimenter la table ZZATRIER
+        #Nous allons donc parcourir l'ensemble du 1er tableau et pour chaque ligne dont le tri n'est pas à faire
+        #et que la quantité réceptionnée est supérieure à 0, on va créer une action de type réception
+        Local Char WCOMPTEUR(30) : WCOMPTEUR = ""
+        Local Char WZACTNUM(30)  : WZACTNUM  = ""
+        Local Integer WNBLIGCRE  : WNBLIGCRE = 1
+        Local Char WCODCHG(30)   : WCODCHG   = ""
+        Local Char WCODCLT(30)   : WCODCLT   = ""
+        Local Integer WTRIUSINE  : WTRIUSINE = 1
+        For [F:ZMC]ZMC0 Where [F:ZMC]ZCMCNUM=WZCMCNUM
+#          If([F:ZMC]TRIAFAIRE<>2 and [F:ZMC]QTERECEP>0)Then
+          If([F:ZMC]QTERECEP>0)Then
+            #Nous sommes dans le cas où il n'y a pas de tri à faire et la qté réceptionnée est supérieure à 0
+            #On va donc créer une ligne d'action
+
+            #Avant toute chose, on va regarder s'il existe au moins une ligne dans la table ZRECMULTICHG
+            #S'il n'y a pas de ligne alors que l'on a une qté réceptionnée, c'est que cela a été renseigné par EPALIS
+            #et dans ce cas, il faut créer une ligne de la qté réceptionnée
+            Local Integer WADDZRMC : WADDZRMC = 0
+            For [F:ZRMC]ZRMC0 Where [F:ZRMC]ZCMCNUM=WZCMCNUM and [F:ZRMC]ZCMCLIN=[F:ZMC]ZCMCLIN and [F:ZRMC]QTY>0
+              WADDZRMC += 1
+            Next
+            If(WADDZRMC=0)Then
+              Read[F:ZPRC]ZPRC0=[F:ZMC]ZCODCHARG
+              If(fstat=0)Then
+                Raz[F:ZRMC]
+                [F:ZRMC]ZCMCNUM  = [F:ZMC]ZCMCNUM
+                [F:ZRMC]ZCMCLIN  = [F:ZMC]ZCMCLIN
+                [F:ZRMC]ITMREF   = [F:ZPRC]CODPALREC
+                [F:ZRMC]QTY      = [F:ZMC]QTERECEP
+                [F:ZRMC]SYNCHEPI = 1
+                Write[F:ZRMC]
+              Endif
+            Elsif(WADDZRMC=1)Then
+              [F:ZRMC]QTY      = [F:ZMC]QTERECEP
+              [F:ZRMC]SYNCHEPI = 1
+              Rewrite[F:ZRMC]
+            Endif
+
+            If(WZACTNUM="")Then
+              WCOMPTEUR = func Z2WSEPALIS.SPE_GET_COMPTEUR()
+              WZACTNUM  = func SPE_GET_COMPT_ACT([F:ZCMC]FCYREC)
+            Endif
+            #On regarde si c'est une dépose chargeur et si c'est le cas, si l'uine est en tri usine
+            WCODCHG = [F:ZMC]ZCODCHARG
+            WCODCLT = [F:ZMC]ZCODCLT
+            If([F:ZCMC]ZCODUSINE<>"")Then
+              #Un code usine est renseigné, on va donc regarder si cette usine est en tri usine
+              Read[F:ZAI]ZAI0=[F:ZCMC]ZCHGUSINE;[F:ZCMC]ZCODUSINE
+              If(fstat=0)Then
+                WTRIUSINE = [F:ZAI]ZTRIUSINE
+              Endif
+            Endif
+            #On va regarder si le champ ZTYPCLCHA de la fiche du client chargeur = 1 (client) sinon, on ne déclenche pas de facturation éventuell
+            Local Integer WTYPCLTCHG : WTYPCLTCHG = 1
+#            Read[F:ZAI]ZAI0=[F:ZMC]ZCODCHARG;[F:ZMC]ZCODCLT
+#            If(fstat=0)Then
+#              WTYPCLTCHG = [F:ZAI]ZTYPCLCHA
+#            Endif
+            If(WTYPCLTCHG=1)Then
+              For [F:ZRMC]ZRMC0 Where [F:ZRMC]ZCMCNUM=WZCMCNUM and [F:ZRMC]ZCMCLIN=[F:ZMC]ZCMCLIN and [F:ZRMC]QTY>0
+                Raz [F:ZTE]
+                [F:ZTE]ZFCY       = [F:ZCMC]FCYREC
+                [F:ZTE]ZBPCORD    = WCODCHG
+                [F:ZTE]ZUSER      = GUSER
+                [F:ZTE]ZITMREF    = [F:ZRMC]ITMREF
+                [F:ZTE]ZACT       = 12
+                [F:ZTE]ZCOMPTEUR  = WCOMPTEUR
+                [F:ZTE]ZDATACT    = [F:ZCMC]DATERECEP
+                [F:ZTE]ZREFERENCE = left$([F:ZCMC]REFERENCE,40)
+                Read[F:BPC]BPC0=WCODCHG
+                If(fstat=0)Then
+                  [F:ZTE]ZBPAADD  = [F:BPC]BPAADD
+                Endif
+                [F:ZTE]ZBPCORDF   = WCODCHG
+                [F:ZTE]ZFCYF      = [F:ZCMC]FCYREC
+                [F:ZTE]ZSDHNUM    = ""
+                [F:ZTE]ZFCYREC    = ""
+                [F:ZTE]ZCHAUFFEUR = [F:ZCMC]ZCHAUFEPI
+                [F:ZTE]VCRNUM     = WZCMCNUM
+                [F:ZTE]VCRTYP     = "ZCMC"
+                [F:ZTE]VCRLIN     = [F:ZMC]ZCMCLIN
+                #On va récupérer le code pays du dépôt
+                [F:ZTE]ZPAYS      = "FR"
+                Read[F:ZDPO]ZDPO0=[F:ZCMC]ZDEPNUM
+                If(fstat=0)Then
+                  [F:ZTE]ZPAYS    = [F:ZDPO]ZPAYSISO
+                Endif
+                [F:ZTE]ZACTNUM    = WZACTNUM
+                [F:ZTE]ZDATEFFET  = [F:ZCMC]DATERECEP
+                [F:ZTE]ZTYPPAL    = 1
+                [F:ZTE]ZQTY       = [F:ZRMC]QTY
+                [F:ZTE]ZEXEACT    = date$
+                [F:ZTE]ZEXEACTH   = time$
+                [F:ZTE]ZNUMLIG    = WNBLIGCRE*1000 : WNBLIGCRE += 1
+                [F:ZTE]ZCODCLT    = WCODCLT
+                [F:ZTE]ZDEPNUM    = [F:ZCMC]ZDEPNUM
+                [F:ZTE]ZTRIUSINE  = WTRIUSINE
+                [F:ZTE]TRIAFAIRE  = [F:ZMC]TRIAFAIRE
+                [F:ZTE]ZACTOK     = 1
+                Write [F:ZTE]
+                If(fstat<>0)Then
+                  WERR = 4  # -> Erreur n°4 : Problème d'écriture dans la table ZTEMPEPI
+                  WRESULT = 0
+                  WINFO = "[4] - Erreur lors de l'écriture dans la table ZTEMPEPI [Err n°" + num$(WERR) + "]"
+                  Break 2
+                Endif
+              Next
+            Endif
+          Endif
+        Next WNUMLIG
+        #On va maintenant exécuter l'action s'il existe une action
+        If(WZACTNUM<>"")Then
+          #Nous allons maintenant exécuter l'action
+          Call EXEC_ACT_EPI(WCOMPTEUR, WERR) From Z2WSEPALIS
+          If(WERR<>0)Then
+            WERR = 5
+          Endif
+        Endif
+        If(WERR=0)Then
+          [F:ZCMC]DATEVAL = date$
+          [F:ZCMC]HEUVALRECEP = time$
+          If([F:ZCMC]ZCODUSINE<>"")Then
+          #If(WTRIUSINE=2)Then
+            #Si on est en tri usine, on va directement solder la collecte multi-chargeur
+            [F:ZCMC]DATEVALCOL = date$
+            [F:ZCMC]FLGVAL = 2
+            [F:ZCMC]SOLDTRIUSINE = 2
+            [F:ZCMC]DATESOLDE = date$
+            [F:ZCMC]HEUVALCOL = time$
+            [F:ZCMC]MOTIFSOLDE = "ZDU"
+            #On détruit le sémaphore de réception
+            [F:ZCMC]SEMAREC = 1
+            #On va parcourir tous les enregistrement da la table ZCHGMULTICHG pour relacher les sémaphores de tris
+            For[F:ZMC]ZMC0 Where [F:ZMC]ZCMCNUM=WZCMCNUM
+              [F:ZMC]SEMATRI = 1
+              If([F:ZMC]QTERECEP>0)Then
+                [F:ZMC]SYNCHEPI = 1
+              Else
+                [F:ZMC]SYNCHEPI = 2
+              Endif
+              Rewrite[F:ZMC]
+            Next
+          Endif
+          Rewrite[F:ZCMC]
+          If(fstat<>0)Then
+            WERR = 6
+            WRESULT = 0
+            WINFO = "[1] - Erreur lors de l'écriture des informations de la collecte multi-chargeur. [Err n°" + num$(fstat) + "]"
+          Endif
+
+
+          #On vient de valider l'étape de réception, on va donc parcourir les lignes des clients chargeurs et pour chaque
+          #ligne dont la qté réceptionnée est supérieure à 0, alors on va positionner la ligne à synchronisée avec EPALIS à non
+          Local Integer WSYNCCHG
+          Local Integer WVALIDPIECE : WVALIDPIECE = 1
+          For[F:ZMC]ZMC0 Where [F:ZMC]ZCMCNUM=WZCMCNUM
+            [F:ZMC]SYNCHEPI = 2
+            [F:ZMC]SEMATRI = 1
+            Rewrite[F:ZMC]
+            If([F:ZMC]TRIAFAIRE=2)Then
+              WVALIDPIECE = 0
+            Endif
+          Next
+          #On va regarder si il faut valider la pièce multi-chargeur
+          #Il faut la valider s'il n'y a aucune ligne qui est en tri a faire
+          If(WVALIDPIECE=1)Then
+            Local Integer WERR : WERR = 0
+            [F:ZCMC]DATEVALCOL = date$
+            [F:ZCMC]HEUVALCOL = time$
+            [F:ZCMC]FLGVAL = 2
+            #On détruit le sémaphore de réception
+            [F:ZCMC]SEMAREC = 1
+            Rewrite[F:ZCMC]
+            If(fstat<>0)Then
+              WERR = 18
+              WRESULT = 0
+              WINFO = "[18] - Erreur lors de l'écriture des informations de la collecte multi-chargeur. [Err n°" + num$(fstat) + "]"
+            Endif
+          Endif
+          #<--------------MODIF JBS du 15/05/2020--------------
+          Local Decimal BASPAG
+          #On va exécuter l'action ZTRSFDEC pour la gestion de la déconsigne
+          ## Action ZTRSFDEC
+          Local Char    PARMSK(250)(1..20) , SAVACT(20)
+          SAVACT = GACTION : GACTION = "ZTRSFDEC"
+          PARMSK(1) = [F:ZCMC]ZCMCNUM
+          Call TRAITE_NUM(BASPAG,PARMSK,"","","",1,"ZTRSFDEC") From GTRAITE
+          GACTION = SAVACT
+          #--------------------------------------------------->
+
+
+
+
+        Else
+          WERR = 7
+          WRESULT = 0
+          WINFO = "[1] - Erreur lors de la validation de la réception de cet EPM. Veuillez réessayer plus tard. [Err n°" + num$(WERR) + "]"
+        Endif
+      Else
+        If([F:ZCMC]DATECOL=[0/0/0] or ([F:ZCMC]DATEENL=[0/0/0] and WCHGEPI=1) or [F:ZCMC]DATERECEP=[0/0/0])Then
+          If([F:ZCMC]DATECOL=[0/0/0] and ([F:ZCMC]DATEENL=[0/0/0] and WCHGEPI=1) and [F:ZCMC]DATERECEP=[0/0/0])Then
+            WERR = 8
+            WRESULT = 0
+            WINFO = "Impossible ! Vous devez renseigner au préalable les dates de collecte, d'enlèvement et de réception."
+          Elsif([F:ZCMC]DATECOL=[0/0/0])Then
+            WERR = 9
+            WRESULT = 0
+            WINFO = "Impossible ! Vous devez renseigner au préalable la date de collecte."
+          Elsif([F:ZCMC]DATEENL=[0/0/0] and WCHGEPI=1)Then
+            WERR = 10
+            WRESULT = 0
+            WINFO = "Impossible ! Vous devez renseigner au préalable la date d'enlèvement."
+          Elsif([F:ZCMC]DATERECEP=[0/0/0])Then
+            WERR = 11
+            WRESULT = 0
+            WINFO = "Impossible ! Vous devez renseigner au préalable la date de réception."
+          Endif
+        Endif
+        If([F:ZCMC]QTYANN<=0 or [F:ZCMC]QTYENL<0 or ([F:ZCMC]QTYENL=0 and WCHGEPI=1) or [F:ZCMC]QTYREC<=0)Then
+          If([F:ZCMC]QTYANN<=0 and ([F:ZCMC]QTYENL<0 or ([F:ZCMC]QTYENL=0 and WCHGEPI=1)) and [F:ZCMC]QTYREC<=0)Then
+            WERR = 12
+            WRESULT = 0
+            WINFO = "Impossible ! Vous devez renseigner au préalable les qantités annoncée, enlèvée et réceptionnée."
+          Elsif([F:ZCMC]QTYANN<=0)Then
+            WERR = 13
+            WRESULT = 0
+            WINFO = "Impossible ! Vous devez renseigner au préalable la quantité annoncée."
+          Elsif([F:ZCMC]QTYENL<0 or ([F:ZCMC]QTYENL=0 and WCHGEPI=1))Then
+            WERR = 14
+            WRESULT = 0
+            WINFO = "Impossible ! Vous devez renseigner au préalable la quantité enlevée."
+          Elsif([F:ZCMC]QTYREC<=0)Then
+            WERR = 15
+            WRESULT = 0
+            WINFO = "Impossible ! Vous devez renseigner au préalable la quantité réceptionnée."
+          Endif
+        Endif
+      Endif
+    Else
+      WERR = 16
+      WRESULT = 0
+      WINFO = "Impossible ! La validation de l'étape de réception de la collecte multi-chargeur " + WZCMCNUM + " a déjà été effectuée."
+    Endif
+  Else
+    WERR = 17
+    WRESULT = 0
+    WINFO = "Erreur lors de la récupération des données de la collecte multi-chargeur N° " + WZCMCNUM + " [Err n°" + num$(WERR) + "] fstat=" + num$(fstat)
+  Endif
+End
+
+############################################################################
+# Ce web service permet de valider l'étape de tri d'un client chargeur de la collecte multi-chargeur
+Subprog SET_VAL_TRI(WZCMCNUM,WZCODCHG,WZCODCLT,WNUMEPI,WDATETRI,WRESULT,WINFO)
+  Value Char       WZCMCNUM
+  Value Char       WZCODCHG
+  Value Char       WZCODCLT
+  Value Char       WNUMEPI
+  Value Date       WDATETRI
+  Variable Integer WRESULT
+  Variable Char    WINFO
+
+  Local Integer OK
+  Local Integer WNUMLIG : WNUMLIG = 0
+  Local Integer WCONTINUE : WCONTINUE = 0
+  Local Integer WSTAT
+  Local Char WSEQ(15)
+  WRESULT = 1
+  WINFO = "Traitement réussi"
+  If clalev([F:ZCMC])=0 : Local File ZCOLMULTICHG [F:ZCMC] : Endif
+  If clalev([F:ZMC])=0  : Local File ZCHGMULTICHG [F:ZMC]  : Endif
+  If clalev([F:ZRMC])=0 : Local File ZRECMULTICHG [F:ZRMC] : Endif
+  If clalev([F:ZTMC])=0 : Local File ZTRIMULTICHG [F:TRMC] : Endif
+  If clalev([F:ZARE])=0 : Local File ZARTRECEP    [F:ZARE] : Endif
+  If clalev([F:ZCE])=0  : Local File ZCHEPI       [F:ZCE]  : Endif
+  If clalev([F:BPC])=0  : Local File BPCUSTOMER   [F:BPC]  : Endif
+  If clalev([F:ZAI])=0  : Local File ZADREPI      [F:ZAI]  : Endif
+  If clalev([F:ZDPO])=0 : Local File ZDEPOT       [F:ZDPO] : Endif
+  If clalev([F:ZTE])=0  : Local File ZTEMPEPI     [F:ZTE]  : Endif
+  If clalev([F:BPC])=0  : Local File BPCUSTOMER   [F:BPC]  : Endif
+  Local Integer WERR : WERR = 0
+
+  Read[F:ZCMC]ZCMC=WZCMCNUM
+  If(fstat=0)Then
+    If([F:ZCMC]FLGVAL<>2)Then
+      #Pour pouvoir faire un tri, il faut absolument que l'EPM soit validé au niveau réception
+      If([F:ZCMC]DATEVAL<>[0/0/0])Then
+        Read[F:ZMC]ZMC1=WZCMCNUM;WZCODCHG;WZCODCLT
+        If(fstat=0)Then
+          If([F:ZMC]DATEVALTRI=[0/0/0])Then
+            If([F:ZMC]TRIAFAIRE=2 and [F:ZMC]SEMATRI=3)Then
+              #On est dans le cas où il y a un tri à faire
+              #On va donc regarder si le tri a été effectué pour ce chargeur et pour ce client chargeur
+              For [F:TRMC]ZTMC0 Where [F:TRMC]ZCMCNUM=WZCMCNUM and [F:TRMC]ZCODCHARG=[F:ZMC]ZCODCHARG and [F:TRMC]ZCODCLT=[F:ZMC]ZCODCLT and ([F:TRMC]QTEOK+[F:TRMC]QTEKC+[F:TRMC]QTEHS)>0
+                WCONTINUE = 1
+                Break
+              Next
+              If(WCONTINUE = 1)Then
+                #On est dans le cas où il faut effectuer le traitement de validation du tri
+                Local Integer WERR : WERR = 0
+#              Trbegin [F:ZZS],[F:ZZHF],[F:ZZHL],[F:ZZSA],[F:ZTE]
+                #Nous sommes en train de valider un tri
+                #On va créer une action de type collecte, puis on va l'exécuter
+                Local Integer WNUMLIG : WNUMLIG = 1
+                Local Integer WNBLIGCRE : WNBLIGCRE = 1
+                Local Char WCOMPTEUR(30) : WCOMPTEUR = func Z2WSEPALIS.SPE_GET_COMPTEUR()
+                Local Char WZACTNUM(30)  : WZACTNUM  = func SPE_GET_COMPT_ACT([F:ZCMC]FCYREC)
+                For [F:TRMC]ZTMC0 Where [F:TRMC]ZCMCNUM=WZCMCNUM and [F:TRMC]ZCODCHARG=[F:ZMC]ZCODCHARG and [F:TRMC]ZCODCLT=[F:ZMC]ZCODCLT
+                  #On va créer une action dans ZTEMPEPI pour les OK
+                  If([F:TRMC]QTEOK>0)Then
+                    Raz [F:ZTE]
+                    [F:ZTE]ZFCY       = [F:ZCMC]FCYREC
+                    [F:ZTE]ZBPCORD    = WZCODCHG
+                    [F:ZTE]ZUSER      = GUSER
+                    [F:ZTE]ZITMREF    = [F:TRMC]ITMREF
+                    [F:ZTE]ZACT       = 11
+                    [F:ZTE]ZCOMPTEUR  = WCOMPTEUR
+                    [F:ZTE]ZDATACT    = WDATETRI
+                    [F:ZTE]ZREFERENCE = left$([F:ZCMC]REFERENCE,40)
+                    Read[F:BPC]BPC0=WZCODCHG
+                    If(fstat=0)Then
+                      [F:ZTE]ZBPAADD  = [F:BPC]BPAADD
+                    Endif
+                    [F:ZTE]ZBPCORDF   = WZCODCHG
+                    [F:ZTE]ZFCYF      = [F:ZCMC]FCYREC
+                    [F:ZTE]ZSDHNUM    = ""
+                    [F:ZTE]ZFCYREC    = ""
+                    [F:ZTE]ZCHAUFFEUR = [F:ZCMC]ZCHAUFEPI
+                    [F:ZTE]VCRNUM     = [F:ZCMC]ZCMCNUM
+                    [F:ZTE]VCRTYP     = "ZCMC"
+                    [F:ZTE]VCRLIN     = [F:ZMC]ZCMCLIN
+                    [F:ZTE]ZPAYS      = "FR"
+                    Read[F:ZDPO]ZDPO0=[F:ZCMC]ZDEPNUM
+                    If(fstat=0)Then
+                      [F:ZTE]ZPAYS    = [F:ZDPO]ZPAYSISO
+                    Endif
+                    [F:ZTE]ZACTNUM    = WZACTNUM
+                    [F:ZTE]ZDATEFFET  = WDATETRI
+                    [F:ZTE]ZTYPPAL    = 1
+                    [F:ZTE]ZQTY       = [F:TRMC]QTEOK
+                    [F:ZTE]ZEXEACT    = date$
+                    [F:ZTE]ZEXEACTH   = time$
+                    [F:ZTE]ZNUMLIG    = WNBLIGCRE*1000 : WNBLIGCRE += 1
+                    [F:ZTE]ZCODCLT    = WZCODCLT
+                    [F:ZTE]ZDEPNUM    = [F:ZCMC]ZDEPNUM
+                    [F:ZTE]ZTRIUSINE  = 1
+                    [F:ZTE]ZACTOK     = 1
+                    Write [F:ZTE]
+                    If(fstat<>0)Then
+                      WERR = fstat
+                    Endif
+                  Endif
+                  #On va créer une action dans ZTEMPEPI pour les KC
+                  If([F:TRMC]QTEKC>0)Then
+                    Raz [F:ZTE]
+                    [F:ZTE]ZFCY       = [F:ZCMC]FCYREC
+                    [F:ZTE]ZBPCORD    = WZCODCHG
+                    [F:ZTE]ZUSER      = GUSER
+                    [F:ZTE]ZITMREF    = [F:TRMC]ITMREF
+                    [F:ZTE]ZACT       = 11
+                    [F:ZTE]ZCOMPTEUR  = WCOMPTEUR
+                    [F:ZTE]ZDATACT    = WDATETRI
+                    [F:ZTE]ZREFERENCE = left$([F:ZCMC]REFERENCE,40)
+                    Read[F:BPC]BPC0=WZCODCHG
+                    If(fstat=0)Then
+                      [F:ZTE]ZBPAADD  = [F:BPC]BPAADD
+                    Endif
+                    [F:ZTE]ZBPCORDF   = WZCODCHG
+                    [F:ZTE]ZFCYF      = [F:ZCMC]FCYREC
+                    [F:ZTE]ZSDHNUM    = ""
+                    [F:ZTE]ZFCYREC    = ""
+                    [F:ZTE]ZCHAUFFEUR = [F:ZCMC]ZCHAUFEPI
+                    [F:ZTE]VCRNUM     = [F:ZCMC]ZCMCNUM
+                    [F:ZTE]VCRTYP     = "ZCMC"
+                    [F:ZTE]VCRLIN     = [F:ZMC]ZCMCLIN
+                    [F:ZTE]ZPAYS      = "FR"
+                    Read[F:ZDPO]ZDPO0=[F:ZCMC]ZDEPNUM
+                    If(fstat=0)Then
+                      [F:ZTE]ZPAYS    = [F:ZDPO]ZPAYSISO
+                    Endif
+                    [F:ZTE]ZACTNUM    = WZACTNUM
+                    [F:ZTE]ZDATEFFET  = WDATETRI
+                    [F:ZTE]ZTYPPAL    = 2
+                    [F:ZTE]ZQTY       = [F:TRMC]QTEKC
+                    [F:ZTE]ZEXEACT    = date$
+                    [F:ZTE]ZEXEACTH   = time$
+                    [F:ZTE]ZNUMLIG    = WNBLIGCRE*1000 : WNBLIGCRE += 1
+                    [F:ZTE]ZCODCLT    = WZCODCLT
+                    [F:ZTE]ZDEPNUM    = [F:ZCMC]ZDEPNUM
+                    [F:ZTE]ZTRIUSINE  = 1
+                    [F:ZTE]ZACTOK     = 1
+                    Write [F:ZTE]
+                    If(fstat<>0)Then
+                      WERR = fstat
+                    Endif
+                  Endif
+                  #On va créer une action dans ZTEMPEPI pour les HS
+                  If([F:TRMC]QTEHS>0)Then
+                    Raz [F:ZTE]
+                    [F:ZTE]ZFCY       = [F:ZCMC]FCYREC
+                    [F:ZTE]ZBPCORD    = WZCODCHG
+                    [F:ZTE]ZUSER      = GUSER
+                    [F:ZTE]ZITMREF    = [F:TRMC]ITMREF
+                    [F:ZTE]ZACT       = 11
+                    [F:ZTE]ZCOMPTEUR  = WCOMPTEUR
+                    [F:ZTE]ZDATACT    = WDATETRI
+                    [F:ZTE]ZREFERENCE = left$([F:ZCMC]REFERENCE,40)
+                    Read[F:BPC]BPC0=WZCODCHG
+                    If(fstat=0)Then
+                      [F:ZTE]ZBPAADD  = [F:BPC]BPAADD
+                    Endif
+                    [F:ZTE]ZBPCORDF   = WZCODCHG
+                    [F:ZTE]ZFCYF      = [F:ZCMC]FCYREC
+                    [F:ZTE]ZSDHNUM    = ""
+                    [F:ZTE]ZFCYREC    = ""
+                    [F:ZTE]ZCHAUFFEUR = [F:ZCMC]ZCHAUFEPI
+                    [F:ZTE]VCRNUM     = [F:ZCMC]ZCMCNUM
+                    [F:ZTE]VCRTYP     = "ZCMC"
+                    [F:ZTE]VCRLIN     = [F:ZMC]ZCMCLIN
+                    [F:ZTE]ZPAYS      = "FR"
+                    Read[F:ZDPO]ZDPO0=[F:ZCMC]ZDEPNUM
+                    If(fstat=0)Then
+                      [F:ZTE]ZPAYS    = [F:ZDPO]ZPAYSISO
+                    Endif
+                    [F:ZTE]ZACTNUM    = WZACTNUM
+                    [F:ZTE]ZDATEFFET  = WDATETRI
+                    [F:ZTE]ZTYPPAL    = 3
+                    [F:ZTE]ZQTY       = [F:TRMC]QTEHS
+                    [F:ZTE]ZEXEACT    = date$
+                    [F:ZTE]ZEXEACTH   = time$
+                    [F:ZTE]ZNUMLIG    = WNBLIGCRE*1000 : WNBLIGCRE += 1
+                    [F:ZTE]ZCODCLT    = WZCODCLT
+                    [F:ZTE]ZDEPNUM    = [F:ZCMC]ZDEPNUM
+                    [F:ZTE]ZTRIUSINE  = 1
+                    [F:ZTE]ZACTOK     = 1
+                    Write [F:ZTE]
+                    If(fstat<>0)Then
+                      WERR = fstat
+                    Endif
+                  Endif
+                Next
+                If(WERR=0)Then
+                  #Nous allons maintenant exécuter l'action
+                  Call EXEC_ACT_EPI(WCOMPTEUR, WERR) From Z2WSEPALIS
+                  #Il faudra ensuite alimenter la date de validation du tri de la ligne sur laquelle on se trouve
+                  #On va modifier l'enregistrement de la ligne sur laquelle on se trouve
+                  Trbegin [F:ZMC],[F:TRMC]
+                  [F:ZMC]DATEVALTRI  = date$
+                  [F:ZMC]ZACTNUM     = WZACTNUM
+                  [F:ZMC]DATETRI     = WDATETRI
+                  [F:ZMC]NUMEPI      = WNUMEPI
+                  [F:ZMC]HEUREVALTRI = time$
+                  [F:ZMC]SEMATRI     = 1
+                  [F:ZMC]SYNCHEPI    = 1
+                  Rewrite[F:ZMC]
+                  If(fstat<>0)Then
+                    WERR = 1
+                  Endif
+                  For[F:TRMC]ZTMC0 Where [F:TRMC]ZCMCNUM=WZCMCNUM and [F:TRMC]ZCODCHARG=WZCODCHG and [F:TRMC]ZCODCLT=WZCODCLT
+                    [F:TRMC]SYNCHEPI = 1
+                    Rewrite[F:TRMC]
+                    If(fstat<>0)Then
+                      WERR = 2
+                    Endif
+                  Next
+                  #On va maintenant regarder si toutes les lignes de tris ont été validées, si c'est le cas, on valide la pièce
+                  Local Integer WVALIDPIECE : WVALIDPIECE = 1
+                  For [F:ZMC]ZMC0 Where [F:ZMC]ZCMCNUM=WZCMCNUM
+                    If([F:ZMC]TRIAFAIRE=2 and [F:ZMC]DATEVALTRI=[0/0/0])Then
+                      WVALIDPIECE = 0
+                      Break
+                    Endif
+                  Next
+                  If(WVALIDPIECE=1)Then
+                    [F:ZCMC]DATEVALCOL = date$
+                    [F:ZCMC]HEUVALCOL = time$
+                    [F:ZCMC]FLGVAL = 2
+                    #On détruit le sémaphore de réception
+                    [F:ZCMC]SEMAREC = 1
+                    Rewrite[F:ZCMC]
+                    If(fstat<>0)Then
+                      WERR = 18
+                    Endif
+                  Endif
+                  If(WERR=0)Then
+                    Commit
+                    #<--------------MODIF JBS du 15/05/2020--------------
+                    #On va exécuter l'action ZTRSFDEC pour la gestion de la déconsigne
+                    Local Decimal BASPAG
+                    ## Action ZTRSFDEC
+                    Local Char    PARMSK(250)(1..20) , SAVACT(20)
+                    SAVACT = GACTION : GACTION = "ZTRSFDEC"
+                    PARMSK(1) = [F:ZCMC]ZCMCNUM
+                    Call TRAITE_NUM(BASPAG,PARMSK,"","","",1,"ZTRSFDEC") From GTRAITE
+                    GACTION = SAVACT
+                    #--------------------------------------------------->
+                  Else
+                    Rollback
+                    #Il y a eu un problème, il faut supprimer manuellement les enregistrements de la table ZTEMPEPI
+                    Delete [F:ZTE] Where [F:ZTE]ZCOMPTEUR=WCOMPTEUR and [F:ZTE]ZACTNUM=WZACTNUM
+                    WRESULT = 0
+                    WINFO = "Problème lors de la validation du tri pour le chargeur : " + WZCODCHG + ". Veuillez réessayer plus tard."
+                  Endif
+                Else
+                  #On est dans le cas où le tri n'a pas encore été fait, on va le signaler à l'utilisateur
+                  WRESULT = 0
+                  WINFO = "Impossible ! Il y a eu des erreurs dans l'enregistrement de l'action. Code erreur : " + num$(WERR)
+                Endif
+              Else
+                #On est dans le cas où le tri n'a pas encore été fait, on va le signaler à l'utilisateur
+                WRESULT = 0
+                WINFO = "Impossible ! Aucun tri n'a encore été saisi sur ce chargeur."
+              Endif
+            Else
+              #On est dans le cas où il n'y a pas de tri à faire
+              WRESULT = 0
+              WINFO = "Impossible ! Ce chargeur n'est pas en tri à faire ou le sémaphore de tri n'est pas égal à 3."
+            Endif
+          Else
+            #On est dans le cas où le tri a déjà été validé
+            WRESULT = 0
+            WINFO = "Impossible ! Le tri a déjà été validé."
+          Endif
+        Else
+          WRESULT = 0
+          WINFO = "Impossible de valider un tri sans avoir validé au préalable la réception."
+        Endif
+      Endif
+    Else
+      WRESULT = 0
+      WINFO = "Erreur lors de la récupération des données de la table ZCHGMULTICHG. [Err n°" + num$(fstat) + "]"
+    Endif
+  Else
+    WRESULT = 0
+    WINFO = "Erreur lors de la récupération des données de la collecte multi-chargeur [Err n°" + num$(fstat) + "]"
+  Endif
+End
+
+############################################################################
+# Ce web service permet de valider l'étape de tri d'un client chargeur de la collecte multi-chargeur
+Subprog SET_SOLDE_CMC(WZCMCNUM,WZMOTIF,WOBSSOLDE,WLOGINSOLDE,WRESULT,WINFO)
+  Value Char       WZCMCNUM
+  Value Char       WZMOTIF
+  Value Char       WOBSSOLDE
+  Value Char       WLOGINSOLDE
+  Variable Integer WRESULT
+  Variable Char    WINFO
+
+  WRESULT = 1
+  WINFO = "Traitement réussi"
+  If clalev([F:ZCMC])=0 : Local File ZCOLMULTICHG [F:ZCMC] : Endif
+  Read[F:ZCMC]ZCMC=WZCMCNUM
+  If(fstat=0)Then
+    If([F:ZCMC]DATESOLDE=[0/0/0])Then
+      [F:ZCMC]DATESOLDE  = date$
+      [F:ZCMC]HEURESOLDE = time$
+      [F:ZCMC]OBSSOLDE   = WOBSSOLDE
+      [F:ZCMC]LOGINSOLDE = WLOGINSOLDE
+      [F:ZCMC]MOTIFSOLDE = WZMOTIF
+      [F:ZCMC]SEMAREC    = 3
+      Rewrite[F:ZCMC]
+      If(fstat<>0)Then
+        WRESULT = 0
+        WINFO = "Impossible de sauvegarder les modifications. Collecte multi-chargeur non soldée."
+      Endif
+    Else
+      WRESULT = 0
+      WINFO = "Impossible ! La collecte multi-chargeur est déjà soldée."
+    Endif
+  Else
+    WRESULT = 0
+    WINFO = "Impossible de récupérer les informations de la collecte. Collecte multi-chargeur non soldée."
+  Endif
+End
+
+Funprog SPE_GET_COMPT_ACT(WFCYREC)
+  Value Char WFCYREC
+  Local Char RESULT(17)
+  Local Integer WSTAT, WNOL
+  Local Char WZACTNUM(15)
+  Call NUMERO("ZACT",WFCYREC,date$,"",WZACTNUM,WSTAT) From SUBANM
+  If GOK<0 : Return : Endif
+  If WSTAT=0
+      RESULT = WZACTNUM
+  Else
+      GERR=1
+      GMESSAGE=mess(60,199,1)
+      GOK=0
+      Return
+  Endif
+End RESULT
+
+Subprog SET_SYNC_ENT_EPX(WZCMCNUM,WRESULT,WINFO)
+  Value Char       WZCMCNUM
+  Variable Integer WRESULT
+  Variable Char    WINFO
+
+  WRESULT = 1
+  WINFO = "Traitement réussi"
+  If clalev([F:ZCMC])=0 : Local File ZCOLMULTICHG [F:ZCMC] : Endif
+  Read[F:ZCMC]ZCMC=WZCMCNUM
+  If(fstat=0)Then
+    [F:ZCMC]SYNCHEPI  = 2
+    Rewrite[F:ZCMC]
+    If(fstat<>0)Then
+      WRESULT = 0
+      WINFO = "Impossible de sauvegarder les modifications de la collecte multi-chargeur (" + WZCMCNUM + ")."
+    Endif
+  Else
+    WRESULT = 0
+    WINFO = "Impossible de récupérer les informations de la collecte."
+  Endif
+End
+
+############################################################################
+# Ce web service permet de récupérer la liste des chargeurs d'une collecte multichargeur existante dans Sage X3
+Subprog GET_LST_CHG(WZCMCNUM,WTABZCODCHARG,WTABZCODCLT)
+  Value Char       WZCMCNUM
+  Variable Char    WTABZCODCHARG()(0..49)
+  Variable Char    WTABZCODCLT()(0..49)
+
+If clalev([F:ZMC])=0    : Local File ZCHGMULTICHG [F:ZMC]    : Endif
+Local Integer WLIG : WLIG = 0
+For [F:ZMC]ZMC0 Where [F:ZMC]ZCMCNUM=WZCMCNUM
+  WTABZCODCHARG(WLIG)   = [F:ZMC]ZCODCHARG
+  WTABZCODCLT(WLIG)     = [F:ZMC]ZCODCLT
+  WLIG += 1
+Next
+End
+
+Funprog SPE_GET_MASK(WFENETRE,WCHAMP)
+  Value Char WFENETRE
+  Value Char WCHAMP
+  Local Char RESULT(17) : RESULT = ""
+  Local Integer WNUMLIG : WNUMLIG = 0
+  #Cette fonction permet de récupérer le nom de l'écran contenant le nom de champ WCHAMP de la fenêtre WFENETRE
+  If clalev([F:AWI])=0    : Local File AWINDOW [F:AWI]    : Endif
+  If clalev([F:AMZ])=0    : Local File AMSKZON [F:AMZ]    : Endif
+  If clalev([F:AMK])=0    : Local File AMSK    [F:AMK]    : Endif
+  If(fstat=0)Then
+    #La fenêtre existe
+    Read[F:AMZ]CODE=[F:AWI]MSKENT;WCHAMP
+    If(fstat=0)Then
+      #On vient de trouver l'écran contenant le champ
+      Read[F:AMK]CODMSK=[F:AWI]MSKENT
+      If(fstat=0)Then
+        #RESULT = [F:AWI]MSKENT
+        RESULT = [F:AMK]ABRMSK
+      Endif
+    Else
+      For WNUMLIG=0 To 14
+        If([F:AWI]NOMMSK(WNUMLIG)<>"")Then
+          Read[F:AMZ]CODE=[F:AWI]NOMMSK(WNUMLIG);WCHAMP
+          If(fstat=0)Then
+            Read[F:AMK]CODMSK=[F:AWI]NOMMSK(WNUMLIG)
+            If(fstat=0)Then
+              #RESULT = [F:AWI]NOMMSK(WNUMLIG)
+              RESULT = [F:AMK]ABRMSK
+            Endif
+            Break
+          Endif
+        Endif
+      Next WNUMLIG
+    Endif
+  Endif
+End RESULT
+
+Subprog SPE_SET_ZONE_TR(WTABLE,WFENETRE,WSTYLE)
+  Value Char WTABLE
+  Value Char WFENETRE
+  Value Char WSTYLE
+Local Char WMAZONE(50)
+Local Char WMONMASK(50)
+#On va regarder s'il y a des champs synchronisé en temps réel avec EPALIS
+If clalev([F:ZZSE])=0  : Local File ZONESSYNCEPI [F:ZZSE]  : Endif
+For[F:ZZSE]ZZSE0 Where [F:ZZSE]ZTABLE=WTABLE
+  WMAZONE = [F:ZZSE]ZCHAMPSX3
+  WMONMASK = func SPE_GET_MASK(WFENETRE,WMAZONE)
+  If(WMONMASK<>"")Then
+    Default Mask "[M:" + WMONMASK + "]"
+    Chgstl =WMAZONE With WSTYLE
+  Endif
+Next
+End
+
+Subprog SPE_SET_JSON(WTABLE,WZONE,WVALEUR,WIDEPI,WTYPE)
+  Value Char WTABLE
+  Value Char WZONE
+  Value Char WVALEUR
+  Value Integer WIDEPI
+  Value Integer WTYPE # 1 : Création, 2 : Modification, 3 : Suppression
+  Local Char WTYPEMETH(30)
+  If(WTYPE=1)Then
+    WTYPEMETH = "POST"
+  Elsif(WTYPE=3)Then
+    WTYPEMETH = "DELETE"
+  Else
+    WTYPEMETH = "PUT"
+  Endif
+#On va commencer par regarder si la zone est bien en synchronisation temps réel avec EPALIS
+Local Integer WNUMLIG   : WNUMLIG   = 0
+Local Integer WCONTINUE : WCONTINUE = 0
+If clalev([F:ZZSE])=0  : Local File ZONESSYNCEPI [F:ZZSE]  : Endif
+If clalev([M:ZZSE1])=0 : Local Mask ZZSE1        [M:ZZSE1] : Endif
+#Read[F:ZZSE]ZZSE1=WTABLE;WZONE
+#If(fstat=0)Then
+  #La zone est bien en synchronisation temps réel avec EPALIS, on va donc alimenter notre mask
+  #Avant cela, nous allons regarder si le champ n'est pas déjà présent dans le mask, si c'est le cas, nous allons supprimer les lignes
+  For WNUMLIG=0 To [M:ZZSE1]NBLIG-1
+    If([M:ZZSE1]ZCHAMPSX3(WNUMLIG)=WZONE)Then
+      Dela WNUMLIG,1,[M:ZZSE1]NBLIG-1 [M:ZZSE1]NBLIG
+      [M:ZZSE1]NBLIG -= 1
+    Endif
+  Next WNUMLIG
+#  If(WCONTINUE=0)Then
+  For [F:ZZSE]ZZSE0 Where [F:ZZSE]ZTABLE=WTABLE and [F:ZZSE]ZCHAMPSX3=WZONE and [F:ZZSE]ZMETHODREST=WTYPEMETH
+    #Le champ X3 n'existe pas encore dans le mask, on va donc ajouter l'entrée
+    [M:ZZSE1]ZCHAMPSEPI([M:ZZSE1]NBLIG)   = [F:ZZSE]ZCHAMPSEPI
+    [M:ZZSE1]ZCHAMPSX3([M:ZZSE1]NBLIG)    = [F:ZZSE]ZCHAMPSX3
+    [M:ZZSE1]ZMETHODREST([M:ZZSE1]NBLIG)  = [F:ZZSE]ZMETHODREST
+    [M:ZZSE1]ZRESTNAME([M:ZZSE1]NBLIG)    = [F:ZZSE]ZRESTNAME
+    [M:ZZSE1]ZTABLE([M:ZZSE1]NBLIG)       = [F:ZZSE]ZTABLE
+    [M:ZZSE1]ZTYPEPI([M:ZZSE1]NBLIG)      = [F:ZZSE]ZTYPEPI
+    [M:ZZSE1]ZURLREST([M:ZZSE1]NBLIG)     = [F:ZZSE]ZURLREST
+    [M:ZZSE1]ZGROUPE([M:ZZSE1]NBLIG)      = [F:ZZSE]ZGROUPE
+    [M:ZZSE1]ZVALEUREPI([M:ZZSE1]NBLIG)   = [F:ZZSE]ZVALEUREPI
+    If([F:ZZSE]ZTYPEPI=5)Then
+      #On est dans le cas d'un lien
+      #Dans le cas d'un lien, on peut faire appel à un web service
+      #Il y a un appel à un web service si la valeur du champ [F:ZZSE]ZVALEUREPI contient par exemple :
+      #[WS=EPALIS_API;GET;/x3/point_depose/[VALEUR_X3];{};id]
+      Local Char WMAVALEUR(250)
+      #On commence par remplacer la valeur X3
+      #Infbox [F:ZZSE]ZVALEUREPI + "---[VALEUR_X3]---" + WVALEUR
+      WMAVALEUR = func ZWSEPALISC.SPE_REPLACE_CHAR([F:ZZSE]ZVALEUREPI,"[VALEUR_X3]",WVALEUR)
+      WMAVALEUR = func ZWSEPALISC.SPE_REPLACE_CHAR(WMAVALEUR,"[ZIDEPI]",num$(WIDEPI))
+      #On va regarder s'il existe une chaine du style [WS=...]
+      #Infbox WMAVALEUR
+      Local Integer WDEBWS : WDEBWS = instr(1,WMAVALEUR,"[WS=")
+      Local Integer WFINWS
+      If(WDEBWS>0)Then
+        WFINWS = instr(WDEBWS+4,WMAVALEUR,"]")
+        If(WFINWS>0)Then
+          #On est bien dans le cas où l'on a une séquence du type [WS=...]
+          Local Char WCHWS(250) : WCHWS = mid$(WMAVALEUR,WDEBWS,WFINWS-WDEBWS+1)
+          #Infbox WCHWS
+          Local Char WRESULTWS(100)
+          WRESULTWS = func SPE_GET_RESULT_WS(WCHWS)
+          #Infbox WMAVALEUR
+          #Infbox WCHWS
+          #Infbox WRESULTWS
+          #Infbox func ZWSEPALISC.SPE_REPLACE_CHAR(WMAVALEUR,WCHWS,WRESULTWS)
+          [M:ZZSE1]ZVALEUR([M:ZZSE1]NBLIG)  = func ZWSEPALISC.SPE_REPLACE_CHAR(WMAVALEUR,WCHWS,WRESULTWS)
+          #Infbox "Valeur finale : " + [M:ZZSE1]ZVALEUR([M:ZZSE1]NBLIG)
+        Endif
+      Endif
+    Else
+      #Nous ne sommes pas dans le cas d'un lien
+      If([F:ZZSE]ZTYPEPI<>4)Then
+        #Nous ne sommes pas dans le cas d'un booléen
+        [M:ZZSE1]ZVALEUR([M:ZZSE1]NBLIG)  = func ZWSEPALISC.SPE_REPLACE_CHAR([F:ZZSE]ZVALEUREPI,"[VALEUR_X3]",WVALEUR)
+      Else
+        #On est dans le cas où la valeur attendu est un booléen
+        If(WVALEUR="2")Then
+          [M:ZZSE1]ZVALEUR([M:ZZSE1]NBLIG)= func ZWSEPALISC.SPE_REPLACE_CHAR([F:ZZSE]ZVALEUREPI,"[VALEUR_X3]","true")
+        Else
+          [M:ZZSE1]ZVALEUR([M:ZZSE1]NBLIG)= func ZWSEPALISC.SPE_REPLACE_CHAR([F:ZZSE]ZVALEUREPI,"[VALEUR_X3]","false")
+        Endif
+      Endif
+    Endif
+    #Infbox [M:ZZSE1]ZVALEUR([M:ZZSE1]NBLIG)
+    [M:ZZSE1]NBLIG += 1
+  Next
+    Affzo[M:ZZSE1]
+#  Endif
+#Endif
+End
+
+Funprog SPE_GET_JSON()
+Local Clbfile  RESULT(0) : RESULT = ""
+Local Integer WNUMLIG : WNUMLIG = 0
+Local Integer WNUMLIG2 : WNUMLIG2 = 0
+Local Char WGROUPE(250) : WGROUPE = ";"
+  #On va commencer par parcourir le tableau pour déterminer tous les groupe à traiter
+  For WNUMLIG=0 To [M:ZZSE1]NBLIG-1
+    If([M:ZZSE1]ZGROUPE(WNUMLIG)<>"" and instr(1,WGROUPE,";" + [M:ZZSE1]ZGROUPE(WNUMLIG) + ";")<=0)Then
+      WGROUPE += [M:ZZSE1]ZGROUPE(WNUMLIG) + ";"
+    Endif
+  Next WNUMLIG
+  For WNUMLIG=0 To [M:ZZSE1]NBLIG-1
+    #2 cas se présente à nous :
+    # 1 - Le champ [M:ZZSE1]ZGROUPE(WNUMLIG) est vide
+    # 2 - Le champ [M:ZZSE1]ZGROUPE(WNUMLIG) n'est pas vide
+    If([M:ZZSE1]ZGROUPE(WNUMLIG)="")Then
+      If(RESULT<>"")Then
+        RESULT +=  ","
+      Endif
+      RESULT += '"' + [M:ZZSE1]ZCHAMPSEPI(WNUMLIG) + '":'
+      If([M:ZZSE1]ZTYPEPI(WNUMLIG)=1 or [M:ZZSE1]ZTYPEPI(WNUMLIG)=3 or [M:ZZSE1]ZTYPEPI(WNUMLIG)=5)Then
+        #La valeur a renvoyer est de l'alphanumérique, une date ou un lien
+        RESULT += '"' + [M:ZZSE1]ZVALEUR(WNUMLIG) + '"'
+      Else
+        #La valeur à renvoyer est un numérique ou un booléen
+        RESULT += [M:ZZSE1]ZVALEUR(WNUMLIG)
+      Endif
+    Else
+      #On va regarder si on n'a pas déjà traité ce groupe
+      If(instr(1,WGROUPE,[M:ZZSE1]ZGROUPE(WNUMLIG))>0)Then
+        #On n'a pas encore traité ce groupe, on va donc le traiter
+        Local Char RESULTGRP(250) : RESULTGRP = ""
+        For WNUMLIG2=0 To [M:ZZSE1]NBLIG-1
+          If([M:ZZSE1]ZGROUPE(WNUMLIG2)=[M:ZZSE1]ZGROUPE(WNUMLIG))Then
+            If(RESULTGRP<>"")Then
+              RESULTGRP +=  ","
+            Endif
+            RESULTGRP += '"' + [M:ZZSE1]ZCHAMPSEPI(WNUMLIG2) + '":'
+            If([M:ZZSE1]ZTYPEPI(WNUMLIG2)=1 or [M:ZZSE1]ZTYPEPI(WNUMLIG2)=3 or [M:ZZSE1]ZTYPEPI(WNUMLIG2)=5)Then
+              #La valeur a renvoyer est de l'alphanumérique, une date ou un lien
+              RESULTGRP += '"' + [M:ZZSE1]ZVALEUR(WNUMLIG2) + '"'
+            Else
+              #La valeur à renvoyer est un numérique ou un booléen
+              RESULTGRP += [M:ZZSE1]ZVALEUR(WNUMLIG2)
+            Endif
+          Endif
+        Next WNUMLIG2
+        RESULTGRP = '"' + [M:ZZSE1]ZGROUPE(WNUMLIG) + '"' + ":{" + RESULTGRP + "}"
+        If(RESULT<>"")Then
+          RESULT +=  ","
+        Endif
+        RESULT += RESULTGRP
+        #On retire de la variable WGROUPE, le groupe que l'on vient de traiter
+        WGROUPE = func SPE_REPLACE_CHAR(WGROUPE,";" + [M:ZZSE1]ZGROUPE(WNUMLIG) + ";","")
+      Endif
+    Endif
+  Next WNUMLIG
+  RESULT = "{" + RESULT + "}"
+End RESULT
+
+Subprog SPE_WS_REST(WNAMEWS,WMETHOD,WCID,WCDATA,WPROPERTY,WRETVAL,WRBODY)
+Value Char WNAMEWS        # Nom du WS : ex EPALIS_API
+Value Char WMETHOD        # Méthode à utiliser : es PUT
+Value Char WCID           # Complément d'URL : ex /chargeurs?id_x3=037154&page=1
+Value Clbfile WCDATA      # JSON a transférer au WS : ex '{"name":"BLX JBS","siret":"12345678901234"}'
+Value Char WPROPERTY      # Propiété que l'on veut récupérer lorsque l'on fit un GET : ex name ou primary_point_collecte.address.line1
+Variable Integer WRETVAL  # Valeur de retour : ex 200 -> Ok
+Variable Clbfile WRBODY   # Retour
+
+Local Char    PCOD(20)(1..30), PVAL(20)(1..30), HCOD(100)(1..20), HVAL(100)(1..20)
+Local Clbfile  RHEAD(0)
+
+WRETVAL=func ASYRRESTCLI.EXEC_REST_WS(WNAMEWS, WMETHOD, WCID, PCOD, PVAL, HCOD, HVAL, WCDATA, 0, WPROPERTY, RHEAD, WRBODY)
+End RETVAL
+
+Funprog SPE_GET_RESULT_WS(WAPPELWS)
+Value Char WAPPELWS
+Local Char RESULT(100)
+Local Char ZNAMEWS(50)
+Local Char ZMETHOD(10)
+Local Char ZCID(100)
+Local Clbfile ZCDATA(0)
+Local Char ZPROPERTY(50)
+Local Integer ZRETVAL
+Local Clbfile ZRBODY(0)
+#WAPPELWS est de la forme suivante [WS=ZNAMEWS;ZMETHOD;ZCID;ZCDATA;ZPROPERTY]
+WAPPELWS = func SPE_REPLACE_CHAR(WAPPELWS,"[WS=","")
+WAPPELWS = func SPE_REPLACE_CHAR(WAPPELWS,"]","")
+#On va maintenant découper la chaine pour récupérer les différents éléments
+Local Integer WINDEXOF
+#----------------------------------------
+WINDEXOF = instr(1,WAPPELWS,";")
+If(WINDEXOF>0)Then
+  ZNAMEWS = left$(WAPPELWS,WINDEXOF-1)
+  WAPPELWS = right$(WAPPELWS,WINDEXOF+1)
+Endif
+#----------------------------------------
+WINDEXOF = instr(1,WAPPELWS,";")
+If(WINDEXOF>0)Then
+  ZMETHOD = left$(WAPPELWS,WINDEXOF-1)
+  WAPPELWS = right$(WAPPELWS,WINDEXOF+1)
+Endif
+#----------------------------------------
+WINDEXOF = instr(1,WAPPELWS,";")
+If(WINDEXOF>0)Then
+  ZCID = left$(WAPPELWS,WINDEXOF-1)
+  WAPPELWS = right$(WAPPELWS,WINDEXOF+1)
+Endif
+#----------------------------------------
+WINDEXOF = instr(1,WAPPELWS,";")
+If(WINDEXOF>0)Then
+  ZCDATA = left$(WAPPELWS,WINDEXOF-1)
+  WAPPELWS = right$(WAPPELWS,WINDEXOF+1)
+Endif
+ZPROPERTY = WAPPELWS
+#Infbox "ZNAMEWS=" + ZNAMEWS
+#Infbox "ZMETHOD=" + ZMETHOD
+#Infbox "ZCID=" + ZCID
+#Infbox "ZCDATA=" + ZCDATA
+#Infbox "ZPROPERTY=" + ZPROPERTY
+Call SPE_WS_REST(ZNAMEWS,ZMETHOD,ZCID,ZCDATA,ZPROPERTY,ZRETVAL,ZRBODY) From ZWSEPALISC
+If(ZRETVAL=200)Then
+  RESULT = ZRBODY
+Endif
+End RESULT
+
+Funprog SPE_REPLACE_CHAR(WCHAINE,WCHAINERECH,WCHAINEREMP)
+Value Char WCHAINE
+Value Char WCHAINERECH
+Value Char WCHAINEREMP
+Local Char RESULT(250) : RESULT = WCHAINE
+#Cette fonction permet de remplacer la sous-chaine WCHAINERECH par la sous-chaine WCHAINEREMP dans la chaine WCHAINE
+Local Integer WRANG : WRANG = 1
+Local Integer WINDEXOF : WINDEXOF = instr(WRANG,RESULT,WCHAINERECH)
+While(WINDEXOF>0)
+  RESULT = left$(RESULT,WINDEXOF-1) + WCHAINEREMP + right$(RESULT,WINDEXOF+len(WCHAINERECH))
+  WRANG += len(WCHAINEREMP)
+  WINDEXOF = instr(WRANG,RESULT,WCHAINERECH)
+Wend
+End RESULT
+
+Funprog SPE_GET_VALUE_JSON(WJSON,WPROPERTY)
+  Value Clbfile WJSON
+  Value Char WPROPERTY
+  Local Char WVALUE(250) : WVALUE = ""
+  #Le but de cette fonction est de parser un JSON et de renvoyer la valeur d'une propriété passée en paramètre
+  #Principe : Il faut commencer par récupérer l'endroit où se trouve la propriété. A partir de cette position + la longueur
+  #de la propriété, on va chercher les caractères suivants : , ou ] ou }
+  #La valeur à renvoyer est comprise entre ces 2 positions
+  Local Integer WPOSDEB,WPOSFIN, WPOSTMP
+  WPOSDEB = instr(1,WJSON,'"' + WPROPERTY + '"')
+  If(WPOSDEB>0)Then
+    WPOSDEB += len(WPROPERTY)+1
+    #On va maintenant chercher le caractère de fin
+    WPOSFIN = instr(WPOSDEB,WJSON,",")
+    WPOSTMP = instr(WPOSDEB,WJSON,"]")
+    If(WPOSTMP>0 and (WPOSTMP<WPOSFIN or WPOSFIN=0))Then
+      WPOSFIN = WPOSTMP
+    Endif
+    WPOSTMP = instr(WPOSDEB,WJSON,"}")
+    If(WPOSTMP>0 and (WPOSTMP<WPOSFIN or WPOSFIN=0))Then
+      WPOSFIN = WPOSTMP
+    Endif
+    If(WPOSFIN>WPOSDEB and WPOSDEB>0)Then
+      WVALUE = mid$(WJSON,WPOSDEB,WPOSFIN-WPOSDEB)
+      WVALUE = func SPE_REPLACE_CHAR(WVALUE,'"',"")
+      WVALUE = func SPE_REPLACE_CHAR(WVALUE,":","")
+      WVALUE = vireblc(WVALUE,2)
+    Endif
+  Endif
+End WVALUE
+
+############################################################################
+# Ce web service permet de savoir si une collecte multi chargeur est vérouillée
+Subprog GET_ETAT_CMC(WZCMCNUM,WRESULT,WUSER)
+  Value Char WZCMCNUM
+  Variable Integer WRESULT
+  Variable Char WUSER
+  Local Char WMACHINE(50)
+
+  Local Char SYMBOLE(30)
+  SYMBOLE = "ZCMC~" + WZCMCNUM
+  Lock =SYMBOLE With lockwait = 0
+  If(fstat<>0)Then
+    WRESULT = 1
+    Call QUILOCKE(SYMBOLE,WMACHINE,WUSER) From OBJDIV
+  Else
+    #On a pu vérrouiller le symbole
+    WRESULT = 0
+    WUSER = ""
+    Unlock =SYMBOLE
+  Endif
+End
+
+############################################################################
+# Ce web service permet de mettre à jour la table des déconsignes
+Subprog SET_MAJ_DEC(WZCMCNUM,WZCODCHARG,WZCODCLT,WITMREF,WDATEDEC,WRESULT,WINFO)
+  Value Char WZCMCNUM
+  Value Char WZCODCHARG
+  Value Char WZCODCLT
+  Value Char WITMREF
+  Value Date WDATEDEC
+  Variable Integer WRESULT
+  Variable Char WINFO
+  If clalev([F:ZDEPM])=0   : Local File ZDECONSEPM  [F:ZDEPM]   : Endif
+
+  WRESULT = 1
+  WINFO = "Traitement réussi"
+  Read[F:ZDEPM]ZDEPM0=WZCMCNUM;WZCODCHARG;WZCODCLT;WITMREF
+  If(fstat=0)Then
+    #On va mettre à jour l'enregistrement
+    [F:ZDEPM]DATEDECONS = WDATEDEC
+    [F:ZDEPM]DECONS = 2
+    Rewrite[F:ZDEPM]
+    If(fstat<>0)Then
+      WRESULT = 0
+      WINFO = "Impossible de mettre à jour l'enregistrement de déconsigne"
+    Endif
+  Else
+    WRESULT = 0
+    WINFO = "Impossible de récupérer l'enregistrement de déconsigne"
+  Endif
+End

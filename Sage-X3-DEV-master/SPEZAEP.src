@@ -1,0 +1,2172 @@
+#<AdxTL>@(#)8.0.0.0 $Revision$
+##################################################### SPEZAEP
+##################################################### créé le 18/03/15
+##################################################### modifié le 18/03/15
+
+###################################################################################### ACTION
+$ACTION
+#Infbox ACTION
+Case ACTION
+ When "OUVRE" : Gosub OUVRE
+ When "OK" : Gosub OK
+ When "DEBUT" : Gosub DEBUT
+ When "SEL_TABLE" : Gosub SEL_TABLE
+ When "BOUTON" : Gosub BOUTON
+ When Default
+Endcase
+Return
+
+################################################# EXEBOUT
+$BOUTON
+If(BOUT="X")Then
+    Call GET_STOCK_EPALIS([M:ZAE0]ZBPCORD,[M:ZAE0]ZFCY)
+Elsif(BOUT="E")Then
+  #L'utilisateur à cliquer sur le bouton afin d'effacer l'ensemble de l'écran
+  Gosub OUVRE
+  Gosub DEBUT
+Endif
+Return
+
+################################################# SEL_TABLE
+$SEL_TABLE
+  Local Integer WNOL : WNOL = nolign-1
+  GPE=1
+  If([M:ZAE1]ZACTG<>10)Then
+    If clalev([F:ZLAC])=0 : Local File ZLARTCH [ZLAC] : Endif
+    Raz CRITERE
+    #On défini la table par défaut, celle qui va servir pour la sélection
+    Default File [F:ZLAC]
+    #On défini le nombre de colonne de la fenêtre de sélection
+    NBCOL = 5
+    #On défini le nom de chaque colonne
+    TIT(1) = "Code article"
+    TIT(2) = "Désignation"
+    TIT(3) = "Qté Ok"
+    TIT(4) = "Qté KC"
+    TIT(5) = "Qté à Transf."
+    #On défini les champs à afficher
+    COL(1) = "ART_TRI"
+    COL(2) = "ITMDES1"
+    COL(3) = "ZQTEOK"
+    COL(4) = "ZQTEKC"
+    COL(5) = "ZQTEATRANSF"
+    #On indique le titre de la sélection
+    TIT(0) = "Sélection des articles EPALIS"
+    START = "ART_TRI"
+    #On indique au système de gérer les pages
+    DEFPAG = 1
+    #Critère de sélection
+    #On va regarder sil existe au moins un enregistrement sur le site sélectionné sinon, on prendra le site 0
+    Local Integer WENROK : WENROK = 0
+    For [F:ZLAC]ZLAC0 Where [F:ZLAC]CODE_CHARGEU=[M:ZAE0]ZBPCORD and [F:ZLAC]STOFCY=[M:ZAE0]ZFCY
+      WENROK = 1
+    Next
+    If(WENROK=1)Then
+      CRITERE = " [F:ZLAC]CODE_CHARGEU='" + [M:ZAE0]ZBPCORD + "' & [F:ZLAC]STOFCY='" + [M:ZAE0]ZFCY + "'"
+    Else
+      CRITERE = " [F:ZLAC]CODE_CHARGEU='" + [M:ZAE0]ZBPCORD + "' & [F:ZLAC]STOFCY='0'"
+    Endif
+    #Si l'action est une transformation alors, on ne montre que les articles qui ont des qté à transformer
+    If([M:ZAE1]ZACTG=3)Then
+      #On est dans le cas où l'utilisateur a choisit une transformation
+      CRITERE += " & [F:ZLAC]ZQTEATRANSF<>0"
+    Endif
+    #-----------------------------MODIFICATION JBS DU 19/12/2017--------------------------------
+    If(VALEUR<>"")Then
+      CRITERE += " & instr(1, [F:ZLAC]ART_TRI, '" + VALEUR + "')>0"
+    Endif
+    #-------------------------------------------------------------------------------------------
+    #Trier
+    ORDRE = "ART_TRI"
+    #Ordre Décroissant
+    #SENS = 2
+    ORDCHO="ART_TRI"
+    EXPSTART="ART_TRI>=''"
+  Else
+    #Si on est dans le cas d'un achat de palettes du chargeur
+    If clalev([F:ZAH])=0 : Local File ZARTACH [ZAH] : Endif
+    Raz CRITERE
+    #On défini la table par défaut, celle qui va servir pour la sélection
+    Default File [F:ZAH]
+    #On défini le nombre de colonne de la fenêtre de sélection
+    NBCOL = 2
+    #On défini le nom de chaque colonne
+    TIT(1) = "Code article"
+    TIT(2) = "Désignation"
+    #On défini les champs à afficher
+    COL(1) = "ZARTLIV"
+    COL(2) = "ITMDES1"
+    #On indique le titre de la sélection
+    TIT(0) = "Sélection des articles pouvant être achetés"
+    START = "ZARTLIV"
+    #On indique au système de gérer les pages
+    DEFPAG = 1
+    #Critère de sélection
+    CRITERE = " [F:ZAH]ZVABPCNUM='" + [M:ZAE0]ZBPCORD + "'"
+    #Trier
+    ORDRE = "ZARTLIV"
+    #Ordre Décroissant
+    #SENS = 2
+    ORDCHO="ZARTLIV"
+    EXPSTART="ZARTLIV>=''"
+  Endif
+Return
+
+###################################################################################### INIT
+$OUVRE
+  # Ouverture des tables
+  If clalev([F:ZTE])=0 : Local File ZTEMPEPI    [F:ZTE]: Endif
+  If clalev([F:ZAEP])=0 : Local File ZACTEPI    [F:ZAEP]: Endif
+  If clalev([F:ZSTE])=0 : Local File ZSTOEPI    [F:ZSTE]: Endif
+  If clalev([F:BPC])=0 : Local File BPCUSTOMER  [F:BPC]: Endif
+  If clalev([F:ZIE])=0 : Local File ZEPALIS  [F:ZIE]: Endif
+  If clalev([F:ZHAE])=0 : Local File ZHISTACTEPI1  [F:ZHAE]: Endif
+  If clalev([F:ZAT])=0 : Local File ZARTTRI  [F:ZAT]: Endif
+  If clalev([F:ZDCE])=0 : Local File ZDEPCHARGEPI  [F:ZDCE]: Endif
+  If clalev([F:ZCE])=0 : Local File ZCHEPI  [F:ZCE]: Endif
+  If clalev([F:ZVA])=0 : Local File ZVAEPALIS  [F:ZVA]: Endif
+  If clalev([F:ZSL])=0: Local File ZSITCLIEPI  [ZSL] : Endif
+  If clalev([F:ZGL])=0 : Local File ZGESTLIBEPI  : Endif
+  If clalev([F:ZQR])=0 : Local File ZQTYRELOCDIF  : Endif
+  Global Integer WREFOBLIG : WREFOBLIG=0
+  Global Integer WAPPROOBLIG : WAPPROOBLIG=0
+  Global Integer GNBLIGH3 : GNBLIGH3=-1
+Return
+
+###################################################################################### DEBUT
+$DEBUT
+#TODO : Ne pas oubliez d'enlevez les valeurs par défaut
+Raz [M:ZAE0]
+Raz [M:ZAE1]
+Raz [M:ZAE2]
+Effzo [M:ZAE0]
+Effzo [M:ZAE1]
+Effzo [M:ZAE2]
+Effzo [M:ZAE3]
+#-----------------------------MODIFICATION JBS DU 13/10/2017--------------------------------
+#[M:ZAE0]ZCOMPTEUR=format$("D:YYYYMMDDhhmmsssss",date$)
+[M:ZAE0]ZCOMPTEUR=func ZWSEPALIS.SPE_GET_COMPTEUR()
+#-------------------------------------------------------------------------------------------
+#[M:ZAE0]ZPSNUM=""
+#[M:ZAE0]ZFCY="02"
+#[M:ZAE0]ZBPCORD ="00001"
+##[M:ZAE0]ZUSER ="JBS"
+[M:ZAE0]ZZBPCORD = ""
+Call GET_STOCK_EPALIS([M:ZAE0]ZBPCORD,[M:ZAE0]ZFCY)
+Call  AM_ZFCY([M:ZAE0]ZFCY)
+Affzo [M:ZAE0]
+Affzo [M:ZAE1]
+Affzo [M:ZAE2]
+Grizo [M:ZAE1]20
+Grizo [M:ZAE1]25
+Grizo [M:ZAE1]19
+Grizo [M:ZAE1]23
+Chgstl [M:ZAE1]ZDATACTG With "BACKRED"
+Chgstl [M:ZAE1]ZACTG With "BACKRED"
+Chgstl [M:ZAE1]WFCY With ""
+Chgstl [M:ZAE1]WBPCORD With ""
+Chgstl [M:ZAE1]WBPAADD With ""
+Chgstl [M:ZAE1]ZFCYREC With ""
+Chgstl [M:ZAE1]ZCHAUFFEUR With ""
+#On masque les champ ZPRESTFACT et ZTYPPAL
+Chgfmt [M:ZAE1]ZPRESTFACT With "-K:10X"
+Chgfmt [M:ZAE1]ZTYPPAL With "-K:10X"
+#On masque les champs du pays collecteur
+Chgfmt [M:ZAE1]ZPAYSCOLL With "-K:10X"
+Chgfmt [M:ZAE1]ZZPAYSCOLL With "-K:10X"
+Chgfmt [M:ZAE1]ZTRANSCHG With "-K:10X"
+#On masque les champs liés à la réparation
+Chgfmt [M:ZAE1]ZQTEKCUTIL With "-K:10X"
+Chgfmt [M:ZAE1]ZQTEHS With "-K:10X"
+WREFOBLIG=0
+WAPPROOBLIG=0
+Chgfmt [M:ZAE1]ZREFERENCEG With "-K:10X"
+Chgfmt [M:ZAE1]ZAPPRO With "-K:10X"
+#On masque par défaut le champ Action en attente
+Chgfmt [M:ZAE1]ZATTENTE With "-K:50X"
+#On masque les colonnes quantités en stock sur le tableau des actions
+Chgfmt [M:ZAE1]ZQTESTOOK With "-K:10X"
+Chgfmt [M:ZAE1]ZQTESTOKC With "-K:10X"
+Chgfmt [M:ZAE1]ZQTESTOTRSF With "-K:10X"
+
+Chgstl [M:ZAE0]ZFCY With "BACKRED"
+Chgstl [M:ZAE0]ZBPCORD With "BACKRED"
+Return
+
+###################################################################################### OK
+$OK
+#On va parcourir le tableau pour réupérer les actions
+Local Integer WREP : WREP=1
+Local Integer WLAUNCH : WLAUNCH = 1
+If([M:ZAE1]NBLIG<>0)Then
+  Call OUINON("Confirmer l'exécution ?",WREP) From GESECRAN
+  If WREP=2
+    #Avant toute chose, on va regarder si l'action est de type 2 (relocalisation)
+    #Dans ce cas, il faut rensigner un chauffeur pour savoir si le transport est interne ou externe.
+    If([M:ZAE1]ZACTG=2)Then
+      #Dans ce cas, nous allons voir si la fiche du chauffeur existe.
+      #Si c'est le cas, nous allons regarder si dans la fiche le type de transport est le même
+      #que celui défini au niveau de l'action. Dans le cas contraire, on met la fiche du chauffeur à jour.
+      Read[F:ZCE]ZCE0=[M:ZAE0]ZBPCORD;[M:ZAE1]ZCHAUFFEUR
+      If(fstat=0)Then
+        If([F:ZCE]ZTRPINT<>[M:ZAE1]ZTYPTRSP)Then
+          [F:ZCE]ZTRPINT=[M:ZAE1]ZTYPTRSP
+          Rewrite[F:ZCE]
+        Endif
+      Endif
+    Endif
+
+    #2 cas de figure se présente :
+    #soit on gère les actions en attente sur le client soit on ne les gère pas
+    #On va récupérer l'information sur le client
+    Local Integer WGESTACTATT : WGESTACTATT = 0
+    Read[F:BPC]BPC0=[M:ZAE0]ZBPCORD
+    If(fstat=0)Then
+      If([F:BPC]ZGESTACTATT=2)Then
+        WGESTACTATT = 1
+      Endif
+    Endif
+    #On va maintenant regarder si toutes les lignes peuvent être exécutées
+    Local Integer WEXECALLLIG : WEXECALLLIG = 1
+    For I=0 To [M:ZAE1]NBLIG-1
+      If([M:ZAE1]ZOK(I)<>2)Then
+        WEXECALLLIG = 0
+      Endif
+    Next
+    #On ne fait le traitement que si la ligne est à traiter
+    Local Integer WNUMLIG
+    For I=0 To [M:ZAE1]NBLIG-1
+      #Pour chaque ligne nous allons créer un enregistrement dans la table ZTEMPEPI
+      #Pour cela, nous allons faire appel au sous-programme SET_ACT_EPI du traitement ZWSEPALIS
+      Local Integer WRESULT : WRESULT = 0
+      #Si on gere les actions en attente au  niveau du client, on enregistre l'action sinon, on enregistre l'action uniquement
+      #si toutes les lignes sont Ok
+      If(WGESTACTATT=1 or (WGESTACTATT=0 and WEXECALLLIG=1))Then
+        #<1---------MODIFICATION JBS du 27/02/2018-----------
+        Local Integer WTYPPAL : WTYPPAL = 1
+        #Dans le cas d'un entrée diverse, le type de palette sera celui renseigné dans la ligne
+        If([M:ZAE1]ZACTG=5)Then
+          WTYPPAL = [M:ZAE1]ZTYPPAL(I)
+        #<2-----MODIF JBS DU 25/02/2019-----
+        Elsif([M:ZAE1]ZACTG=12)Then
+          WTYPPAL = 2
+        #---------------------------------2>
+        Endif
+        #--------------------------------------------------1>
+        WNUMLIG = (I+1)*1000
+        Call SET_ACT_EPI([M:ZAE0]ZCOMPTEUR,[M:ZAE0]ZFCY,[M:ZAE0]ZBPCORD,[M:ZAE0]ZUSER,[M:ZAE1]ZITMREF(I),[M:ZAE1]ZQTY(I),[M:ZAE1]ZACT(I),[M:ZAE1]ZDATACT(I),[M:ZAE1]ZREFERENCE(I),[M:ZAE1]WBPAADD
+& ,[M:ZAE1]WBPCORD,[M:ZAE1]WFCY,[M:ZAE1]ZFCYREC,[M:ZAE1]ZCHAUFFEUR,[M:ZAE1]ZTRANSCHG(I),[M:ZAE1]ZPAYSCOLL,[M:ZAE1]ZQTEKCUTIL(I),[M:ZAE1]ZQTEHS(I),[M:ZAE1]ZAPPRO,WTYPPAL,WNUMLIG,WRESULT) From ZWSEPALIS
+      Endif
+      If([M:ZAE1]ZOK(I)<>2)Then
+        WLAUNCH = 0
+      Endif
+    Next
+    #---------MODIFICATION JBS du 29/11/2017-----------
+    #Dans le cas où l'action est une relocalisation
+    #le ZACTOK vaut 3, il va falloir que l'on le remette à 1 si au moins une ligne de l'action n'est pas réalisable
+    If(WEXECALLLIG = 0)Then
+      #On est dans le cas où la totalité de l'action ne peut pas être exécutée
+      #On va donc parcourir l'ensemble des lignes de l'action pour repasser le flag ZACTOK à 1
+      Local Integer WMAJOK : WMAJOK = 1
+      Trbegin [F:ZTE]
+      For [F:ZTE]ZTE1 Where [F:ZTE]ZCOMPTEUR=[M:ZAE0]ZCOMPTEUR and [F:ZTE]ZACTOK=3
+        [F:ZTE]ZACTOK=1
+        Rewrite[F:ZTE]
+        If(fstat<>0)Then
+          WMAJOK = 0
+        Endif
+      Next
+      If(WMAJOK=1)Then
+        Commit
+      Else
+        Rollback
+      Endif
+    Endif
+    #--------------------------------------------------
+    #On va maintenant lancer le traitement via le Web service EXEC_ACT_EPI
+    #On lance l'action uniquement si toutes les lignes sont validées
+    If(WLAUNCH=1 and [M:ZAE1]ZATTENTE<>2)Then
+      Local Integer WRETOUR
+      Call EXEC_ACT_EPI([M:ZAE0]ZCOMPTEUR,WRETOUR) From ZWSEPALIS
+      #On retourne sur la fenêtre
+      FIN = 0
+    Else
+      If([M:ZAE1]ZATTENTE=2)Then
+        #---------MODIFICATION JBS du 29/11/2017-----------
+        If(WEXECALLLIG = 0)Then
+          Infbox "Toutes les lignes ne peuvent pas être exécutées, l'action est mise en attente."
+        Else
+          Infbox "Mise en attente de l'action."
+        Endif
+        #--------------------------------------------------
+      Else
+        If(WGESTACTATT=0)Then
+          Infbox "Impossible! toutes les lignes ne peuvent pas être traitées."
+        Else
+          Infbox "Toutes les lignes ne peuvent pas être exécutées, l'action est mise en attente."
+        Endif
+      Endif
+      #On retourne sur la fenêtre
+      FIN = 0
+    Endif
+      #On va récupérer le site et le client sur lequel on était
+      Local Char WFCYSAV : WFCYSAV = [M:ZAE0]ZFCY
+      Local Char WBPCORDSAV : WBPCORDSAV = [M:ZAE0]ZBPCORD
+      Gosub DEBUT
+      [M:ZAE0]ZFCY = WFCYSAV
+      Affzo [M:ZAE0]ZFCY
+      Affzo [M:ZAE0]ZZFCY
+      Call AM_ZFCY([M:ZAE0]ZFCY)
+      [M:ZAE0]ZBPCORD = WBPCORDSAV
+      Affzo [M:ZAE0]ZBPCORD
+      Affzo [M:ZAE0]ZZBPCORD
+      Call AM_ZBPCORD([M:ZAE0]ZBPCORD)
+  Else
+    #On retourne sur la fenêtre
+    FIN = 0
+  Endif
+Else
+  Infbox "Impossible! Aucune action n'est renseignée."
+  #On retourne sur la fenêtre
+  FIN = 0
+Endif
+Return
+
+Subprog AM_ZFCY(VALEUR)
+Variable Char    VALEUR()
+Local Char WZPSNUM : WZPSNUM = ""
+  Raz [M:ZAE1]NBLIG
+  [M:ZAE1]NBLIG = 0
+  Effzo [M:ZAE1]25
+  If(VALEUR<>"" and [M:ZAE0]ZBPCORD<>"")Then
+    WZPSNUM = func ZWSEPALIS.GET_ZPSNUM(VALEUR, [M:ZAE0]ZBPCORD)
+    If(WZPSNUM<>"")Then
+      [M:ZAE0]ZPSNUM = "N° de précommande : " + WZPSNUM
+#      Actzo [M:ZAE1]25
+    Else
+      [M:ZAE0]ZPSNUM = "Pas de précommande pour ce client et ce site."
+#      Grizo [M:ZAE1]25
+    Endif
+    Affzo [M:ZAE0]ZPSNUM
+  Endif
+  Call GET_STOCK_EPALIS([M:ZAE0]ZBPCORD,VALEUR)
+#  [M:ZAE1]WFCY = VALEUR
+#  #Call AM_WFCY([M:ZAE1]WFCY)
+#  Affzo [M:ZAE1]WFCY
+#  Affzo [M:ZAE1]ZWFCY
+  [M:ZAE1]WBPAADD = ""
+  Affzo [M:ZAE1]WBPAADD
+  [M:ZAE1]ZWBPAADD = ""
+  Affzo [M:ZAE1]ZWBPAADD
+  [M:ZAE1]WFCY = ""
+  Affzo [M:ZAE1]WFCY
+  [M:ZAE1]ZWFCY = ""
+  Affzo [M:ZAE1]ZWFCY
+  [M:ZAE1]WBPCORD = ""
+  Affzo [M:ZAE1]WBPCORD
+  [M:ZAE1]ZWBPCORD = ""
+  Affzo [M:ZAE1]ZWBPCORD
+  [M:ZAE1]ZDATACTG = [0/0/0]
+  Affzo [M:ZAE1]ZDATACTG
+  [M:ZAE1]ZDATEFFET = [0/0/0]
+  Affzo [M:ZAE1]ZDATEFFET
+  [M:ZAE1]ZACTG = 4
+  Affzo [M:ZAE1]ZACTG
+  [M:ZAE1]ZFCYREC = ""
+  Affzo [M:ZAE1]ZFCYREC
+  [M:ZAE1]ZZFCYREC = ""
+  Affzo [M:ZAE1]ZZFCYREC
+  [M:ZAE1]ZPSNUMFCYREC = ""
+  Affzo [M:ZAE1]ZPSNUMFCYREC
+  [M:ZAE1]ZCHAUFFEUR = ""
+  Affzo [M:ZAE1]ZCHAUFFEUR
+  [M:ZAE1]ZATTENTE=1
+  Affzo [M:ZAE1]ZATTENTE
+  #On masque les champs du pays collecteur
+  Chgfmt [M:ZAE1]ZPAYSCOLL With "-K:10X"
+  Chgfmt [M:ZAE1]ZZPAYSCOLL With "-K:10X"
+  [M:ZAE1]ZPAYSCOLL=""
+  [M:ZAE1]ZZPAYSCOLL=""
+  Affzo [M:ZAE1]ZPAYSCOLL
+  Affzo [M:ZAE1]ZZPAYSCOLL
+  Chgstl [M:ZAE1]ZDATACTG With "BACKRED"
+  Chgstl [M:ZAE1]ZACTG With "BACKRED"
+  #On masque les champ ZPRESTFACT et ZTYPPAL
+  Chgfmt [M:ZAE1]ZPRESTFACT With "-K:10X"
+  Chgfmt [M:ZAE1]ZTYPPAL With "-K:10X"
+
+  WREFOBLIG=0
+  WAPPROOBLIG=0
+  [M:ZAE1]ZREFERENCEG=""
+  [M:ZAE1]ZAPPRO=""
+  Chgfmt [M:ZAE1]ZREFERENCEG With "-K:10X"
+  Chgfmt [M:ZAE1]ZAPPRO With "-K:10X"
+  Chgstl [M:ZAE1]ZREFERENCEG With ""
+  Chgstl [M:ZAE1]ZAPPRO With ""
+  Chgtzn [M:ZAE1]ZREFERENCEG With "Référence"
+  Chgtzn [M:ZAE1]ZAPPRO With "Appro"
+  Affzo [M:ZAE1]ZREFERENCEG
+  Affzo [M:ZAE1]ZAPPRO
+  If(VALEUR<>"")Then
+    Chgstl [M:ZAE0]ZFCY With "BACKGREEN"
+  Else
+    Chgstl [M:ZAE0]ZFCY With "BACKRED"
+  Endif
+End
+
+Subprog AM_ZBPCORD(VALEUR)
+Variable Char    VALEUR()
+Local Char WZPSNUM : WZPSNUM = ""
+  Raz [M:ZAE1]NBLIG
+  [M:ZAE1]NBLIG = 0
+  Effzo [M:ZAE1]25
+  If(VALEUR<>"" and [M:ZAE0]ZFCY<>"")Then
+    WZPSNUM = func ZWSEPALIS.GET_ZPSNUM([M:ZAE0]ZFCY, VALEUR)
+    If(WZPSNUM<>"")Then
+      [M:ZAE0]ZPSNUM = "N° de précommande : " + WZPSNUM
+#      Actzo [M:ZAE1]25
+    Else
+      [M:ZAE0]ZPSNUM = "Pas de précommande pour ce client et ce site."
+#      Grizo [M:ZAE1]25
+    Endif
+    Affzo [M:ZAE0]ZPSNUM
+  Endif
+  Call GET_STOCK_EPALIS(VALEUR,[M:ZAE0]ZFCY)
+#  [M:ZAE1]WBPCORD = VALEUR
+#  Affzo [M:ZAE1]WBPCORD
+#  Affzo [M:ZAE1]ZWBPCORD
+#  Call AM_WBPCORD([M:ZAE1]WBPCORD)
+  [M:ZAE1]WBPAADD = ""
+  Affzo [M:ZAE1]WBPAADD
+  [M:ZAE1]ZWBPAADD = ""
+  Affzo [M:ZAE1]ZWBPAADD
+  [M:ZAE1]WFCY = ""
+  Affzo [M:ZAE1]WFCY
+  [M:ZAE1]ZWFCY = ""
+  Affzo [M:ZAE1]ZWFCY
+  [M:ZAE1]WBPCORD = ""
+  Affzo [M:ZAE1]WBPCORD
+  [M:ZAE1]ZWBPCORD = ""
+  Affzo [M:ZAE1]ZWBPCORD
+  [M:ZAE1]ZDATACTG = [0/0/0]
+  Affzo [M:ZAE1]ZDATACTG
+  [M:ZAE1]ZDATEFFET = [0/0/0]
+  Affzo [M:ZAE1]ZDATEFFET
+  [M:ZAE1]ZACTG = 4
+  Affzo [M:ZAE1]ZACTG
+  [M:ZAE1]ZFCYREC = ""
+  Affzo [M:ZAE1]ZFCYREC
+  [M:ZAE1]ZZFCYREC = ""
+  Affzo [M:ZAE1]ZZFCYREC
+  [M:ZAE1]ZPSNUMFCYREC = ""
+  Affzo [M:ZAE1]ZPSNUMFCYREC
+  [M:ZAE1]ZCHAUFFEUR = ""
+  Affzo [M:ZAE1]ZCHAUFFEUR
+  [M:ZAE1]ZATTENTE=1
+  Affzo [M:ZAE1]ZATTENTE
+  #On masque les champs du pays collecteur
+  Chgfmt [M:ZAE1]ZPAYSCOLL With "-K:10X"
+  Chgfmt [M:ZAE1]ZZPAYSCOLL With "-K:10X"
+  [M:ZAE1]ZPAYSCOLL=""
+  [M:ZAE1]ZZPAYSCOLL=""
+  Affzo [M:ZAE1]ZPAYSCOLL
+  Affzo [M:ZAE1]ZZPAYSCOLL
+  Chgstl [M:ZAE1]ZDATACTG With "BACKRED"
+  Chgstl [M:ZAE1]ZACTG With "BACKRED"
+  #On masque les champ ZPRESTFACT et ZTYPPAL
+  Chgfmt [M:ZAE1]ZPRESTFACT With "-K:10X"
+  Chgfmt [M:ZAE1]ZTYPPAL With "-K:10X"
+  #<----- MODIF JBS du 13/03/2017 ---------
+  #Si le chargeur est inactif, on grize le champ [M:ZAE1]ZACTG
+  Read[F:BPC]BPC0=VALEUR
+  If(fstat=0)Then
+    If([F:BPC]BPCSTA=2)Then
+      #On va rechercher si le client est un prospect EPALIS
+      If([F:BPC]ZPROSPEPI=2 and GPROFIL<>"ADMIN")Then
+        Grizo [M:ZAE1]ZACTG
+        Infbox "ATTENTION, vous ne pourrez pas effectuer d'action car le chargeur est défini comme Prospect."
+      Else
+        Actzo [M:ZAE1]ZACTG
+      Endif
+    Else
+      If(GPROFIL<>"ADMIN")Then
+       Grizo [M:ZAE1]ZACTG
+       Infbox "ATTENTION, vous ne pourrez pas effectuer d'action car le chargeur est inactif."
+      Endif
+    Endif
+  Else
+    Grizo [M:ZAE1]ZACTG
+    Infbox "ATTENTION, vous ne pourrez pas effectuer d'action car le chargeur est inactif."
+  Endif
+  WREFOBLIG=0
+  WAPPROOBLIG=0
+  [M:ZAE1]ZREFERENCEG=""
+  [M:ZAE1]ZAPPRO=""
+  Chgfmt [M:ZAE1]ZREFERENCEG With "-K:10X"
+  Chgfmt [M:ZAE1]ZAPPRO With "-K:10X"
+  Chgstl [M:ZAE1]ZREFERENCEG With ""
+  Chgstl [M:ZAE1]ZAPPRO With ""
+  Chgtzn [M:ZAE1]ZREFERENCEG With "Référence"
+  Chgtzn [M:ZAE1]ZAPPRO With "Appro"
+  Affzo [M:ZAE1]ZREFERENCEG
+  Affzo [M:ZAE1]ZAPPRO
+  If(VALEUR<>"")Then
+    Chgstl [M:ZAE0]ZBPCORD With "BACKGREEN"
+  Else
+    Chgstl [M:ZAE0]ZBPCORD With "BACKRED"
+  Endif
+End
+
+Subprog AM_ZACT(VALEUR)
+Variable Integer VALEUR
+  Local Integer WNOL : WNOL = nolign-1
+  Call GET_VAL_ACT([M:ZAE1]ZITMREF(WNOL),[M:ZAE1]ZQTY(WNOL),VALEUR)
+#  Affzo [M:ZAE1]
+End
+
+Subprog AM_ZITMREF(VALEUR)
+Variable Char    VALEUR()
+  Local Integer WNOL : WNOL = nolign-1
+  Call GET_VAL_ACT(VALEUR,[M:ZAE1]ZQTY(WNOL),[M:ZAE1]ZACT(WNOL))
+#  Affzo [M:ZAE1]
+#Suite à la saisie d'un article, on va indiquer la qté du stock sur la ligne
+#On va parcourir le tableau jusqu'à trouver la ligne de stock de l'article
+[M:ZAE1]ZQTESTOOK(WNOL)   = 0
+[M:ZAE1]ZQTESTOKC(WNOL)   = 0
+[M:ZAE1]ZQTESTOTRSF(WNOL) = 0
+For I=0 To [M:ZAE1]NBLIGSTO-1
+  If([M:ZAE1]ZART_FINAL(I)=VALEUR)Then
+    [M:ZAE1]ZQTESTOOK(WNOL)   = [M:ZAE1]ZQTEOK(I)
+    [M:ZAE1]ZQTESTOKC(WNOL)   = [M:ZAE1]ZQTEKC(I)
+    [M:ZAE1]ZQTESTOTRSF(WNOL) = [M:ZAE1]ZQTEATRANSF(I)
+    Break
+  Endif
+Next
+#Si on est dans le cas d'une entrée diverse et que l'on entre des bonnes alors on met
+#un style particulier pour le champ ZQTESTOOK
+Chgstl[M:ZAE1]ZQTESTOOK(WNOL) With "ZINFOSTO"
+If([M:ZAE1]ZACTG=5 and [M:ZAE1]ZTYPPAL(WNOL)=1)Then
+  Chgstl[M:ZAE1]ZQTESTOOK(WNOL) With "ZINFOSTOS"
+Endif
+Affzo [M:ZAE1]ZQTESTOOK(WNOL)
+Chgstl[M:ZAE1]ZQTESTOKC(WNOL) With "ZINFOSTO"
+If([M:ZAE1]ZACTG=5 and [M:ZAE1]ZTYPPAL(WNOL)=2)Then
+  Chgstl[M:ZAE1]ZQTESTOKC(WNOL) With "ZINFOSTOS"
+Endif
+Affzo [M:ZAE1]ZQTESTOKC(WNOL)
+Chgstl[M:ZAE1]ZQTESTOTRSF(WNOL) With "ZINFOSTO"
+Affzo [M:ZAE1]ZQTESTOTRSF(WNOL)
+End
+
+Subprog AM_ZQTY(VALEUR)
+Variable Decimal VALEUR
+  Local Integer WNOL : WNOL = nolign-1
+  Call GET_VAL_ACT([M:ZAE1]ZITMREF(WNOL),VALEUR,[M:ZAE1]ZACT(WNOL))
+#  Affzo [M:ZAE1]
+End
+
+#**
+#* Documentation de la procédure GET_STOCK_EPALIS
+#* <table>
+#* <tr><td><b>Société</b></td><td><b><u><font color="#046380">MICROFIRST</font></u></b></td>
+#* <tr><td><b>Auteur</b></td><td>JBS</td>
+#* <tr><td><b>Date de création</b></td><td>19 mars 2015</td>
+#* <tr><td valign="top"><b>Description de la procédure</b></td><td>
+#* Alimente le tableau des stocks en fonction du site et du client
+#* </td></table>
+#* @public
+#* @param WBPCNUM (<font color="#7F0055"><b>Char</b></font>) Code du client
+#* @param WFCY (<font color="#7F0055"><b>Char</b></font>) Code du site
+#* @since <font color="green">Version 6.5</font>
+#*!
+Subprog GET_STOCK_EPALIS(WBPCNUM,WFCY)
+  Value Char WBPCNUM
+  Value Char WFCY
+
+  If(WBPCNUM<>"" and WFCY<>"")Then
+    Effzo [M:ZAE1]10
+#    [M:ZAE1]NBLIGSTO=0
+    #On va alimenter le tableau des stocks
+    Local Integer WNOL : WNOL = 0
+    Local Decimal WQTYOK : WQTYOK = 0
+    Local Decimal WQTEKC : WQTEKC = 0
+    Local Decimal WQTEATRANSF : WQTEATRANSF = 0
+    #----------MODIF JBS DU 30/10/2017----------
+    Local Decimal WQTYOKSTO : WQTYOKSTO = 0
+    #-------------------------------------------
+    Local Char ZFILTRE(250) : ZFILTRE = "[F:ZSTE]BPCORD=WBPCNUM and [F:ZSTE]STOFCY=WFCY and [F:ZSTE]A_AFFICHER=2"
+#    Read [F:BPC]BPC0=WBPCNUM
+#    If(fstat=0)Then
+#        If([F:BPC]ZAFFPRESTSTO<>2)Then
+#            ZFILTRE += " and [F:ZSTE]TYPE_PREST<>1"
+#        Endif
+#    Endif
+#    For [F:ZSTE]ZSTE0 Where [F:ZSTE]BPCORD=WBPCNUM and [F:ZSTE]STOFCY=WFCY
+    For [F:ZSTE]ZSTE0 Where evalue(ZFILTRE)
+      [M:ZAE1]NBLIGSTO = WNOL + 1
+      If([F:ZSTE]ZART_FINAL=[F:ZSTE]ZARTTRANSF)Then
+        [M:ZAE1]ZART_FINAL(WNOL) = [F:ZSTE]ZART_FINAL
+      Else
+        [M:ZAE1]ZART_FINAL(WNOL) = [F:ZSTE]ZART_FINAL + " (-->" + [F:ZSTE]ZARTTRANSF + ")"
+      Endif
+      [M:ZAE1]ZQTEOK(WNOL) = [F:ZSTE]ZQTEOK
+      #----------MODIF JBS DU 30/10/2017----------
+      [M:ZAE1]ZQTEOKSTO(WNOL) = [F:ZSTE]ZQTEOKSTOCK
+      WQTYOKSTO = WQTYOKSTO + [F:ZSTE]ZQTEOKSTOCK
+      #-------------------------------------------
+      [M:ZAE1]ZQTEKC(WNOL) = [F:ZSTE]ZQTEKC
+      [M:ZAE1]ZQTEATRANSF(WNOL) = [F:ZSTE]ZQTEATRANSF
+      [M:ZAE1]ZLIBPAL(WNOL) = [F:ZSTE]LIBELLE_PAL
+#      Chgstl [M:ZAE1]NBLIGSTO(WNOL) With ""
+      WQTYOK = WQTYOK + [F:ZSTE]ZQTEOK
+      WQTEKC = WQTEKC + [F:ZSTE]ZQTEKC
+      WQTEATRANSF = WQTEATRANSF + [F:ZSTE]ZQTEATRANSF
+      WNOL = WNOL + 1
+    Next
+    [M:ZAE1]NBLIGSTO = WNOL + 1
+    [M:ZAE1]ZART_FINAL(WNOL) = "TOTAL GENERAL : "
+    [M:ZAE1]ZLIBPAL(WNOL) = num$(WQTYOK+WQTEKC+WQTEATRANSF) + " palette(s)."
+    [M:ZAE1]ZQTEOK(WNOL) = WQTYOK
+    [M:ZAE1]ZQTEKC(WNOL) = WQTEKC
+    [M:ZAE1]ZQTEATRANSF(WNOL) = WQTEATRANSF
+    #----------MODIF JBS DU 30/10/2017----------
+    [M:ZAE1]ZQTEOKSTO(WNOL) = WQTYOKSTO
+    #-------------------------------------------
+    Affzo [M:ZAE1]
+    Chgstl [M:ZAE1]NBLIGSTO(WNOL) With "GDD3G"
+    Affzo [M:ZAE1]ZART_FINAL(WNOL)
+#    Affzo [M:ZAE1]10
+    #On va maintenant alimenter la tableau de l'historique des actions
+    #Alimentation du 1er tableau
+    Local Integer WNOL2 : WNOL2 = 0
+    Effzo [M:ZAE2]
+    For [F:ZHAE]ZHAE0 Where [F:ZHAE]ZBPCORD=WBPCNUM and [F:ZHAE]ZFCY=WFCY and [F:ZHAE]ZACTOK=2
+      [M:ZAE2]NBLIGH = WNOL2 + 1
+      [M:ZAE2]YZFCY(WNOL2) = [F:ZHAE]ZFCY
+      [M:ZAE2]YZBPCORD(WNOL2) = [F:ZHAE]ZBPCORD
+      [M:ZAE2]YZACT(WNOL2) = [F:ZHAE]ZACT
+      [M:ZAE2]YZDATACT(WNOL2) = [F:ZHAE]ZDATACT
+      [M:ZAE2]YZUSER(WNOL2) = [F:ZHAE]ZUSER
+      [M:ZAE2]YZCOMPTEUR(WNOL2) = [F:ZHAE]ZCOMPTEUR
+      [M:ZAE2]YZACTNUM(WNOL2) = [F:ZHAE]ZACTNUM
+      [M:ZAE2]YZREFERENCE(WNOL2) = [F:ZHAE]ZREFERENCE
+      [M:ZAE2]YZAPPRO(WNOL2) = [F:ZHAE]ZAPPRO
+      #----------MODIF JBS DU 30/10/2017----------
+      [M:ZAE2]YZDATEFFET(WNOL2) = [F:ZHAE]ZDATEFFET
+      #-------------------------------------------
+      [M:ZAE2]YZEXEACT(WNOL2) = [F:ZHAE]ZEXEACT
+#      [M:ZAE2]YZEXEACTH(WNOL2) = [F:ZHAE]ZEXEACTH
+      WNOL2 = WNOL2 + 1
+      If(WNOL2>=dim([M:ZAE2]YZACT)-1)Then
+        Break
+      Endif
+    Next
+    Affzo [M:ZAE2]5
+    #On va maintenant alimenter la tableau des actions en attentes
+    #Alimentation du 1er tableau
+    GNBLIGH3=-1
+    Local Integer WNOL3 : WNOL3 = 0
+    Effzo [M:ZAE3]
+    For [F:ZHAE]ZHAE1 Where [F:ZHAE]ZBPCORD=WBPCNUM and [F:ZHAE]ZFCY=WFCY and [F:ZHAE]ZACTOK<>2
+      [M:ZAE3]NBLIGH3 = WNOL3 + 1
+      If([F:ZHAE]ZACTOK=1)Then
+        [M:ZAE3]ZRAISATT(WNOL3) = "Pb Stock"
+      Elsif([F:ZHAE]ZACTOK=3)Then
+        [M:ZAE3]ZRAISATT(WNOL3) = "Action différée."
+      Else
+        [M:ZAE3]ZRAISATT(WNOL3) = ""
+      Endif
+      [M:ZAE3]YZFCY(WNOL3) = [F:ZHAE]ZFCY
+      [M:ZAE3]YZBPCORD(WNOL3) = [F:ZHAE]ZBPCORD
+      [M:ZAE3]YZACT(WNOL3) = [F:ZHAE]ZACT
+      [M:ZAE3]YZDATACT(WNOL3) = [F:ZHAE]ZDATACT
+      [M:ZAE3]YZUSER(WNOL3) = [F:ZHAE]ZUSER
+      [M:ZAE3]YZCOMPTEUR(WNOL3) = [F:ZHAE]ZCOMPTEUR
+      [M:ZAE3]YZACTNUM(WNOL3) = [F:ZHAE]ZACTNUM
+      [M:ZAE3]YZREFERENCE(WNOL3) = [F:ZHAE]ZREFERENCE
+      [M:ZAE3]YZAPPRO(WNOL3) = [F:ZHAE]ZAPPRO
+      [M:ZAE3]YZEXEACT(WNOL3) = [F:ZHAE]ZEXEACT
+#      [M:ZAE3]YZEXEACTH(WNOL3) = [F:ZHAE]ZEXEACTH
+      #On va maintenant regarder si l'action peut être exécutée
+      #Si l'action est Ok alors YACTOK=2 sinon 1
+#      Call GET_VAL_ACTHIST([F:ZHAE]ZCOMPTEUR,WNOL3)
+      Affzo [M:ZAE3]YZREFERENCE(WNOL3)
+      WNOL3 = WNOL3 + 1
+      If(WNOL3>=dim([M:ZAE3]YZACT)-1)Then
+        Break
+      Endif
+    Next
+    If(WNOL3>0)Then
+        [M:ZAE0]ZNBACTATT = "ATTENTION, il y a au moins " + num$(WNOL3) + " action(s) en attente de traitement."
+    Else
+        [M:ZAE0]ZNBACTATT = ""
+    Endif
+    Affzo [M:ZAE0]ZNBACTATT
+    Affzo [M:ZAE3]5
+  Endif
+End
+
+#**
+#* Documentation de la procédure GET_VAL_ACT
+#* <table>
+#* <tr><td><b>Société</b></td><td><b><u><font color="#046380">MICROFIRST</font></u></b></td>
+#* <tr><td><b>Auteur</b></td><td>JBS</td>
+#* <tr><td><b>Date de création</b></td><td>19 mars 2015</td>
+#* <tr><td valign="top"><b>Description de la procédure</b></td><td>
+#* Permet de valider ou pas l'action de la ligne courante
+#* </td></table>
+#* @public
+#* @param WITMREF (<font color="#7F0055"><b>Char</b></font>) Code de l'article
+#* @param WQTY (<font color="#7F0055"><b>Decimal</b></font>) Quantité
+#* @param WACT (<font color="#7F0055"><b>Integer</b></font>) Code de l'action
+#* @since <font color="green">Version 6.5</font>
+#*!
+Subprog GET_VAL_ACT(WITMREF,WQTY,WACT)
+  Value Char WITMREF
+  Value Decimal WQTY
+  Value Integer WACT
+  Local Integer WNOL : WNOL = nolign-1
+  Local Integer WQTYTOT : WQTYTOT = 0
+  If([M:ZAE1]ZACTG<>5 and [M:ZAE1]ZACTG<>9 and [M:ZAE1]ZACTG<>10)Then
+    If(WITMREF<>"" and WQTY<>0 and WACT<>0)Then
+      #On va controler que l'action est possible
+
+      Local Char ZCRITERE(250) : ZCRITERE = "[F:ZAEP]ZART_FINAL=WITMREF and [F:ZAEP]BPCORD=[M:ZAE0]ZBPCORD and [F:ZAEP]STOFCY=[M:ZAE0]ZFCY and [F:ZAEP]ARTREF=2 and [F:ZAEP]ZQTYLIV=0"
+      Local Char WCLIENT(30) : WCLIENT = [M:ZAE0]ZBPCORD
+      Local Char WAXEANA(30) : WAXEANA = "GD"
+      #On va lire l'axe analytique EPALIS métier du client
+      Read [F:BPC]BPC0=WCLIENT
+      If(fstat=0)Then
+        WAXEANA = [F:BPC]ZAXEMETEPI
+      Endif
+      If(WAXEANA="GD" and WACT<>8)Then
+#        Mis en commentaire à la demande de SLB le 17/02/2016
+#        ZCRITERE = ZCRITERE + " and [F:ZAEP]ZFACTRELOC<>1"
+      Endif
+      For [F:ZAEP]ZAEP0 Where evalue(ZCRITERE)
+        If(WACT=1 or WACT=11 or WACT=12)Then
+          #On est dans le cas d'une réparation, d'une sortie KC ou d'un transfert de KC
+          WQTYTOT = WQTYTOT + [F:ZAEP]ZQTEKC
+        Elsif(WACT=2 or WACT=6 or WACT=7 or WACT=8)Then
+          #On est dans le cas d'une relocalisation ou d'une sortie diverse
+          WQTYTOT = WQTYTOT + [F:ZAEP]ZQTEOK
+        Elsif(WACT=3)Then
+          #On est dans le cas d'une transformation
+          WQTYTOT = WQTYTOT + [F:ZAEP]ZQTEATRANSF
+        Endif
+      Next
+      #---------- MODIF JBS du 11/04/2017 -----------
+      If(WACT=1)Then
+        #Dans le cas d'une réparation, on va ajouter à WQTY, le champ [M:ZAE1]ZQTEKCUTIL(WNOL) et [M:ZAE1]ZQTEHS(WNOL)
+        WQTY += ([M:ZAE1]ZQTEKCUTIL(WNOL) + [M:ZAE1]ZQTEHS(WNOL))
+      Endif
+      #----------------------------------------------
+      #---------- MODIF JBS du 30/10/2017 -----------
+      #Dans le cas d'une relocalisation, on va ajouter la quantité en attente
+      If(WACT=2)Then
+        Read[F:ZQR]ZQR0=[M:ZAE0]ZFCY;[M:ZAE0]ZBPCORD;WITMREF
+        If(fstat=0)Then
+          WQTY += [F:ZQR]ZQTY
+        Endif
+      Endif
+      #----------------------------------------------
+      If(WQTY>WQTYTOT)Then
+#        Chgstl [M:ZAE1]NBLIG(WNOL) With "BACKRED"
+        Chgstl [M:ZAE1]ZTYPPAL(WNOL) With "BACKRED"
+        Chgstl [M:ZAE1]ZQTY(WNOL) With "BACKRED"
+        Chgstl [M:ZAE1]ZITMREF(WNOL) With "BACKRED"
+        Chgstl [M:ZAE1]ZZITMREF(WNOL) With "BACKRED"
+        Chgstl [M:ZAE1]ZPRESTFACT(WNOL) With "BACKRED"
+        Chgstl [M:ZAE1]ZTRANSCHG(WNOL) With "BACKRED"
+        Chgstl [M:ZAE1]ZQTEKCUTIL(WNOL) With "BACKRED"
+        Chgstl [M:ZAE1]ZQTEHS(WNOL) With "BACKRED"
+        [M:ZAE1]ZOK(WNOL)=1
+      Else
+#        Chgstl [M:ZAE1]NBLIG(WNOL) With "BACKGREEN"
+        Chgstl [M:ZAE1]ZTYPPAL(WNOL) With "BACKGREEN"
+        Chgstl [M:ZAE1]ZQTY(WNOL) With "BACKGREEN"
+        Chgstl [M:ZAE1]ZITMREF(WNOL) With "BACKGREEN"
+        Chgstl [M:ZAE1]ZZITMREF(WNOL) With "BACKGREEN"
+        Chgstl [M:ZAE1]ZPRESTFACT(WNOL) With "BACKGREEN"
+        Chgstl [M:ZAE1]ZTRANSCHG(WNOL) With "BACKGREEN"
+        Chgstl [M:ZAE1]ZQTEKCUTIL(WNOL) With "BACKGREEN"
+        Chgstl [M:ZAE1]ZQTEHS(WNOL) With "BACKGREEN"
+        [M:ZAE1]ZOK(WNOL)=2
+      Endif
+  #    Affzo [M:ZAE1]25
+    Endif
+  Elsif([M:ZAE1]ZACTG=13)Then
+    #On va regarder si le code article est dans la table ZVAEPALIS
+    Read[F:ZVA]ZVA0=[M:ZAE0]ZBPCORD;[M:ZAE1]ZITMREF(WNOL)
+    If(fstat=0)Then
+#      Chgstl [M:ZAE1]NBLIG(WNOL) With "BACKGREEN"
+      Chgstl [M:ZAE1]ZTYPPAL(WNOL) With "BACKGREEN"
+      Chgstl [M:ZAE1]ZQTY(WNOL) With "BACKGREEN"
+      Chgstl [M:ZAE1]ZITMREF(WNOL) With "BACKGREEN"
+      Chgstl [M:ZAE1]ZZITMREF(WNOL) With "BACKGREEN"
+      Chgstl [M:ZAE1]ZPRESTFACT(WNOL) With "BACKGREEN"
+      Chgstl [M:ZAE1]ZTRANSCHG(WNOL) With "BACKGREEN"
+      Chgstl [M:ZAE1]ZQTEKCUTIL(WNOL) With "BACKGREEN"
+      Chgstl [M:ZAE1]ZQTEHS(WNOL) With "BACKGREEN"
+      [M:ZAE1]ZOK(WNOL)=2
+    Else
+#      Chgstl [M:ZAE1]NBLIG(WNOL) With "BACKRED"
+      Chgstl [M:ZAE1]ZTYPPAL(WNOL) With "BACKRED"
+      Chgstl [M:ZAE1]ZQTY(WNOL) With "BACKRED"
+      Chgstl [M:ZAE1]ZITMREF(WNOL) With "BACKRED"
+      Chgstl [M:ZAE1]ZZITMREF(WNOL) With "BACKRED"
+      Chgstl [M:ZAE1]ZPRESTFACT(WNOL) With "BACKRED"
+      Chgstl [M:ZAE1]ZTRANSCHG(WNOL) With "BACKRED"
+      Chgstl [M:ZAE1]ZQTEKCUTIL(WNOL) With "BACKRED"
+      Chgstl [M:ZAE1]ZQTEHS(WNOL) With "BACKRED"
+      [M:ZAE1]ZOK(WNOL)=1
+    Endif
+  Else
+#    Chgstl [M:ZAE1]NBLIG(WNOL) With "BACKGREEN"
+    Chgstl [M:ZAE1]ZTYPPAL(WNOL) With "BACKGREEN"
+    Chgstl [M:ZAE1]ZQTY(WNOL) With "BACKGREEN"
+    Chgstl [M:ZAE1]ZITMREF(WNOL) With "BACKGREEN"
+    Chgstl [M:ZAE1]ZZITMREF(WNOL) With "BACKGREEN"
+    Chgstl [M:ZAE1]ZPRESTFACT(WNOL) With "BACKGREEN"
+    Chgstl [M:ZAE1]ZTRANSCHG(WNOL) With "BACKGREEN"
+    Chgstl [M:ZAE1]ZQTEKCUTIL(WNOL) With "BACKGREEN"
+    Chgstl [M:ZAE1]ZQTEHS(WNOL) With "BACKGREEN"
+    [M:ZAE1]ZOK(WNOL)=2
+  Endif
+Chgstl[M:ZAE1]ZQTESTOOK(WNOL) With "ZINFOSTO"
+If([M:ZAE1]ZACTG=5 and [M:ZAE1]ZTYPPAL(WNOL)=1)Then
+  Chgstl[M:ZAE1]ZQTESTOOK(WNOL) With "ZINFOSTOS"
+Endif
+Affzo [M:ZAE1]ZQTESTOOK(WNOL)
+Chgstl[M:ZAE1]ZQTESTOKC(WNOL) With "ZINFOSTO"
+If([M:ZAE1]ZACTG=5 and [M:ZAE1]ZTYPPAL(WNOL)=2)Then
+  Chgstl[M:ZAE1]ZQTESTOKC(WNOL) With "ZINFOSTOS"
+Endif
+Affzo [M:ZAE1]ZQTESTOKC(WNOL)
+Chgstl[M:ZAE1]ZQTESTOTRSF(WNOL) With "ZINFOSTO"
+Affzo [M:ZAE1]ZQTESTOTRSF(WNOL)
+End
+
+Subprog RAZ_TABACT
+  Effzo [M:ZAE1]25
+  [M:ZAE1]NBLIG=0
+  Affzo [M:ZAE1]25
+End
+
+Subprog AM_WBPCORD(VALEUR)
+Variable Char    VALEUR()
+  If(VALEUR<>"")Then
+    Chgstl [M:ZAE1]WBPCORD With "BACKGREEN"
+  Else
+    Chgstl [M:ZAE1]WBPCORD With "BACKRED"
+    Call RAZ_TABACT
+  Endif
+    GBPCNUM = VALEUR
+    #On va renseigner le nom du client
+    Read [F:BPC]BPC0=VALEUR
+    If(fstat=0)Then
+        [M:ZAE1]ZWBPCORD = [F:BPC]BPCNAM
+        Affzo [M:ZAE1]ZWBPCORD
+    Endif
+End
+
+Subprog AM_ZDATACTG(VALEUR)
+Variable Date    VALEUR
+  If(VALEUR<>[0/0/0])Then
+    Chgstl [M:ZAE1]ZDATACTG With "BACKGREEN"
+  Else
+    Chgstl [M:ZAE1]ZDATACTG With "BACKRED"
+    Call RAZ_TABACT
+  Endif
+  #On va répercuter le changement de valeur dans le tableau
+  For I=0 To [M:ZAE1]NBLIG-1
+    [M:ZAE1]ZDATACT(I)=VALEUR
+    nolign = I + 1
+    Call GET_VAL_ACT([M:ZAE1]ZITMREF(I),[M:ZAE1]ZQTY(I),[M:ZAE1]ZACT(I))
+  Next
+  If(VALEUR<>[0/0/0] and [M:ZAE1]ZACTG<>4)Then
+    Actzo [M:ZAE1]25
+  Else
+    Call RAZ_TABACT
+    Grizo [M:ZAE1]25
+  Endif
+  #----------------MODIF JBS DU 08/11/2017 A LA DEMANDE DE SLB----------------
+  #- Toutes les relocalisations passent maintenant systématiquement en attente
+  #---------------------------------------------------------------------------
+  #Si la date est supérieur à la date du jour, on va passer l'action en attente
+  #uniquement dans le cas où l'action est une relocalisation
+#  If(VALEUR>date$ and [M:ZAE1]ZACTG=2)Then
+#    [M:ZAE1]ZATTENTE = 2
+#    Chgfmt [M:ZAE1]ZATTENTE With "K:50X"
+#    If(GPROFIL="ADMIN")Then
+#      Actzo [M:ZAE1]ZATTENTE
+#    Else
+#      Diszo [M:ZAE1]ZATTENTE
+#    Endif
+#  Else
+#    [M:ZAE1]ZATTENTE = 1
+#    Chgfmt [M:ZAE1]ZATTENTE With "-K:50X"
+#  Endif
+#  Affzo [M:ZAE1]ZATTENTE
+  #---------------------------------------------------------------------------
+  #On va maintenant alimenter la zone [M:ZAE1]ZDATEFFET
+  [M:ZAE1]ZDATEFFET = func ZWSEPALISB.SPE_GET_DATEFFET(VALEUR,1)
+  Affzo [M:ZAE1]ZDATEFFET
+End
+
+Subprog AM_ZACTG(VALEUR)
+Variable Integer VALEUR
+  WREFOBLIG=0
+  WAPPROOBLIG=0
+  [M:ZAE1]ZREFERENCEG=""
+  [M:ZAE1]ZAPPRO=""
+  Chgfmt [M:ZAE1]ZREFERENCEG With "-K:10X"
+  Chgfmt [M:ZAE1]ZAPPRO With "-K:10X"
+  Chgstl [M:ZAE1]ZREFERENCEG With ""
+  Chgstl [M:ZAE1]ZAPPRO With ""
+  Chgtzn [M:ZAE1]ZREFERENCEG With "Référence"
+  Chgtzn [M:ZAE1]ZAPPRO With "Appro"
+  Affzo [M:ZAE1]ZREFERENCEG
+  Affzo [M:ZAE1]ZAPPRO
+  Call RAZ_TABACT
+  If(VALEUR<>4 and VALEUR<>10)Then
+    Chgstl [M:ZAE1]ZACTG With "BACKGREEN"
+  Else
+    Chgstl [M:ZAE1]ZACTG With "BACKRED"
+  Endif
+  #On va répercuter le changement de valeur dans le tableau
+  For I=0 To [M:ZAE1]NBLIG-1
+    [M:ZAE1]ZACT(I)=VALEUR
+    nolign = I + 1
+    Call GET_VAL_ACT([M:ZAE1]ZITMREF(I),[M:ZAE1]ZQTY(I),[M:ZAE1]ZACT(I))
+  Next
+  If(VALEUR<>2 and VALEUR<>7 and VALEUR<>8 and VALEUR<>12)Then
+    #Dans le cas d'une transformation, on pré-rempli les champs au cas où
+    #pour les transformation à facturer au moment de la transformation
+    If(VALEUR=3 or VALEUR=1)Then
+      Read[F:BPC]BPC0=[M:ZAE0]ZBPCORD
+      [M:ZAE1]WBPAADD = [F:BPC]BPAADD
+      Affzo [M:ZAE1]WBPAADD
+      [M:ZAE1]ZWBPAADD = ""
+      Affzo [M:ZAE1]ZWBPAADD
+      [M:ZAE1]WFCY = [M:ZAE0]ZFCY
+      Affzo [M:ZAE1]WFCY
+      [M:ZAE1]ZWFCY = [M:ZAE0]ZZFCY
+      Affzo [M:ZAE1]ZWFCY
+      [M:ZAE1]WBPCORD = [M:ZAE0]ZBPCORD
+      Affzo [M:ZAE1]WBPCORD
+      [M:ZAE1]ZWBPCORD = [M:ZAE0]ZZBPCORD
+      Affzo [M:ZAE1]ZWBPCORD
+    Else
+      [M:ZAE1]WBPAADD = ""
+      Affzo [M:ZAE1]WBPAADD
+      [M:ZAE1]ZWBPAADD = ""
+      Affzo [M:ZAE1]ZWBPAADD
+      [M:ZAE1]WFCY = ""
+      Affzo [M:ZAE1]WFCY
+      [M:ZAE1]ZWFCY = ""
+      Affzo [M:ZAE1]ZWFCY
+      [M:ZAE1]WBPCORD = ""
+      Affzo [M:ZAE1]WBPCORD
+      [M:ZAE1]ZWBPCORD = ""
+      Affzo [M:ZAE1]ZWBPCORD
+    Endif
+    [M:ZAE1]ZFCYREC = ""
+    Affzo [M:ZAE1]ZFCYREC
+    [M:ZAE1]ZZFCYREC = ""
+    [M:ZAE1]ZPSNUMFCYREC = ""
+    Affzo [M:ZAE1]ZPSNUMFCYREC
+    Affzo [M:ZAE1]ZZFCYREC
+    [M:ZAE1]ZCHAUFFEUR = ""
+    Affzo [M:ZAE1]ZCHAUFFEUR
+    Grizo [M:ZAE1]20
+    Grizo [M:ZAE1]23
+    [M:ZAE1]ZACHATINT = 1
+    Affzo [M:ZAE1]ZACHATINT
+    If(VALEUR=13)Then
+      Actzo [M:ZAE1]19
+      Chgstl [M:ZAE1]ZACHATINT With "BACKRED"
+#      Chgstl [M:ZAE1]ZMDL With ""
+#      Grizo [M:ZAE1]ZMDL
+      Actzo [M:ZAE1]ZCHAUFFEUR
+      Chgstl [M:ZAE1]ZCHAUFFEUR With "BACKRED"
+
+#      [M:ZAE1]WBPCORD = [M:ZAE0]ZBPCORD
+#      Affzo [M:ZAE1]WBPCORD
+#      Call AM_WBPCORD([M:ZAE1]WBPCORD)
+#      Affzo [M:ZAE1]ZWBPCORD
+#      Actzo [M:ZAE1]WBPAADD
+#      Chgstl [M:ZAE1]WBPAADD With "BACKRED"
+#      Actzo [M:ZAE1]WFCY
+#      Chgstl [M:ZAE1]WFCY With "BACKRED"
+    Else
+      Grizo [M:ZAE1]19
+      Chgstl [M:ZAE1]ZACHATINT With ""
+#      Chgstl [M:ZAE1]ZMDL With ""
+    Endif
+  Else
+    Chgtzn [M:ZAE1]ZFCYREC With "Site de réception"
+    [M:ZAE1]ZACHATINT = 1
+    Affzo [M:ZAE1]ZACHATINT
+    Chgstl [M:ZAE1]ZACHATINT With ""
+#    [M:ZAE1]ZMDL = ""
+#    Affzo [M:ZAE1]ZMDL
+#    Chgstl [M:ZAE1]ZMDL With ""
+    [M:ZAE1]WFCY = ""
+    Affzo [M:ZAE1]WFCY
+    Chgstl [M:ZAE1]WFCY With ""
+    [M:ZAE1]WBPCORD = ""
+    Affzo [M:ZAE1]WBPCORD
+    Chgstl [M:ZAE1]WBPCORD With ""
+    [M:ZAE1]WBPAADD = ""
+    Affzo [M:ZAE1]WBPAADD
+    Chgstl [M:ZAE1]WBPAADD With ""
+    [M:ZAE1]ZWBPAADD = ""
+    [M:ZAE1]ZWFCY = ""
+    [M:ZAE1]ZWBPCORD = ""
+    Affzo [M:ZAE1]ZWBPAADD
+    Affzo [M:ZAE1]ZWFCY
+    Affzo [M:ZAE1]ZWBPCORD
+    Grizo [M:ZAE1]19
+    If(VALEUR=2 or VALEUR=7)Then
+      Actzo [M:ZAE1]20
+      Grizo [M:ZAE1]23
+      Chgstl [M:ZAE1]ZFCYREC With ""
+      If(VALEUR<>2)Then
+        Chgstl [M:ZAE1]ZCHAUFFEUR With "BACKGREEN"
+      Else
+        Chgstl [M:ZAE1]ZCHAUFFEUR With "BACKRED"
+        Actzo [M:ZAE1]ZCHAUFFEUR
+#        Chgstl [M:ZAE1]ZFCYREC With "BACKRED"
+#        Actzo [M:ZAE1]ZFCYREC
+        [M:ZAE1]ZTYPTRSP=3
+        If(GPROFIL="ADMIN")Then
+          Actzo [M:ZAE1]ZTYPTRSP
+        Else
+          Grizo [M:ZAE1]ZTYPTRSP
+        Endif
+      Endif
+      [M:ZAE1]ZFCYREC = ""
+      [M:ZAE1]ZCHAUFFEUR = ""
+      [M:ZAE1]ZZFCYREC = ""
+      [M:ZAE1]ZPSNUMFCYREC = ""
+      Affzo [M:ZAE1]ZPSNUMFCYREC
+      Chgstl [M:ZAE1]WFCY With "BACKRED"
+      Chgstl [M:ZAE1]WBPCORD With "BACKRED"
+      Chgstl [M:ZAE1]WBPAADD With "BACKRED"
+      #Dans le cas d'une relocalisation nous allons préremplir le site et le client
+      If(VALEUR=2 or VALEUR=7)Then
+        [M:ZAE1]WFCY = [M:ZAE0]ZFCY
+        Affzo [M:ZAE1]WFCY
+        Affzo [M:ZAE1]ZWFCY
+        #Avant de préremplir le champ client, on va reagrder s'il est présent dans
+        Read [F:ZDCE]ZDCE0=[M:ZAE0]ZBPCORD
+        If(fstat=0)Then
+            [M:ZAE1]WBPCORD = [M:ZAE0]ZBPCORD
+            Call AM_WBPCORD([M:ZAE1]WBPCORD)
+            Affzo [M:ZAE1]WBPCORD
+            Affzo [M:ZAE1]ZWBPCORD
+            Chgstl [M:ZAE1]WBPCORD With ""
+        Endif
+        Chgstl [M:ZAE1]WFCY With ""
+        Grizo [M:ZAE1]WFCY
+        #Grizo [M:ZAE1]WBPCORD
+      Endif
+    Elsif(VALEUR=8 or VALEUR=12)Then
+      Grizo [M:ZAE1]20
+      Chgstl [M:ZAE1]WFCY With ""
+      Chgstl [M:ZAE1]WBPCORD With ""
+      Chgstl [M:ZAE1]WBPAADD With ""
+      [M:ZAE1]WFCY = ""
+      [M:ZAE1]WBPCORD = ""
+      [M:ZAE1]WBPAADD = ""
+      [M:ZAE1]ZWFCY = ""
+      [M:ZAE1]ZWBPCORD = ""
+      [M:ZAE1]ZWBPAADD = ""
+      Actzo [M:ZAE1]23
+      Chgstl [M:ZAE1]ZFCYREC With "BACKRED"
+      Chgstl [M:ZAE1]ZCHAUFFEUR With "BACKRED"
+    Endif
+  Endif
+  If(VALEUR<>4 and [M:ZAE1]ZDATACTG<>[0/0/0])Then
+    Actzo [M:ZAE1]25
+  Else
+    Grizo [M:ZAE1]25
+  Endif
+  #Si on choisit Entrée diverse, on masque certains champs
+  If(VALEUR=5)Then
+    Chgfmt [M:ZAE1]ZPRESTFACT With "K:10X"
+    Chgfmt [M:ZAE1]ZTYPPAL With "K:10X"
+    Chgfmt [M:ZAE1]ZPAYSCOLL With "K:10X"
+    Chgfmt [M:ZAE1]ZZPAYSCOLL With "K:10X"
+    [M:ZAE1]ZPAYSCOLL = "FR"
+    [M:ZAE1]ZZPAYSCOLL = "France"
+    Grizo [M:ZAE1]ZZPAYSCOLL
+  Else
+    Chgfmt [M:ZAE1]ZPRESTFACT With "-K:10X"
+    Chgfmt [M:ZAE1]ZTYPPAL With "-K:10X"
+    Chgfmt [M:ZAE1]ZPAYSCOLL With "-K:10X"
+    Chgfmt [M:ZAE1]ZZPAYSCOLL With "-K:10X"
+    [M:ZAE1]ZPAYSCOLL = ""
+    [M:ZAE1]ZZPAYSCOLL = ""
+    Grizo [M:ZAE1]ZZPAYSCOLL
+  Endif
+  #Si on choisit Transformation, on masque certains champs
+  If(VALEUR=3)Then
+    Chgfmt [M:ZAE1]ZTRANSCHG With "K:10X"
+  Else
+    Chgfmt [M:ZAE1]ZTRANSCHG With "-K:10X"
+  Endif
+  #Si on choisit Réparation, on affiche certains champs
+  If(VALEUR=1)Then
+    #On affiche les champs uniquement si c'est autorisé au niveau du chargeur
+    Read[F:BPC]BPC0=[M:ZAE0]ZBPCORD
+    If(fstat=0)Then
+      If([F:BPC]ZAUTDECLAS=2)Then
+        Chgfmt [M:ZAE1]ZQTEKCUTIL With "K:10X"
+        Chgfmt [M:ZAE1]ZQTEHS With "K:10X"
+      Else
+        Chgfmt [M:ZAE1]ZQTEKCUTIL With "-K:10X"
+        Chgfmt [M:ZAE1]ZQTEHS With "-K:10X"
+      Endif
+    Else
+      Chgfmt [M:ZAE1]ZQTEKCUTIL With "-K:10X"
+      Chgfmt [M:ZAE1]ZQTEHS With "-K:10X"
+    Endif
+  Else
+    Chgfmt [M:ZAE1]ZQTEKCUTIL With "-K:10X"
+    Chgfmt [M:ZAE1]ZQTEHS With "-K:10X"
+  Endif
+
+  #--------------------------------------->
+  #<----------MODIF JBS du 13/12/2018----------
+  #On masque tous les champs pour mettre les qtés de stock
+  Chgfmt [M:ZAE1]ZQTESTOOK With "-K:10X"
+  Chgfmt [M:ZAE1]ZQTESTOKC With "-K:10X"
+  Chgfmt [M:ZAE1]ZQTESTOTRSF With "-K:10X"
+  If(VALEUR=2 or VALEUR=5 or VALEUR=6 or VALEUR=7 or VALEUR=8 or VALEUR=9)Then
+    Chgfmt [M:ZAE1]ZQTESTOOK With "K:10X"
+  Endif
+  If(VALEUR=1 or VALEUR=5 or VALEUR=11 or VALEUR=12)Then
+    Chgfmt [M:ZAE1]ZQTESTOKC With "K:10X"
+  Endif
+  If(VALEUR=3)Then
+    Chgfmt [M:ZAE1]ZQTESTOTRSF With "K:10X"
+  Endif
+  #------------------------------------------->
+  #On va regarder à ce niveau les zones spé pour voir si elles sont visibles, obligatoire
+  WREFOBLIG=0
+  WAPPROOBLIG=0
+  #on récupère l'enregistrement du champ Réference du Client
+  Read[F:ZGL]ZGL0=[M:ZAE0]ZBPCORD;VALEUR;1
+  If(fstat=0)Then
+    #Il existe un paramétrage spécifique pour ce champ et pour ce client
+    If([F:ZGL]ZGLVISIBLE=2)Then
+      Chgfmt [M:ZAE1]ZREFERENCEG With "K:40X"
+      If([F:ZGL]ZGLOBLIG=2)Then
+        WREFOBLIG = 1
+        Chgstl [M:ZAE1]ZREFERENCEG With "BACKRED"
+      Endif
+      If([F:ZGL]ZGLLIBELLE<>"")Then
+        Chgtzn [M:ZAE1]ZREFERENCEG With [F:ZGL]ZGLLIBELLE
+      Else
+        Chgtzn [M:ZAE1]ZREFERENCEG With "Référence"
+      Endif
+      Affzo [M:ZAE1]ZREFERENCEG
+    Else
+      Chgfmt [M:ZAE1]ZREFERENCEG With "-K:40X"
+    Endif
+  Else
+    #Il n'y a pas de paramétrage spécifique de cette zone pour le client
+    Chgfmt [M:ZAE1]ZREFERENCEG With "K:40X"
+    Chgstl [M:ZAE1]ZREFERENCEG With ""
+    Chgtzn [M:ZAE1]ZREFERENCEG With "Référence"
+    WREFOBLIG = 0
+  Endif
+  #on récupère l'enregistrement du champ Appro du Client
+  Read[F:ZGL]ZGL0=[M:ZAE0]ZBPCORD;VALEUR;2
+  If(fstat=0)Then
+    #Il existe un paramétrage spécifique pour ce champ et pour ce client
+    If([F:ZGL]ZGLVISIBLE=2)Then
+      Chgfmt [M:ZAE1]ZAPPRO With "K:100X"
+      If([F:ZGL]ZGLOBLIG=2)Then
+        WAPPROOBLIG = 1
+        Chgstl [M:ZAE1]ZAPPRO With "BACKRED"
+      Endif
+      If([F:ZGL]ZGLLIBELLE<>"")Then
+        Chgtzn [M:ZAE1]ZAPPRO With [F:ZGL]ZGLLIBELLE
+      Else
+        Chgtzn [M:ZAE1]ZAPPRO With "Appro"
+        Affzo [M:ZAE1]ZAPPRO
+      Endif
+    Else
+      Chgfmt [M:ZAE1]ZAPPRO With "-K:100X"
+    Endif
+  Else
+    #Il n'y a pas de paramétrage spécifique de cette zone pour le client
+    Chgfmt [M:ZAE1]ZAPPRO With "K:100X"
+    Chgstl [M:ZAE1]ZAPPRO With ""
+    Chgtzn [M:ZAE1]ZAPPRO With "Appro"
+    WAPPROOBLIG = 0
+  Endif
+  #----------------MODIF JBS DU 08/11/2017 A LA DEMANDE DE SLB----------------
+  #- Toutes les relocalisations passent maintenant systématiquement en attente
+  #---------------------------------------------------------------------------
+  #Si la date est supérieur à la date du jour, on va passer l'action en attente
+  #uniquement dans le cas où l'action est une relocalisation
+#  If([M:ZAE1]ZDATACTG>date$ and VALEUR=2)Then
+  If(VALEUR=2)Then
+    [M:ZAE1]ZATTENTE = 2
+#    Chgfmt [M:ZAE1]ZATTENTE With "K:50X"
+    If(GPROFIL="ADMIN")Then
+      Chgfmt [M:ZAE1]ZATTENTE With "K:50X"
+      Actzo [M:ZAE1]ZATTENTE
+    Else
+      Chgfmt [M:ZAE1]ZATTENTE With "-K:50X"
+      Diszo [M:ZAE1]ZATTENTE
+    Endif
+  Else
+    [M:ZAE1]ZATTENTE = 1
+    Chgfmt [M:ZAE1]ZATTENTE With "-K:50X"
+  Endif
+  Affzo [M:ZAE1]ZATTENTE
+  #---------------------------------------------------------------------------
+  Affzo [M:ZAE1]
+End
+
+Subprog C_ZTRANSCHG(VALEUR)
+Variable Integer VALEUR
+#On va controler que le champ n'est pas vide
+If not(VALEUR=1 or VALEUR=2)Then
+    GMESSAGE = "Champ obligatoire"
+    mkstat = 2
+Endif
+End
+
+Subprog AM_ZREFERENCEG(VALEUR)
+Variable Char    VALEUR()
+  #On va répercuter le changement de valeur dans le tableau
+  For I=0 To [M:ZAE1]NBLIG-1
+    [M:ZAE1]ZREFERENCE(I)=VALEUR
+    nolign = I + 1
+    Call GET_VAL_ACT([M:ZAE1]ZITMREF(I),[M:ZAE1]ZQTY(I),[M:ZAE1]ZACT(I))
+  Next
+  #Si le champ est obligatoire et qu'il n'est pas vide alors on va le mettre en couleur
+  If([V]WREFOBLIG<>0)Then
+    If(VALEUR<>"")Then
+      Chgstl [M:ZAE1]ZREFERENCEG With "BACKGREEN"
+    Else
+      Chgstl [M:ZAE1]ZREFERENCEG With "BACKRED"
+    Endif
+  Else
+    Chgstl [M:ZAE1]ZREFERENCEG With ""
+  Endif
+End
+
+Subprog APRES_NBLIG
+  Local Integer WNOL : WNOL = nolign-1
+  Call GET_VAL_ACT([M:ZAE1]ZITMREF(WNOL),[M:ZAE1]ZQTY(WNOL),[M:ZAE1]ZACT(WNOL))
+End
+
+Subprog AS_NBLIG
+  If((([M:ZAE1]WFCY="" or [M:ZAE1]WBPCORD="" or [M:ZAE1]WBPAADD="" or [M:ZAE1]ZDATACTG=[0/0/0] or ([M:ZAE1]ZCHAUFFEUR="" and [M:ZAE1]ZACTG<>7)) and ([M:ZAE1]ZACTG=2 or [M:ZAE1]ZACTG=7)) or (([M:ZAE1]
+& ZFCYREC="" or [M:ZAE1]ZCHAUFFEUR="") and ([M:ZAE1]ZACTG=8 or [M:ZAE1]ZACTG=12)))Then
+    If([M:ZAE1]WFCY="")Then
+      Chgstl [M:ZAE1]WFCY With "BACKRED"
+    Else
+      Chgstl [M:ZAE1]WFCY With "BACKGREEN"
+    Endif
+    If([M:ZAE1]WBPCORD="")Then
+      Chgstl [M:ZAE1]WBPCORD With "BACKRED"
+    Else
+      Chgstl [M:ZAE1]WBPCORD With "BACKGREEN"
+    Endif
+    If([M:ZAE1]WBPAADD="")Then
+      Chgstl [M:ZAE1]WBPAADD With "BACKRED"
+    Else
+      Chgstl [M:ZAE1]WBPAADD With "BACKGREEN"
+    Endif
+    If([M:ZAE1]ZDATACTG=[0/0/0])Then
+      Chgstl [M:ZAE1]ZDATACTG With "BACKRED"
+    Else
+      Chgstl [M:ZAE1]ZDATACTG With "BACKGREEN"
+    Endif
+    If([M:ZAE1]ZACTG=4 or [M:ZAE1]ZACTG=10)Then
+      Chgstl [M:ZAE1]ZACTG With "BACKRED"
+    Else
+      Chgstl [M:ZAE1]ZACTG With "BACKGREEN"
+    Endif
+    If([M:ZAE1]ZFCYREC="")Then
+      Chgstl [M:ZAE1]ZFCYREC With "BACKRED"
+    Else
+      Chgstl [M:ZAE1]ZFCYREC With "BACKGREEN"
+    Endif
+    If([M:ZAE1]ZCHAUFFEUR="")Then
+      Chgstl [M:ZAE1]ZCHAUFFEUR With "BACKRED"
+    Else
+      Chgstl [M:ZAE1]ZCHAUFFEUR With "BACKGREEN"
+    Endif
+    GMESSAGE = "Impossible ! Certains champs obligatoires ne sont pas renseignés."
+    mkstat = 2
+  Elsif([M:ZAE1]ZDATACTG=[0/0/0] and [M:ZAE1]ZACTG<>2 and [M:ZAE1]ZACTG<>7)Then
+    If([M:ZAE1]ZDATACTG=[0/0/0])Then
+      Chgstl [M:ZAE1]ZDATACTG With "BACKRED"
+    Else
+      Chgstl [M:ZAE1]ZDATACTG With "BACKGREEN"
+    Endif
+    If([M:ZAE1]ZACTG=4 or [M:ZAE1]ZACTG=10)Then
+      Chgstl [M:ZAE1]ZACTG With "BACKRED"
+    Else
+      Chgstl [M:ZAE1]ZACTG With "BACKGREEN"
+    Endif
+    GMESSAGE = "Impossible ! Certains champs obligatoires ne sont pas renseignés."
+    mkstat = 2
+  Elsif([M:ZAE1]ZACTG=2 and [M:ZAE1]ZTYPTRSP=3)Then
+    GMESSAGE = "Impossible ! Le type du transport lié au chauffeur doit être défini. Veuillez contacter l'administrateur EPALIA pour Sage X3."
+    mkstat = 2
+  Elsif([M:ZAE1]ZACTG=10)Then
+    If([M:ZAE1]ZACHATINT=1)Then
+      GMESSAGE = "Impossible ! Certains champs obligatoires ne sont pas renseignés."
+      mkstat = 2
+#    Elsif([M:ZAE1]ZACHATINT=3 and ([M:ZAE1]ZMDL="" or [M:ZAE1]ZCHAUFFEUR=""))Then
+    Elsif([M:ZAE1]ZACHATINT=3 and ([M:ZAE1]ZCHAUFFEUR=""))Then
+      GMESSAGE = "Impossible ! Certains champs obligatoires ne sont pas renseignés."
+      mkstat = 2
+#    Elsif([M:ZAE1]ZACHATINT=2 and ([M:ZAE1]ZMDL="" or [M:ZAE1]ZCHAUFFEUR="" or [M:ZAE1]WBPCORD="" or [M:ZAE1]WFCY="" or [M:ZAE1]WBPAADD=""))Then
+    Elsif([M:ZAE1]ZACHATINT=2 and ([M:ZAE1]ZCHAUFFEUR="" or [M:ZAE1]WBPCORD="" or [M:ZAE1]WFCY="" or [M:ZAE1]WBPAADD=""))Then
+      GMESSAGE = "Impossible ! Certains champs obligatoires ne sont pas renseignés."
+      mkstat = 2
+    Endif
+  Elsif([M:ZAE1]ZACTG=5 and [M:ZAE1]ZPAYSCOLL="")Then
+      GMESSAGE = "Impossible ! Certains champs obligatoires ne sont pas renseignés."
+      mkstat = 2
+  Endif
+  If([V]WREFOBLIG<>0 and [M:ZAE1]ZREFERENCEG="")Then
+    GMESSAGE = "Impossible ! Certains champs obligatoires ne sont pas renseignés."
+    mkstat = 2
+  Endif
+  If([V]WAPPROOBLIG<>0 and [M:ZAE1]ZAPPRO="")Then
+    GMESSAGE = "Impossible ! Certains champs obligatoires ne sont pas renseignés."
+    mkstat = 2
+  Endif
+End
+
+Subprog AM_WFCY(VALEUR)
+Variable Char    VALEUR()
+  If(VALEUR<>"")Then
+    Chgstl [M:ZAE1]WFCY With "BACKGREEN"
+  Else
+    Chgstl [M:ZAE1]WFCY With "BACKRED"
+    Call RAZ_TABACT
+  Endif
+End
+Subprog AM_WBPAADD(VALEUR)
+Variable Char    VALEUR()
+  If(VALEUR<>"")Then
+    Chgstl [M:ZAE1]WBPAADD With "BACKGREEN"
+  Else
+    Chgstl [M:ZAE1]WBPAADD With "BACKRED"
+    Call RAZ_TABACT
+  Endif
+End
+
+Subprog C_ZITMREF(VALEUR)
+Variable Char    VALEUR()
+#On va regarder si l'article n'est pas déjà présent sur une autre ligne
+Local Integer WNOL : WNOL = nolign-1
+Local Integer WLIGOK :WLIGOK = 1
+For I=0 To [M:ZAE1]NBLIG-1
+  If(I<>WNOL)Then
+    If([M:ZAE1]ZACTG<>5)Then
+      If([M:ZAE1]ZITMREF(I)=VALEUR)Then
+        #Cet article existe déjà sur une autre ligne
+        WLIGOK = 0
+      Endif
+    Else
+      If([M:ZAE1]ZITMREF(I)=VALEUR and [M:ZAE1]ZTYPPAL(I)=[M:ZAE1]ZTYPPAL(WNOL))Then
+        #Cet article et ce type de palette existe déjà sur une autre ligne
+        WLIGOK = 0
+      Endif
+    Endif
+  Endif
+Next
+If(WLIGOK=0)Then
+  GMESSAGE = "Impossible, cet article est déjà présent dans le tableau. Modifiez l'entrée existante."
+  mkstat = 2
+Endif
+##On va également controler que l'article saisie correspond bien à l'action sélectionnée
+#Local Char WCRITACT(250) : WCRITACT=""
+#If([M:ZAE1]ZACTG<>9)Then
+#  WCRITACT = "[F:ZSTE]ZART_FINAL='" + VALEUR + "' & [F:ZSTE]BPCORD='" + [M:ZAE0]ZBPCORD + "' & [F:ZSTE]STOFCY='" + [M:ZAE0]ZFCY + "'"
+#  If([M:ZAE1]ZACTG=1)Then
+##    WCRITACT = WCRITACT + " & [F:ZSTE]ZQTEKC>0 & [F:ZSTE]TYPE_PREST<>3 & [F:ZSTE]TYPE_PREST<>4"
+#    WCRITACT = WCRITACT + " & [F:ZSTE]TYPE_PREST<>3 & [F:ZSTE]TYPE_PREST<>4"
+#  Elsif([M:ZAE1]ZACTG=2)Then
+##    WCRITACT = WCRITACT + " & [F:ZSTE]ZQTEOK>0 & [F:ZSTE]TYPE_PREST<>4"
+#    WCRITACT = WCRITACT + " & [F:ZSTE]TYPE_PREST<>4"
+#  Elsif([M:ZAE1]ZACTG=3)Then
+##    WCRITACT = WCRITACT + " & [F:ZSTE]ZQTEATRANSF>0 & ([F:ZSTE]TYPE_PREST=3 or [F:ZSTE]TYPE_PREST=6)"
+#    WCRITACT = WCRITACT + " & ([F:ZSTE]TYPE_PREST=3 or [F:ZSTE]TYPE_PREST=6)"
+#  Elsif([M:ZAE1]ZACTG=7)Then
+##    WCRITACT = WCRITACT + " & [F:ZSTE]ZQTEOK>0 & [F:ZSTE]TYPE_PREST=4"
+#    WCRITACT = WCRITACT + " & [F:ZSTE]TYPE_PREST=4"
+#  Endif
+#  Local Integer WARTOK : WARTOK = 0
+#  For [F:ZSTE]ZSTE0 Where evalue(WCRITACT)
+#    WARTOK = 1
+#  Next
+#  If(WARTOK<>1 and [M:ZAE1]ZACTG<>5)Then
+#    GMESSAGE = "Impossible, cet article ne peut pas être sélectionné."
+#    mkstat = 2
+#  Endif
+#Elsif([M:ZAE1]ZACTG=9)Then
+  If clalev([F:ZVAE])=0 : Local File ZVENTEARTEPI [ZVAE] : Endif
+  #On va controler que le code article rentré est bien un article de tri du client EPALIS
+  Read[F:ZVAE]ZVAE0=[M:ZAE0]ZBPCORD;VALEUR
+  If(fstat<>0)Then
+    GMESSAGE = "Impossible, cet article n'est pas un article suivi en stock chez ce chargeur."
+    mkstat = 2
+  Endif
+#Endif
+If([M:ZAE1]ZACTG=2)Then
+  #Dans le cas d'une relocalisation, on va regarder si l'article peut-être relocalisé
+  If(func ZWSEPALIS.CONT_ART_ACTION([M:ZAE0]ZFCY,[M:ZAE1]WBPCORD,[M:ZAE1]WBPAADD,VALEUR)=2)Then
+    GMESSAGE = "Impossible, cet article n'est pas relocalisable pour ce client et cette adresse."
+    mkstat=2
+  Endif
+Endif
+End
+
+Subprog C_ZACTG(VALEUR)
+Variable Integer VALEUR
+#A la demande de SLB, modification le 25/09/2015 pour autoriser les utilisateur à faire de la destruction.
+If not(GPROFIL="ADMIN" or GPROFIL="BP")Then
+  If((VALEUR>4 and VALEUR<7) or VALEUR=11 or VALEUR=12)Then
+    GMESSAGE = "Type d'action non autorisé"
+    mkstat = 2
+  Endif
+Endif
+If([M:ZAE1]ZDATACTG>date$ and VALEUR<>2 and VALEUR<>4)Then
+  GMESSAGE = "Impossible ! Vous ne pouvez pas faire une action dans le futur."
+  mkstat = 2
+Endif
+End
+
+Subprog C_ZFCYREC(VALEUR)
+Variable Char    VALEUR()
+#If(GUSER="MICRO")Then
+#  Dbgaff
+#Endif
+#On va controler qu'il existe bien une précommande pour ce client et ce site de réception
+Local Char WZPSNUM(20)
+  If(VALEUR<>"" and [M:ZAE0]ZBPCORD<>"")Then
+    WZPSNUM = func ZWSEPALIS.GET_ZPSNUM(VALEUR, [M:ZAE0]ZBPCORD)
+    If(WZPSNUM<>"")Then
+      [M:ZAE1]ZPSNUMFCYREC = WZPSNUM
+    Else
+      [M:ZAE1]ZPSNUMFCYREC = ""
+      Affzo [M:ZAE1]ZPSNUMFCYREC
+      GMESSAGE = "Impossible ! Le site EPALIA " + VALEUR + " n'est pas un site de stockage du client " + [M:ZAE0]ZBPCORD
+      mkstat = 2
+    Endif
+  Endif
+End
+
+Subprog AM_ZFCYREC(VALEUR)
+Variable Char    VALEUR()
+  If(VALEUR<>"")Then
+    Chgstl [M:ZAE1]ZFCYREC With "BACKGREEN"
+  Else
+    Chgstl [M:ZAE1]ZFCYREC With "BACKRED"
+    Call RAZ_TABACT
+  Endif
+End
+
+Subprog AM_ZCHAUFFEUR(VALEUR)
+Variable Char    VALEUR()
+  If(VALEUR<>"")Then
+    Chgstl [M:ZAE1]ZCHAUFFEUR With "BACKGREEN"
+  Else
+    Chgstl [M:ZAE1]ZCHAUFFEUR With "BACKRED"
+    Call RAZ_TABACT
+  Endif
+
+#A la sortie du champ, nous allons regarder comment est paramétré le champ ZCHCHEPI du client
+#si le champ vaut :
+#1 : Chauffeurs collectes uniquement
+#2 : Chauffeurs collectes + table
+#3 : Chauffeurs table uniquement
+#Si le champ vaut 1, on ne fait rien, s'il vaut 3, on ajoute le chauffeur dans la table s'il n'existe pas
+#Si le champ vaut 2 alors on pose la question à l'utilisateur si il veut l'enregistrer dans la table.
+Local Integer WTYPCHAUF : WTYPCHAUF = 1
+Read [F:BPC]BPC0=[M:ZAE0]ZBPCORD
+If(fstat=0)Then
+  WTYPCHAUF = [F:BPC]ZCHCHEPI
+  If(WTYPCHAUF=3 and [F:BPC]ZADDCHEPI=2)Then
+    #On ajoute le chauffeur dans la table des chauffeurs EPALIS s'il n'existe pas déjà
+    Read [F:ZCE]ZCE0=[M:ZAE0]ZBPCORD;VALEUR
+    If(fstat=5)Then
+      Raz [F:ZCE]
+      [F:ZCE]ZCHFNAM = VALEUR
+      [F:ZCE]ZBPCNUM = [M:ZAE0]ZBPCORD
+      Write [F:ZCE]
+    Endif
+  Elsif(WTYPCHAUF=2 and [F:BPC]ZADDCHEPI=2)Then
+    #On va regarder si le chauffeur EPALIS est présent dans la table des chauffeurs EPALIS
+    #s'il n'est pas présent, on va demander à l'utilisateur s'il faut le sauvegarder dans cette table.
+    Read [F:ZCE]ZCE0=[M:ZAE0]ZBPCORD;VALEUR
+    If(fstat=5)Then
+      #L'enregistrement n'existe pas
+      Local Integer WREP : WREP=1
+      Call OUINON("Voulez-vous sauvegarder ce chauffeur EPALIS ?",WREP) From GESECRAN
+      If(WREP=2)Then
+        #L'utilisateur répondu oui
+        Raz [F:ZCE]
+        [F:ZCE]ZCHFNAM = VALEUR
+        [F:ZCE]ZBPCNUM = [M:ZAE0]ZBPCORD
+        Write [F:ZCE]
+      Endif
+    Endif
+  Endif
+Endif
+#On va maintenant récupérer le type de transporteur, à savoir s'il est interne ou externe.
+If(VALEUR<>"")Then
+  Read [F:ZCE]ZCE0=[M:ZAE0]ZBPCORD;VALEUR
+  If(fstat=0)Then
+    #On est dans le cas où il existe une fiche chauffeur
+    If([F:ZCE]ZTRPINT<>1 and [F:ZCE]ZTRPINT<>2)Then
+      #L'information n'est pas définie au niveau de la fiche du chauffeur
+      [M:ZAE1]ZTYPTRSP = 3
+      If(GPROFIL="ADMIN")Then
+        Actzo [M:ZAE1]ZTYPTRSP
+      Else
+        Grizo [M:ZAE1]ZTYPTRSP
+      Endif
+    Else
+      #L'information est définie au niveau de la fiche du chauffeur
+      [M:ZAE1]ZTYPTRSP = [F:ZCE]ZTRPINT
+      Diszo [M:ZAE1]ZTYPTRSP
+    Endif
+  Else
+    #On est dans le cas, où il n'existe pas de fiche chauffeur
+    [M:ZAE1]ZTYPTRSP = 3
+    If(GPROFIL="ADMIN")Then
+      Actzo [M:ZAE1]ZTYPTRSP
+    Else
+      Grizo [M:ZAE1]ZTYPTRSP
+    Endif
+  Endif
+Else
+  [M:ZAE1]ZTYPTRSP=3
+Endif
+Affzo [M:ZAE1]ZTYPTRSP
+End
+
+Subprog AS_NBLIGH
+  If(nolign-1<=[M:ZAE2]NBLIGH-1)Then
+    Local Integer GNBLIGH : GNBLIGH = nolign-1
+#    #On parcourt le tableau
+#    For I=0 To [M:ZAE2]NBLIGH-1
+#      If(I=GNBLIGH)Then
+#        Chgstl [M:ZAE2]NBLIGH(I) With "GDD2G"
+#      Else
+#        Chgstl [M:ZAE2]NBLIGH(I) With ""
+#      Endif
+#      Affzo [M:ZAE2]NBLIGH(I)
+#    Next
+    Chgstl [M:ZAE2]NBLIGH With ""
+    Chgstl [M:ZAE2]NBLIGH(GNBLIGH) With "GDD2G"
+
+
+    Local Integer WNOL2 : WNOL2 = 0
+    Effzo [M:ZAE2]10
+    For [F:ZTE]ZTE2 Where [F:ZTE]ZBPCORD=[M:ZAE2]YZBPCORD(GNBLIGH) and [F:ZTE]ZFCY=[M:ZAE2]YZFCY(GNBLIGH) and [F:ZTE]ZCOMPTEUR=[M:ZAE2]YZCOMPTEUR(GNBLIGH)
+      [M:ZAE2]NBLIG = WNOL2 + 1
+      [M:ZAE2]YACT(WNOL2) = [F:ZTE]ZACT
+      [M:ZAE2]YDATACT(WNOL2) = [F:ZTE]ZDATACT
+      #On va regarder si le code article n'est pas un article transformé
+      Local Char WITMREFEN(250) : WITMREFEN = ""
+      For [F:ZAT]ZAT0 Where [F:ZAT]BPCNUM=[F:ZTE]ZBPCORD and [F:ZAT]ITMREF=[F:ZTE]ZITMREF
+        If([F:ZAT]ITMEN<>"")Then
+            WITMREFEN = [F:ZAT]ITMEN
+        Endif
+      Next
+#      If(WITMREFEN="")Then
+#        WITMREFEN = [F:ZTE]ZITMREF
+#      Endif
+      [M:ZAE2]YITMREF(WNOL2) = [F:ZTE]ZITMREF
+      If(WITMREFEN<>"")Then
+        [M:ZAE2]YITMREF(WNOL2) += " (--> " + WITMREFEN + ")"
+      Endif
+      [M:ZAE2]YCHAUFFEUR(WNOL2) = [F:ZTE]ZCHAUFFEUR
+      [M:ZAE2]YQTY(WNOL2) = [F:ZTE]ZQTY
+      [M:ZAE2]YUSER(WNOL2) = [F:ZTE]ZUSER
+      [M:ZAE2]YREFERENCE(WNOL2) = [F:ZTE]ZREFERENCE
+      [M:ZAE2]YBPCORDF(WNOL2) = [F:ZTE]ZBPCORDF
+      [M:ZAE2]YBPAADD(WNOL2) = [F:ZTE]ZBPAADD
+      [M:ZAE2]YFCYF(WNOL2) = [F:ZTE]ZFCYF
+      [M:ZAE2]YSDHNUM(WNOL2) = [F:ZTE]ZSDHNUM
+      [M:ZAE2]YVCRNUM(WNOL2) = [F:ZTE]VCRNUM
+      [M:ZAE2]YVCRTYP(WNOL2) = [F:ZTE]VCRTYP
+      If([F:ZTE]ZSDHNUM<>"")Then
+        [M:ZAE2]YVCRNUM(WNOL2) = [F:ZTE]ZSDHNUM
+        [M:ZAE2]YVCRTYP(WNOL2) = "SDH"
+      Endif
+      If([M:ZAE2]YVCRTYP(WNOL2)="SDH")Then
+        [M:ZAE2]YLIBTYP(WNOL2) = "Livraison"
+      Elsif([M:ZAE2]YVCRTYP(WNOL2)="SOH")Then
+        [M:ZAE2]YLIBTYP(WNOL2) = "Collecte"
+      Else
+        [M:ZAE2]YLIBTYP(WNOL2) = ""
+      Endif
+      If([M:ZAE2]YVCRNUM(WNOL2)="")Then
+        [M:ZAE2]YVCRNUM(WNOL2) = "Rien à facturer."
+        [M:ZAE2]YVCRTYP(WNOL2) = ""
+      Endif
+      #---------- MODIF JBS du 11/04/2017 ----------
+      [M:ZAE2]YQTEKCUTIL(WNOL2) = [F:ZTE]ZQTEKCUTIL
+      [M:ZAE2]YQTEHS(WNOL2) = [F:ZTE]ZQTEHS
+      [M:ZAE2]YTRANSCHG(WNOL2) = [F:ZTE]ZTRANSCHG
+      #---------------------------------------------
+      #---------- MODIF JBS du 27/02/2018 ----------
+      [M:ZAE2]YTYPPAL(WNOL2) = [F:ZTE]ZTYPPAL
+      #---------------------------------------------
+      [M:ZAE2]YZEXEACTH(WNOL2) = [F:ZTE]ZEXEACTH
+      WNOL2 = WNOL2 + 1
+      If(WNOL2>=dim([M:ZAE2]YACT)-1)Then
+        Break
+      Endif
+    Next
+    Affzo [M:ZAE2]10
+
+
+  Endif
+End
+
+Subprog B1_NBLIGH
+  Local Integer GNBLIGH : GNBLIGH = nolign-1
+  #On va imprimer un bon de livraison pour la relocalisation
+   Local Char TBPAR(15) (1..99)         : # stocke les noms de paramètres transmis à l'état
+   Local Char TBVAL(30)(1..99)          : # stocke les valeurs associée transmises à l'état
+   TBPAR(1) = "Compteur"
+   TBVAL(1) = [M:ZAE2]YZCOMPTEUR(GNBLIGH)
+   TBPAR(2) = "Opérateur"
+   TBVAL(2) = [M:ZAE2]YZUSER(GNBLIGH)
+   TBPAR(3) = "Client"
+   TBVAL(3) = [M:ZAE2]YZBPCORD(GNBLIGH)
+   TBPAR(4) = "Site"
+   TBVAL(4) = [M:ZAE2]YZFCY(GNBLIGH)
+   # -- impression de l'état des tarifs
+   Call ETAT(GZBLEPI,"PREVISU","FRA",0,"",TBPAR,TBVAL) From AIMP3
+End
+
+Subprog C_ZCHAUFFEUR(VALEUR)
+Variable Char    VALEUR()
+#On va regarder dans la fiche du chargeur pour voir si on peut renseigner une valeur qui n'est pas
+#contenue dans la table des chauffeurs EPALIS
+Local Integer WTYPCHAUF : WTYPCHAUF = 1
+Local Integer WADDCHEPI : WADDCHEPI = 1
+Read [F:BPC]BPC0=[M:ZAE0]ZBPCORD
+If(fstat=0)Then
+  If([F:BPC]ZADDCHEPI<>2 and VALEUR<>"")Then
+    WTYPCHAUF = [F:BPC]ZCHCHEPI
+    #Ouverture du fichier des chauffeurs de chargeur
+    If clalev([F:ZCPI])=0 : Local File ZCHAEPI [ZCPI] : Endif
+    Local Char WCRITERE(250)
+    #Critère de sélection
+    WCRITERE = "[F:ZCPI]ZCHAUFEPI='" + VALEUR + "' and [F:ZCPI]BPCORD='" + [M:ZAE0]ZBPCORD + "'"
+    If(WTYPCHAUF=1)Then
+      #On est dans le cas ou l'utilisateur ne peut choisir les chauffeur que dans les collectes
+      WCRITERE += " and [F:ZCPI]TYP_CHAUF='Collecte'"
+    Elsif(WTYPCHAUF=3)Then
+      #On est dans le cas ou l'utilisateur ne peut choisir les chauffeur que dans la table des chauffeurs EPALIS
+      WCRITERE += " and [F:ZCPI]TYP_CHAUF='Table'"
+    Endif
+    Local Integer WOK : WOK = 0
+    For [F:ZCPI]ZCPI0 Where evalue(WCRITERE)
+      WOK = 1
+    Next
+    If(WOK=0)Then
+      GMESSAGE = "Impossible ! Vous n'êtes pas autorisé(e) à ajouter des nouveaux chauffeurs."
+      mkstat = 2
+    Endif
+  Endif
+Endif
+End
+
+Subprog AS_NBLIGH3
+  If(nolign-1<=[M:ZAE3]NBLIGH3-1)Then
+    GNBLIGH3 = nolign-1
+    #On parcourt le tableau
+    For I=0 To [M:ZAE3]NBLIGH3-1
+      If(I=GNBLIGH3)Then
+        Chgstl [M:ZAE3]NBLIGH3(I) With "BACKGREY"
+        Call GET_VAL_ACTHIST([M:ZAE3]YZCOMPTEUR(I),I)
+      Else
+        #On va maintenant regarder si l'action peut être exécutée
+        #Si l'action est Ok alors YACTOK=2 sinon 1
+#        Call GET_VAL_ACTHIST([M:ZAE3]YZCOMPTEUR(I),I)
+#        Affzo [M:ZAE3]YZREFERENCE(I)
+      Endif
+      Affzo [M:ZAE3]NBLIGH3(I)
+    Next
+
+
+    Local Integer WNOL3 : WNOL3 = 0
+    Effzo [M:ZAE3]10
+    Effzo [M:ZAE3]7
+    For [F:ZTE]ZTE2 Where [F:ZTE]ZBPCORD=[M:ZAE3]YZBPCORD(GNBLIGH3) and [F:ZTE]ZFCY=[M:ZAE3]YZFCY(GNBLIGH3) and [F:ZTE]ZCOMPTEUR=[M:ZAE3]YZCOMPTEUR(GNBLIGH3)
+      [M:ZAE3]NBLIG3 = WNOL3 + 1
+      [M:ZAE3]YACT(WNOL3) = [F:ZTE]ZACT
+      [M:ZAE3]YDATACT(WNOL3) = [F:ZTE]ZDATACT
+      #On va regarder si le code article n'est pas un article transformé
+      Local Char WITMREFEN(250) : WITMREFEN = ""
+      For [F:ZAT]ZAT0 Where [F:ZAT]BPCNUM=[F:ZTE]ZBPCORD and [F:ZAT]ITMREF=[F:ZTE]ZITMREF
+        If([F:ZAT]ITMEN<>"")Then
+            WITMREFEN = [F:ZAT]ITMEN
+        Endif
+      Next
+#      If(WITMREFEN="")Then
+#        WITMREFEN = [F:ZTE]ZITMREF
+#      Endif
+      [M:ZAE3]YITMREF(WNOL3) = [F:ZTE]ZITMREF
+      If(WITMREFEN<>"")Then
+        [M:ZAE3]YITMREF(WNOL3) += " (--> " + WITMREFEN + ")"
+      Endif
+      [M:ZAE3]YQTY(WNOL3) = [F:ZTE]ZQTY
+      [M:ZAE3]YQTYSAUV(WNOL3) = [F:ZTE]ZQTY
+      [M:ZAE3]YUSER(WNOL3) = [F:ZTE]ZUSER
+      [M:ZAE3]YREFERENCE(WNOL3) = [F:ZTE]ZREFERENCE
+      [M:ZAE3]YBPCORDF(WNOL3) = [F:ZTE]ZBPCORDF
+      [M:ZAE3]YBPAADD(WNOL3) = [F:ZTE]ZBPAADD
+      [M:ZAE3]YFCYF(WNOL3) = [F:ZTE]ZFCYF
+      [M:ZAE3]YZDATACT2 = [F:ZTE]ZDATACT
+      [M:ZAE3]YZREFERENCE2 = [F:ZTE]ZREFERENCE
+      #---------- MODIF JBS du 27/02/2018 ----------
+      [M:ZAE3]YTYPPAL(WNOL3) = [F:ZTE]ZTYPPAL
+      #---------------------------------------------
+      WNOL3 = WNOL3 + 1
+      If(WNOL3>=dim([M:ZAE3]YACT)-1)Then
+        Break
+      Endif
+    Next
+    Affzo [M:ZAE3]10
+    Affzo [M:ZAE3]7
+
+
+  Endif
+End
+
+
+Subprog GET_VAL_ACTHIST(WCOMPTEUR,WLIG)
+  Value Char WCOMPTEUR
+  Value Integer WLIG
+  Local Integer WNOL : WNOL = nolign-1
+  Local Integer WQTYTOT : WQTYTOT = 0
+  Local Integer WACTOK : WACTOK = 2
+  For [F:ZTE]ZTE0 Where [F:ZTE]ZCOMPTEUR=WCOMPTEUR and [F:ZTE]ZACTOK<>2
+    WQTYTOT = 0
+    If([F:ZTE]ZACT<>10)Then
+#      For [F:ZAEP]ZAEP0 Where [F:ZAEP]ZART_FINAL=[F:ZTE]ZITMREF and [F:ZAEP]BPCORD=[F:ZTE]ZBPCORD and [F:ZAEP]STOFCY=[F:ZTE]ZFCY and [F:ZAEP]ARTREF=2 and [F:ZAEP]ZQTYLIV=0
+      For [F:ZAEP]ZAEP2 Where [F:ZAEP]ZART_FINAL=[F:ZTE]ZITMREF and [F:ZAEP]ZQTYLIV=0 and [F:ZAEP]ARTREF=2 and [F:ZAEP]BPCORD=[F:ZTE]ZBPCORD and [F:ZAEP]STOFCY=[F:ZTE]ZFCY
+        If([F:ZTE]ZACT=1)Then
+          #On est dans le cas d'une réparation
+          WQTYTOT = WQTYTOT + [F:ZAEP]ZQTEKC
+        Elsif([F:ZTE]ZACT=2 or [F:ZTE]ZACT=6 or [F:ZTE]ZACT=7 or [F:ZTE]ZACT=8)Then
+          #On est dans le cas d'une relocalisation ou d'une sortie diverse
+          WQTYTOT = WQTYTOT + [F:ZAEP]ZQTEOK
+        Elsif([F:ZTE]ZACT=3)Then
+          #On est dans le cas d'une transformation
+          WQTYTOT = WQTYTOT + [F:ZAEP]ZQTEATRANSF
+        Endif
+      Next
+      If([F:ZTE]ZQTY>WQTYTOT)Then
+        WACTOK = 1
+      Endif
+    Else
+      WACTOK = 0
+    Endif
+  Next
+  If(WACTOK=1)Then
+    Chgstl [M:ZAE3]NBLIGH3(WLIG) With "BACKRED"
+    [M:ZAE3]YACTOK(WLIG)=1
+  Else
+#    Chgstl [M:ZAE3]NBLIGH3(WLIG) With "BACKGREEN"
+    Chgstl [M:ZAE3]NBLIGH3(WLIG) With "MTC3"
+    [M:ZAE3]YACTOK(WLIG)=2
+  Endif
+End
+
+Subprog B1_NBLIGH3
+Local Integer WNOL :WNOL = nolign-1
+Local Integer WRETOUR
+Local Integer WREP : WREP=1
+  #On peut exécuter l'action si [M:ZAE3]YACTOK=2
+  If([M:ZAE3]YACTOK(WNOL)=2)Then
+    #On va regarder si l'action en attente est due à une action différée
+    #Si c'est le cas, je ne peut l'exécuter que si la date du jour est supérieure ou égale à la date de l'action
+    If(GPROFIL="ADMIN" or ([M:ZAE3]ZRAISATT(WNOL) = "Action différée." and date$>=[M:ZAE3]YZDATACT(WNOL)))Then
+
+      Call OUINON("Avez-vous vérifié, la date, les articles et les quantités de cette actions avant son exécution ?",WREP) From GESECRAN
+      If WREP=2
+#     If(([M:ZAE3]ZRAISATT(WNOL) = "Action différée." and date$>=[M:ZAE3]YZDATACT(WNOL)))Then
+        #Avant de lancer l'action, il faut renseigner la date d'effet sur toutes les lignes
+        Local Date WDATEFFET : WDATEFFET = func ZWSEPALISB.SPE_GET_DATEFFET([M:ZAE3]YZDATACT(WNOL),1)
+        For [F:ZTE]ZTE1 Where [F:ZTE]ZCOMPTEUR=[M:ZAE3]YZCOMPTEUR(WNOL)
+          [F:ZTE]ZDATEFFET = WDATEFFET
+          Rewrite [F:ZTE]
+        Next
+        Call EXEC_ACT_EPI([M:ZAE3]YZCOMPTEUR(WNOL),WRETOUR) From ZWSEPALIS
+        Effzo[M:ZAE3]
+        [M:ZAE3]NBLIGH3=0
+        [M:ZAE3]NBLIG3=0
+        Call GET_STOCK_EPALIS([M:ZAE0]ZBPCORD,[M:ZAE0]ZFCY)
+      Endif
+    Else
+      Infbox "Impossible ! L'action ne pourra être exécutée qu'à partir du " + [M:ZAE3]YZDATACT(WNOL) + "."
+    Endif
+  Else
+    Infbox "Impossible ! L'action ne peut pas être exécutée."
+  Endif
+End
+
+Subprog B2_NBLIGH3
+#Ce bouton permet la suppression d'une action en attente.
+Local Integer WNOL :WNOL = nolign-1
+Local Integer WREP
+If(GPROFIL="ADMIN" or [M:ZAE3]ZRAISATT(WNOL) = "Action différée.")Then
+#If([M:ZAE3]ZRAISATT(WNOL) = "Action différée.")Then
+  Call OUINON("Etes-vous sûr(e) de vouloir supprimer cette action en attente ?",WREP) From GESECRAN
+  If(WREP=2)Then
+    Delete [F:ZTE] Where [F:ZTE]ZCOMPTEUR = [M:ZAE3]YZCOMPTEUR(WNOL) and [F:ZTE]ZBPCORD=[M:ZAE0]ZBPCORD and [F:ZTE]ZFCY=[M:ZAE0]ZFCY
+      Effzo[M:ZAE3]
+      [M:ZAE3]NBLIGH3=0
+      [M:ZAE3]NBLIG3=0
+      Call GET_STOCK_EPALIS([M:ZAE0]ZBPCORD,[M:ZAE0]ZFCY)
+  Endif
+Else
+  Infbox "Action impossible ! Contactez l'administrateur Sage X3."
+Endif
+End
+
+Subprog AM_ZTYPTRSP(VALEUR)
+Variable Integer VALEUR
+  If(VALEUR=3)Then
+    Call RAZ_TABACT
+  Endif
+End
+
+Subprog AM_ZACHATINT(VALEUR)
+Variable Integer VALEUR
+If(VALEUR=2)Then
+#  [M:ZAE1]ZMDL = ""
+#  Chgstl [M:ZAE1]ZMDL With "BACKRED"
+#  Actzo [M:ZAE1]ZMDL
+  [M:ZAE1]WBPCORD = [M:ZAE0]ZBPCORD
+  Affzo [M:ZAE1]WBPCORD
+  Call AM_WBPCORD([M:ZAE1]WBPCORD)
+  Affzo [M:ZAE1]ZWBPCORD
+  [M:ZAE1]WBPAADD = ""
+  Actzo [M:ZAE1]WBPAADD
+  Chgstl [M:ZAE1]WBPCORD With "BACKGREEN"
+  Chgstl [M:ZAE1]WBPAADD With "BACKRED"
+  [M:ZAE1]WFCY = ""
+  Actzo [M:ZAE1]WFCY
+  Chgstl [M:ZAE1]WFCY With "BACKRED"
+Else
+#  [M:ZAE1]ZMDL = ""
+#  Chgstl [M:ZAE1]ZMDL With ""
+#  Grizo [M:ZAE1]ZMDL
+  [M:ZAE1]WBPCORD = ""
+  [M:ZAE1]ZWBPCORD = ""
+  [M:ZAE1]WBPAADD = ""
+  Grizo [M:ZAE1]WBPAADD
+  Chgstl [M:ZAE1]WBPAADD With ""
+  [M:ZAE1]WFCY = ""
+  Grizo [M:ZAE1]WFCY
+  Chgstl [M:ZAE1]WFCY With ""
+  Chgstl [M:ZAE1]WBPCORD With ""
+Endif
+Affzo [M:ZAE1]20
+If(VALEUR<>1)Then
+  Chgstl [M:ZAE1]ZACHATINT With "BACKGREEN"
+Else
+  Chgstl [M:ZAE1]ZACHATINT With "BACKRED"
+Endif
+End
+
+Subprog AM_ZMDL(VALEUR)
+Variable Char    VALEUR()
+#If(VALEUR<>"")Then
+#  Chgstl [M:ZAE1]ZMDL With "BACKGREEN"
+#Else
+#  Chgstl [M:ZAE1]ZMDL With "BACKRED"
+#Endif
+End
+
+Subprog AS_YZCOMPTEUR(VALEUR)
+Variable Char    VALEUR()
+mkstat=2
+End
+
+Subprog AM_ZPAYSCOLL(VALEUR)
+Variable Char    VALEUR()
+If(VALEUR<>"")Then
+  Chgstl [M:ZAE1]ZPAYSCOLL With "BACKGREEN"
+Else
+  Chgstl [M:ZAE1]ZPAYSCOLL With "BACKRED"
+Endif
+Affzo [M:ZAE1]ZZPAYSCOLL
+End
+
+Subprog C_ZQTEKCUTIL(VALEUR)
+Variable Decimal VALEUR
+End
+
+Subprog C_ZQTEHS(VALEUR)
+Variable Decimal VALEUR
+End
+
+Subprog AS_ZQTEKCUTIL(VALEUR)
+Variable Decimal VALEUR
+#Local Integer WZAUTDECLAS : WZAUTDECLAS = 1
+#Read[F:BPC]BPC0=[M:ZAE0]ZBPCORD
+#If(fstat=0)Then
+#  WZAUTDECLAS = [F:BPC]ZAUTDECLAS
+#Endif
+#If([M:ZAE1]ZACTG<>1 or WZAUTDECLAS<>2)Then
+#  mkstat=2
+#  Chgfmt [M:ZAE1]ZQTEKCUTIL With "-K:10X"
+#  Chgfmt [M:ZAE1]ZQTEHS With "-K:10X"
+#Endif
+##Affzo [M:ZAE1]
+End
+
+Subprog AS_ZQTEHS(VALEUR)
+Variable Decimal VALEUR
+#Local Integer WZAUTDECLAS : WZAUTDECLAS = 1
+#Read[F:BPC]BPC0=[M:ZAE0]ZBPCORD
+#If(fstat=0)Then
+#  WZAUTDECLAS = [F:BPC]ZAUTDECLAS
+#Endif
+#If([M:ZAE1]ZACTG<>1 or WZAUTDECLAS<>2)Then
+#  mkstat=2
+#  Chgfmt [M:ZAE1]ZQTEKCUTIL With "-K:10X"
+#  Chgfmt [M:ZAE1]ZQTEHS With "-K:10X"
+#Endif
+##Affzo [M:ZAE1]
+End
+
+Subprog C_ZFCY(VALEUR)
+Variable Char    VALEUR()
+  #Nous allons controler dans le cas ou nous sommes sur une transaction EPALIS que le couple SITE et chargeur est autorisé
+  If(VALEUR<>"" and [M:ZAE0]ZBPCORD<>"")Then
+    If(func SPESOH.CONTROL_SITE_CHARGEUR(VALEUR,[M:ZAE0]ZBPCORD)<>2)Then
+      Call MESSAGE("Impossible, Ce site n'est pas autorisé pour ce chargeur") From GESECRAN
+      mkstat=2
+    Endif
+  Endif
+End
+
+Subprog C_ZBPCORD(VALEUR)
+Variable Char    VALEUR()
+  #Nous allons controler dans le cas ou nous sommes sur une transaction EPALIS que le couple SITE et chargeur est autorisé
+  If(VALEUR<>"" and [M:ZAE0]ZFCY<>"")Then
+    If(func SPESOH.CONTROL_SITE_CHARGEUR([M:ZAE0]ZFCY,VALEUR)<>2)Then
+      Call MESSAGE("Impossible, Ce site n'est pas autorisé pour ce chargeur") From GESECRAN
+      mkstat=2
+    Endif
+  Endif
+End
+
+Subprog AM_ZAPPRO(VALEUR)
+Variable Char    VALEUR()
+  #Si le champ est obligatoire et qu'il n'est pas vide alors on va le mettre en couleur
+  If([V]WAPPROOBLIG<>0)Then
+    If(VALEUR<>"")Then
+      Chgstl [M:ZAE1]ZAPPRO With "BACKGREEN"
+    Else
+      Chgstl [M:ZAE1]ZAPPRO With "BACKRED"
+    Endif
+  Else
+    Chgstl [M:ZAE1]ZAPPRO With ""
+  Endif
+End
+
+
+Funprog SPE_GET_COMPT_ACT()
+  Local Char RESULT(17)
+  Local Integer WSTAT, WNOL
+  Local Char WZACTNUM(15)
+  Call NUMERO("ZACT",[M:ZAE0]ZFCY,date$,"",WZACTNUM,WSTAT) From SUBANM
+  If GOK<0 : Return : Endif
+  If WSTAT=0
+      RESULT = WZACTNUM
+  Else
+      GERR=1
+      GMESSAGE=mess(60,199,1)
+      GOK=0
+      Return
+  Endif
+End RESULT
+
+Subprog APRES_NBLIG3
+#Dans le cas où on est sur une action différée, on va enregistrer la modification effectuée
+#sur la ligne
+Local Integer WNOL : WNOL = nolign-1
+For[F:ZTE]ZTE1 Where [F:ZTE]ZFCY=[M:ZAE3]YZFCY(GNBLIGH3) and [F:ZTE]ZBPCORD=[M:ZAE3]YZBPCORD(GNBLIGH3) and [F:ZTE]ZITMREF=[M:ZAE3]YITMREF(WNOL) and [F:ZTE]ZACT=[M:ZAE3]YACT(WNOL) and [F:ZTE]ZCOMPTEUR=
+& [M:ZAE3]YZCOMPTEUR(GNBLIGH3)
+  [F:ZTE]ZQTY=[M:ZAE3]YQTY(WNOL)
+  [M:ZAE3]YQTYSAUV(WNOL)=[M:ZAE3]YQTY(WNOL)
+  Rewrite[F:ZTE]
+  Affzo [M:ZAE3]YQTYSAUV(WNOL)
+Next
+#On va rafraichir le tableau des stock
+Call GET_STOCK_EPALIS([M:ZAE0]ZBPCORD,[M:ZAE0]ZFCY)
+End
+
+Subprog AS_YQTY(VALEUR)
+Variable Decimal VALEUR
+If([M:ZAE3]ZRAISATT(GNBLIGH3) <> "Action différée.")Then
+  mkstat=2
+Endif
+End
+
+Subprog C_YQTY(VALEUR)
+Variable Decimal VALEUR
+  Local Integer WNOL : WNOL = nolign-1
+  Local Decimal WMAXQTY : WMAXQTY = 0
+  Local Decimal WQTY : WQTY = 0
+  WQTY = VALEUR-[M:ZAE3]YQTYSAUV(WNOL)
+  If(WQTY<0)Then
+    WQTY = 0
+  Endif
+#  WMAXQTY = func GET_QTY_OK([M:ZAE3]YITMREF(WNOL),VALEUR,2)
+  WMAXQTY = func GET_QTY_OK([M:ZAE3]YITMREF(WNOL),WQTY,2)
+  If(WMAXQTY<>1)Then
+    Read[F:ZQR]ZQR0=[M:ZAE0]ZFCY;[M:ZAE0]ZBPCORD;[M:ZAE3]YITMREF(WNOL)
+    If(fstat=0)Then
+      WMAXQTY -= [F:ZQR]ZQTY
+    Endif
+    GMESSAGE = "Impossible, valeur supérieure au stock disponible de " + num$(WMAXQTY+1)
+    mkstat = 2
+  Endif
+End
+
+Funprog GET_QTY_OK(WITMREF,WQTY,WACT)
+  Value Char WITMREF
+  Value Decimal WQTY
+  Value Integer WACT
+  Local Integer WNOL : WNOL = nolign-1
+  Local Integer WQTYTOT : WQTYTOT = 0
+  Local Integer RESULT
+  If(WITMREF<>"" and WQTY>=0 and WACT<>0)Then
+    #On va controler que l'action est possible
+    Local Char ZCRITERE(250) : ZCRITERE = "[F:ZAEP]ZART_FINAL=WITMREF and [F:ZAEP]BPCORD=[M:ZAE0]ZBPCORD and [F:ZAEP]STOFCY=[M:ZAE0]ZFCY and [F:ZAEP]ARTREF=2 and [F:ZAEP]ZQTYLIV=0"
+    Local Char WCLIENT(30) : WCLIENT = [M:ZAE0]ZBPCORD
+    For [F:ZAEP]ZAEP0 Where evalue(ZCRITERE)
+      #On est dans le cas d'une relocalisation
+      WQTYTOT = WQTYTOT + [F:ZAEP]ZQTEOK
+    Next
+    #---------- MODIF JBS du 30/10/2017 -----------
+    #Dans le cas d'une relocalisation, on va ajouter la quantité en attente
+    Local Decimal WQTYDIFF : WQTYDIFF = 0
+    If(WACT=2)Then
+      Read[F:ZQR]ZQR0=[M:ZAE0]ZFCY;[M:ZAE0]ZBPCORD;WITMREF
+      If(fstat=0)Then
+        WQTYDIFF = [F:ZQR]ZQTY
+        WQTY += WQTYDIFF
+      Endif
+    Endif
+    #----------------------------------------------
+    If(WQTY>WQTYTOT or WQTY<0)Then
+      #La qté est mauvaise
+      RESULT = WQTYTOT
+    Else
+      #La qté est Ok
+      RESULT = 1
+    Endif
+  Endif
+End RESULT
+
+Subprog B3_NBLIGH3
+  Local Integer GNBLIGH3 : GNBLIGH3 = nolign-1
+  #On va imprimer un bon de livraison pour la relocalisation différée
+   Local Char TBPAR(15) (1..99)         : # stocke les noms de paramètres transmis à l'état
+   Local Char TBVAL(30)(1..99)          : # stocke les valeurs associée transmises à l'état
+   TBPAR(1) = "Compteur"
+   TBVAL(1) = [M:ZAE3]YZCOMPTEUR(GNBLIGH3)
+   TBPAR(2) = "Opérateur"
+   TBVAL(2) = [M:ZAE3]YZUSER(GNBLIGH3)
+   TBPAR(3) = "Client"
+   TBVAL(3) = [M:ZAE3]YZBPCORD(GNBLIGH3)
+   TBPAR(4) = "Site"
+   TBVAL(4) = [M:ZAE3]YZFCY(GNBLIGH3)
+   # -- impression de l'état des tarifs
+   Call ETAT(GZBLEPI,"PREVISU","FRA",0,"",TBPAR,TBVAL) From AIMP3
+End
+
+Subprog C_ZDATACTG(VALEUR)
+Variable Date    VALEUR
+If(VALEUR>date$ and [M:ZAE1]ZACTG<>2 and [M:ZAE1]ZACTG<>4)Then
+  GMESSAGE = "Impossible ! Vous ne pouvez pas faire une action dans le futur."
+  mkstat = 2
+Endif
+End
+
+Subprog AM_YZDATACT2(VALEUR)
+Variable Date    VALEUR
+#Après la modification de la date, on enregistre l'information dans l'action
+If(GNBLIGH3<>-1)Then
+  For[F:ZTE]ZTE1 Where [F:ZTE]ZCOMPTEUR=[M:ZAE3]YZCOMPTEUR(GNBLIGH3)
+    [F:ZTE]ZDATACT = VALEUR
+    Rewrite[F:ZTE]
+  Next
+  [M:ZAE3]YZDATACT(GNBLIGH3) = VALEUR
+  Affzo [M:ZAE3]YZDATACT(GNBLIGH3)
+Endif
+End
+
+Subprog AM_YZREFERENCE2(VALEUR)
+Variable Char    VALEUR()
+#Après la modification de la référence, on enregistre l'information dans l'action
+If(GNBLIGH3<>-1)Then
+  For[F:ZTE]ZTE1 Where [F:ZTE]ZCOMPTEUR=[M:ZAE3]YZCOMPTEUR(GNBLIGH3)
+    [F:ZTE]ZREFERENCE = VALEUR
+    Rewrite[F:ZTE]
+  Next
+  [M:ZAE3]YZREFERENCE(GNBLIGH3) = VALEUR
+  Affzo [M:ZAE3]YZREFERENCE(GNBLIGH3)
+Endif
+End
+
+Subprog AS_ZQTESTOOK(VALEUR)
+Variable Decimal VALEUR
+mkstat=2
+End
+
+Subprog AS_ZQTESTOKC(VALEUR)
+Variable Decimal VALEUR
+mkstat=2
+End
+
+Subprog AS_ZQTESTOTRSF(VALEUR)
+Variable Decimal VALEUR
+mkstat=2
+End
+
+Subprog AM_ZTYPPAL(VALEUR)
+Variable Integer    VALEUR()
+Local Integer WNOL : WNOL = nolign-1
+Chgstl[M:ZAE1]ZQTESTOOK(WNOL) With "ZINFOSTO"
+If(VALEUR=1 and [M:ZAE1]ZITMREF<>"" and [M:ZAE1]ZACTG=5)Then
+  Chgstl[M:ZAE1]ZQTESTOOK(WNOL) With "ZINFOSTOS"
+Endif
+Affzo [M:ZAE1]ZQTESTOOK(WNOL)
+Chgstl[M:ZAE1]ZQTESTOKC(WNOL) With "ZINFOSTO"
+If(VALEUR=2 and [M:ZAE1]ZITMREF<>"" and [M:ZAE1]ZACTG=5)Then
+  Chgstl[M:ZAE1]ZQTESTOKC(WNOL) With "ZINFOSTOS"
+Endif
+Affzo [M:ZAE1]ZQTESTOKC(WNOL)
+End
+

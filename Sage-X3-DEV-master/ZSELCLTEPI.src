@@ -1,0 +1,68 @@
+#<AdxTL>@(#)6.0.0.0 $Revision$
+##################################################### ZSELCLTEPI
+##################################################### créé le 14/01/15
+##################################################### modifié le 14/01/15
+
+###################################################################################### ACTION
+$ACTION
+#Infbox ACTION
+Case ACTION
+ When "SEL_TABLE" : Gosub SEL_TABLE
+ When Default
+Endcase
+Return
+
+###################################################################################### SEL_TABLE
+$SEL_TABLE
+#PARAM(1) est le code du client
+#Infbox "Paramètre n°1 : " + PARAM(1)
+  #Ouverture du fichier des chauffeurs de chargeur
+  If clalev([F:ZAI])=0 : Local File ZADREPI [ZAI] : Endif
+  #Ouverture de la table des utilisateurs
+  If clalev([F:AUS])=0 : Local File AUTILIS [AUS] : Endif
+  #On va maintenant récupérer le champ ZACTLSENS de l'utilisateur
+  Local Integer WAFFCLTSENS : WAFFCLTSENS=1
+  Read[F:AUS]CODUSR=GUSER
+  If(fstat=0)Then
+    WAFFCLTSENS = [F:AUS]ZACTLSENS
+  Endif
+  #On va récupérer les chauffeurs du code clients
+  #passés en paramètre
+  Local Char WCODCLT : WCODCLT = PARAM(1)
+  Default File [ZAI]
+  #On défini le nombre de colonne de la fenêtre de sélection
+  NBCOL = 7
+  #On défini le nom de chaque colonne
+  TIT(1) = "Code du client"
+  TIT(2) = "Raison sociale"
+  TIT(3) = "Adresse"
+  TIT(4) = "CP"
+  TIT(5) = "Ville"
+  TIT(6) = "Téléphone"
+  TIT(7) = "Fax"
+  #On défini les champs à afficher
+  COL(1) = "ZCODCLT"
+  COL(2) = "ZNOMCLT"
+  COL(3) = "ZADRESSE"
+  COL(4) = "ZPOSCOD"
+  COL(5) = "ZCITY"
+  COL(6) = "ZTEL"
+  COL(7) = "ZFAX"
+  #On indique le titre de la sélection
+  TIT(0) = "Sélection du client du chargeur " + PARAM(1)
+  #On indique au système de gérer les pages
+  DEFPAG = 1
+  #Critère de sélection
+  If(WAFFCLTSENS=2)Then
+    CRITERE = "[F:ZAI]ZACTIF=2 & [F:ZAI]ZINVCOLL<>2 & [F:ZAI]BPCNUM='" + WCODCLT + "'"
+  Else
+    CRITERE = "[F:ZAI]ZACTIF=2 & [F:ZAI]ZINVCOLL<>2 & [F:ZAI]ZCLTSENSIBLE<>2 & [F:ZAI]BPCNUM='" + WCODCLT + "'"
+  Endif
+  #Trier
+  #ORDRE = "ZNOMCLT"
+  ORDRE = "ZCODCLT"
+  OPTIONS="|"
+  #Ordre Croissant
+  SENS = 1
+Return
+

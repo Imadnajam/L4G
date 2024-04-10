@@ -1,0 +1,517 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$ 
+################################################### SPEZME
+################################################### 12/01/2018
+
+GBIDC1=""
+GBIDC2=""
+GBIDC3=""
+Call OBJET("ZME",GBIDC1,GBIDC2) From GOBJET
+End
+
+###################################################
+###################################################
+
+$ACTION
+#Infbox ACTION
+Case ACTION
+ When "OUVRE"       : Gosub OUVRE
+ When "AFFMASK"     : Gosub AFFMASK
+ When "DEFLIG"      : Gosub DEFLIG
+ When "VERIF_CRE"   : Gosub VERIF_CRE
+ When "INICRE"      : Gosub INICRE
+ When "CREATION"    : Gosub CREATION
+ When "LIENS"       : Gosub LIENS
+ When "VERIF_MOD"   : Gosub VERIF_MOD
+ When "INIMOD"      : Gosub INIMOD
+ When "MODIF"       : Gosub MODIF
+ When "ANNULE"      : Gosub ANNULE
+ When "ABANDON"     : Gosub ABANDON
+ When "FERME"       : Gosub FERME
+ When "RAZCRE"      : Gosub RAZCRE
+ When "RAZDUP"      : Gosub RAZDUP
+ When "APRES_CRE"   : Gosub APRES_CRE
+ When "INICRE_LIG"  : Gosub INICRE_LIG
+ When "INIMOD_LIG"  : Gosub INIMOD_LIG
+ When "APRES_MOD"   : Gosub APRES_MOD
+ When Default
+Endcase
+Return
+
+################################################### AB1_ZMENUM
+
+$AB1_ZMENUM
+ABFIC="ZME" : CLEPRIM="ZMENUM"
+WINPROG="WGOZME"
+PROGOBJ="WOZME"
+Gosub SET_CLE From GOBJSUB
+CLECUR = 1
+TUNNEL = 1
+Gosub DEFVAR From =WINPROG
+Return
+
+################################################### BB1_ZMENUM
+
+$BB1_SOHNUM
+TYPGES=0 : CRE=1 : MODI=1 : SUPPR=1 : AUTENA=1 : ERRMES="" : RELIT=0
+VERROU=1 : ABREV="ZME" : OK=1 : SITCUR="" : AFFICHE=1
+CLECUR2="" : OBJLIS="ZME"
+Local Integer ONUM(0..199)
+Gosub RELIT From GOBJSUB
+Return
+
+################################################### OUVRE
+
+$OUVRE
+If clalev([F:ZML])=0 : Local File ZMODPRESTL [ZML] : Endif
+Gosub DECLARE From TABLEAUX
+Global Integer GNBLIG : GNBLIG = -1
+[M:ZME1]ZGLIGMOD = GNBLIG
+Affzo [M:ZME1]ZGLIGMOD
+#Ouverture des tables tarifs
+If clalev([F:ZMS])=0 : Local File ZMODPRESTT [ZMS] : Endif
+If clalev([F:ZTM])=0 : Local File ZMODPRESTTT [ZTM] : Endif
+If clalev([F:ITM])=0 : Local File ITMMASTER [ITM] : Endif
+Return
+
+############################################ INICRE_LIG
+
+$INICRE_LIG
+[F:ZML]ZMENUM = [M:ZME0]ZMENUM
+Return
+
+############################################ INIMOD_LIG
+
+$INIMOD_LIG
+[F:ZML]ZMENUM = [M:ZME0]ZMENUM
+Return
+
+################################################### RAZDUP
+
+$RAZDUP
+#  [M:ZPS1]ZFLGSOLDE = 1
+#  [M:ZPS1]ZFLGVALIDE = 1
+#  [M:ZPS1]ZFLGSOLMAN = 1
+#  [M:ZPS1]ZPSSOLDE = [0/0/0]
+#  [M:ZPS1]ZPSVAL = [0/0/0]
+#  [M:ZPS0]ZPSDAT = date$
+#  [M:ZPS1]STOFCY = ""
+#  #On vide les quantités commandées de toutes les lignes
+#  For I=0 To [M:ZPS2]NBLIG-1
+#    [M:ZPS2]QTYCDE(I) = 0
+#  Next
+#  Affzo [M:ZPS0]
+#  Affzo [M:ZPS1]
+#  Affzo [M:ZPS2]
+#  Affzo [M:ZPS3]
+#  Actzo [M:ZPS0]
+#  Actzo [M:ZPS1]
+#  Actzo [M:ZPS2]
+#  Actzo [M:ZPS3]
+#  Gosub INIT_MASK
+Return
+
+################################################### AFFMASK
+
+$AFFMASK
+If !GWEBSERV
+    Chgfmt [M:ZME1]ZMELIN With "-N:8#"
+Endif
+Return
+
+################################################### DEFLIG
+
+$DEFLIG
+Default Mask [ZME1]
+Default File [ZML]
+CRIT='[F:ZML]ZMENUM="'+[M:ZME0]ZMENUM+'"'
+FICLIG="ZMODPRESTL"
+ABLIG="ZML"
+ZONLIG="ZMELIN"
+Return
+
+################################################# RAZCRE
+
+$RAZCRE
+Diszo [M:ZME0]ZMENUM
+#Gosub INIT_MASK
+#On est dans le cas d'une création, on va supprimer éventuellement les lignes de la table ZMODPRESTTT "Mod de prest tarifs tempo"
+#qui font référence à l'utilisateur
+Delete [F:ZTM] Where [F:ZTM]ZMENUMT=GUSER
+Return
+
+################################################# VERIF_CRE
+
+$VERIF_CRE
+# Au moins une ligne
+If [M:ZME1]NBLIG=0
+    GERR=1
+    GMESSAGE=mess(61,199,1)
+    OK=0
+    Return
+Endif
+Return
+
+################################################# APRES_CRE
+
+$APRES_CRE
+  Gosub RELIT From GOBJSUB
+#On va maintenant transférer tous les enregostrements de la table ZMODPRESTTT [ZTM] dans la table ZMODPRESTT [ZMS]
+#Attention il faudra mettre dans le champ  le code de la fiche si on est en mode création
+#On commence par supprimer dans une transaction toutes les lignes qui font référence au modèle de prestation
+Local Integer WERR : WERR = 0
+Local Char WZMENUM(30)
+#WZMENUM = [M:ZME0]ZMENUM
+#If(WZMENUM="")Then
+  #On est en création
+  WZMENUM = GUSER
+#Endif
+Trbegin [F:ZTM],[F:ZMS]
+Delete [F:ZMS] Where [F:ZMS]ZMENUMT=WZMENUM
+If(fstat=0)Then
+  #On va maintenant basculer l'ensemble des lignes de la table temporaire à la table définitive
+  For [F:ZTM]ZMS0 Where [F:ZTM]ZMENUMT=WZMENUM
+    Raz [F:ZMS]
+    [F:ZMS] = [F:ZTM]
+    [F:ZMS]ZMENUMT = [F:ZME]ZMENUM
+    Write [F:ZMS]
+    If(fstat<>0)Then
+      WERR = 1
+    Endif
+  Next
+Else
+  WERR = 1
+Endif
+If(WERR=1)Then
+  Rollback
+  Infbox "Impossible de sauvegarder les lignes de tarifs. Essayer de nouveau"
+Else
+  Commit
+Endif
+Return
+
+################################################# INICRE
+
+$INICRE
+Local Integer WSTAT, WNOL
+Local Char WYPSNUM(15)
+Call NUMERO("ZME","",date$,"",WYPSNUM,WSTAT) From SUBANM
+If GOK<0 : Return : Endif
+If WSTAT=0
+    [M:ZME0]ZMENUM = WYPSNUM
+    [F:ZME]ZMENUM = WYPSNUM
+    Affzo [M:ZME0]ZMENUM
+    For WNOL=0 To [M:ZME1]NBLIG-1
+        [M:ZME1]ZMENUM(WNOL) = [M:ZME0]ZMENUM
+    Next
+    [F:ZME]CREUSR = GUSER
+    [F:ZME]CREDAT = date$
+Else
+    GERR=1
+    GMESSAGE=mess(60,199,1)
+    GOK=0
+    Return
+Endif
+Return
+
+################################################### CREATION
+
+$CREATION
+Gosub CREATION From TABLEAUX
+Return
+
+################################################### LIENS
+
+$LIENS
+Gosub LIENS From TABLEAUX
+#Au chargement de l'enregistrement, on va dans un premier temps :
+#1: vider la table ZMODPRESTTT (ZMT) des enregistrements liés à la fiche sur laquelle on se trouve
+#On ne fait cela uniquement si la fiche n'est pas vérouillée.
+Local Char ZMESYMBOLE(30)
+ZMESYMBOLE = "ZME" + [M:ZME0]ZMENUM
+#Lock =ZMESYMBOLE
+#If(fstat<>0)Then
+Local Char MACHINE(GDIMFIC), USER(GLONAUS)
+Call QUILOCKE(ZMESYMBOLE,MACHINE,USER) From OBJDIV
+If(GUSER<>USER)Then
+#  Call MESSAGE ("Fiche vérouillée par l'utilisateur : " + USER) From GESECRAN
+Else
+  #On est dans le cas où la fiche est vérouillée par nous-même
+#  Call MESSAGE ("Fiche non vérouillée") From GESECRAN
+#  Delete [F:ZTM] Where [F:ZTM]ZMENUMT=[M:ZME0]ZMENUM or [F:ZTM]ZMENUMT=GUSER
+  Delete [F:ZTM] Where [F:ZTM]ZMENUMT=[M:ZME0]ZMENUM
+  #On va maintenant transférer les lignes de la table [F:ZMS] dans la table [F:ZTM]
+  Local Char WZMENUM(30)
+  Local Integer WCREAT : WCREAT = 1
+  WZMENUM = [M:ZME0]ZMENUM
+  If(WZMENUM="")Then
+    #On est en création
+    WCREAT = 2
+    WZMENUM = GUSER
+  Endif
+  For [F:ZMS]ZMS0 Where [F:ZMS]ZMENUMT=WZMENUM
+    [F:ZTM] = [F:ZMS]
+    [F:ZTM]ZCREAT = WCREAT
+    Write [F:ZTM]
+  Next
+Endif
+Call AS_NBLIG
+#Endif
+Return
+
+################################################### VERIF_MOD
+
+$VERIF_MOD
+# Au moins une ligne
+If [M:ZME1]NBLIG=0
+    GERR=1
+    GMESSAGE=mess(61,199,1)
+    OK=0
+    Return
+Endif
+Return
+
+################################################### INIMOD
+
+$INIMOD
+For WNOL=0 To [M:ZME1]NBLIG-1
+    [M:ZME1]ZMENUM(WNOL) = [M:ZME0]ZMENUM
+Next
+Return
+
+################################################### MODIF
+
+$MODIF
+Gosub MODIF From TABLEAUX
+Return
+
+################################################### APRES_MOD
+
+$APRES_MOD
+#Infbox "je passe"
+#On va maintenant transférer tous les enregostrements de la table ZMODPRESTTT [ZTM] dans la table ZMODPRESTT [ZMS]
+#Attention il faudra mettre dans le champ  le code de la fiche si on est en mode création
+#On commence par supprimer dans une transaction toutes les lignes qui font référence au modèle de prestation
+Local Integer WERR : WERR = 0
+Local Char WZMENUM(30)
+WZMENUM = [M:ZME0]ZMENUM
+#If(WZMENUM="")Then
+#  #On est en création
+#  WZMENUM = GUSER
+#Endif
+Trbegin [F:ZTM],[F:ZMS]
+Delete [F:ZMS] Where [F:ZMS]ZMENUMT=WZMENUM
+If(fstat=0)Then
+  #On va maintenant basculer l'ensemble des lignes de la table temporaire à la table définitive
+  For [F:ZTM]ZMS0 Where [F:ZTM]ZMENUMT=WZMENUM
+    Raz [F:ZMS]
+    [F:ZMS] = [F:ZTM]
+    [F:ZMS]ZMENUMT = [F:ZME]ZMENUM
+    Write [F:ZMS]
+    If(fstat<>0)Then
+      WERR = 1
+    Endif
+  Next
+Else
+  WERR = 1
+Endif
+If(WERR=1)Then
+  Rollback
+  Infbox "Impossible de sauvegarder les lignes de tarifs. Essayer de nouveau"
+Else
+  Commit
+Endif
+Return
+
+################################################### ANNULE
+
+$ANNULE
+Gosub ANNULE From TABLEAUX
+Return
+
+################################################### ABANDON
+
+$ABANDON
+If GREP="C"
+    Effzo [M:ZME0]
+    Effzo [M:ZME1]
+    Actzo [M:ZME0]ZMENUM
+Endif
+Return
+
+################################################### FERME
+
+$FERME
+Return
+
+###################################################
+#### ACTIONS CHAMPS
+###################################################
+
+################################################### ZME1
+
+Subprog D_ZCOEFFAC(VALEUR)
+Variable Decimal VALEUR
+End
+
+Subprog C_ZTYPPREST(VALEUR)
+Variable Integer VALEUR
+End
+
+######################################################################################
+## Etiquette ajoutée par le superviseur (écran ZME1) 15/01/2018 10:28:35 (MICRO)
+######################################################################################
+Subprog AVANT_NBLIG
+End
+
+Subprog APRES_NBLIG
+End
+
+Subprog AS_NBLIG
+  If(nolign-1<=[M:ZME1]NBLIG-1)Then
+    GNBLIG = nolign-1
+    [M:ZME1]ZGLIGMOD = GNBLIG
+    Affzo [M:ZME1]ZGLIGMOD
+    #On parcourt le tableau
+    For I=0 To [M:ZME1]NBLIG-1
+      If(I=GNBLIG)Then
+        Chgstl [M:ZME1]NBLIG(I) With "GDD1G"
+      Else
+        Chgstl [M:ZME1]NBLIG(I) With ""
+      Endif
+      Affzo [M:ZME1]NBLIG(I)
+    Next
+  Endif
+  If(GNBLIG<>-1)Then
+    #On va maintenant récupérer les informations du tarif de la ligne du modèle sélectionnée
+    #On récupère les informations dans la table {F:ZMT]
+    Effzo [M:ZME1]35
+    Local Char WZMENUM(30)
+    WZMENUM = [M:ZME0]ZMENUM
+    If(WZMENUM="")Then
+      WZMENUM = GUSER
+    Endif
+    [M:ZME1]NBLIGT=0
+    Local Integer WNBTAR : WNBTAR = 0
+    For [F:ZTM]ZMS0 Where [F:ZTM]ZMENUMT=WZMENUM and [F:ZTM]ZMELINT=[M:ZME1]ZMELIN(GNBLIG)
+      [M:ZME1]ZMENUMT(WNBTAR) = [F:ZTM]ZMENUMT
+      [M:ZME1]ZMELINT(WNBTAR) = [F:ZTM]ZMELINT
+      [M:ZME1]ZDEBVALT(WNBTAR) = [F:ZTM]ZDEBVALT
+      [M:ZME1]ZFINVALT(WNBTAR) = [F:ZTM]ZFINVALT
+      [M:ZME1]ZPRIXT(WNBTAR) = [F:ZTM]ZPRIXT
+      WNBTAR = WNBTAR + 1
+    Next
+    [M:ZME1]NBLIGT = WNBTAR
+    Affzo [M:ZME1]35
+  Else
+    Effzo [M:ZME1]35
+    [M:ZME1]NBLIGT=0
+    Affzo [M:ZME1]35
+  Endif
+End
+
+Subprog C_NBLIG
+#    GNBLIG = -1
+#    [M:ZME1]ZGLIGMOD = GNBLIG
+#    Affzo [M:ZME1]
+End
+
+Subprog APRES_NBLIGT
+#Après chaque modification de ligne
+#On va supprimer les lignes tarif de la ligne du modèle sélectionné et on va réenregistrer les informations
+Local Char WZMENUM(30)
+Local Integer WCREAT : WCREAT = 1
+WZMENUM = [M:ZME0]ZMENUM
+If(WZMENUM="")Then
+  #On est en création
+  WCREAT = 2
+  WZMENUM = GUSER
+Endif
+If(GNBLIG<>-1)Then
+  Delete [F:ZTM] Where [F:ZTM]ZMENUMT=WZMENUM and [F:ZTM]ZMELINT=[M:ZME1]ZMELIN(GNBLIG)
+  #On va maintenant reparcourir le tableau des tarifs pour stocker les lignes
+  Local Integer I : I = 0
+  While([M:ZME1]ZDEBVALT(I)<>[0/0/0])
+      Raz [F:ZTM]
+      [F:ZTM]ZMENUMT  = WZMENUM
+      [F:ZTM]ZMELINT  = [M:ZME1]ZMELIN(GNBLIG)
+      [F:ZTM]ZDEBVALT = [M:ZME1]ZDEBVALT(I)
+      [F:ZTM]ZFINVALT = [M:ZME1]ZFINVALT(I)
+      [F:ZTM]ZPRIXT   = [M:ZME1]ZPRIXT(I)
+      [F:ZTM]ZCREAT   = WCREAT
+      Write [F:ZTM]
+      I += 1
+  Wend
+  [M:ZME1]NBLIGT = I
+#  Call AS_NBLIG
+Else
+  Effzo [M:ZME1]35
+Endif
+End
+
+Subprog C_ZDEBVALT(VALEUR)
+Variable Date    VALEUR
+Local Integer WNOL : WNOL = nolign-1
+#La date de début de validité est Ok si :
+# - 1 : Elle n'est pas vide
+# - 2 : Elle n'est pas comprise entre la date de début de validité et la date de fin de validité d'une autre ligne
+# - 3 : Elle est strictement inférieure à la date de fin de validité si cette dernière est différente de vide
+Local Integer WDATEDEBOK : WDATEDEBOK = 1
+If(VALEUR=[0/0/0])Then
+  WDATEDEBOK = 0
+Endif
+If([M:ZME1]ZFINVALT(WNOL)<>[0/0/0] and VALEUR>[M:ZME1]ZFINVALT(WNOL))Then
+  WDATEDEBOK = 0
+Endif
+For I=0 To [M:ZME1]NBLIGT-1
+  If(I<>WNOL)Then
+    If(VALEUR>=[M:ZME1]ZDEBVALT(I) and VALEUR<=[M:ZME1]ZFINVALT(I))Then
+      WDATEDEBOK = 0
+    Endif
+  Endif
+Next
+If(WDATEDEBOK=0)Then
+  mkstat=2
+  GMESSAGE = "Date de début de validité incorrecte."
+Endif
+End
+
+Subprog C_ZFINVALT(VALEUR)
+Variable Date    VALEUR
+Local Integer WNOL : WNOL = nolign-1
+#La date de fin de validité est Ok si :
+# - 1 : Elle n'est pas vide
+# - 2 : Elle n'est pas comprise entre la date de début de validité et la date de fin de validité d'une autre ligne
+# - 3 : Elle est strictement supérieure à la date de début de validité si cette dernière est différente de vide
+Local Integer WDATEFINOK : WDATEFINOK = 1
+If(VALEUR=[0/0/0])Then
+  WDATEFINOK = 0
+Endif
+If([M:ZME1]ZDEBVALT(WNOL)<>[0/0/0] and VALEUR<[M:ZME1]ZDEBVALT(WNOL))Then
+  WDATEFINOK = 0
+Endif
+For I=0 To [M:ZME1]NBLIGT-1
+  If(I<>WNOL)Then
+    If(VALEUR>=[M:ZME1]ZDEBVALT(I) and VALEUR<=[M:ZME1]ZFINVALT(I))Then
+      WDATEFINOK = 0
+    Endif
+  Endif
+Next
+If(WDATEFINOK=0)Then
+  mkstat=2
+  GMESSAGE = "Date de fin de validité incorrecte."
+Endif
+End
+
+Subprog AM_ITMREF(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL = nolign-1
+#On va rechercher dans l'article la valeur du champ ZTYPARTEPI
+Read[F:ITM]ITM0=VALEUR
+If(fstat=0)Then
+  [M:ZME1]ZTYPARTEPI(WNOL) = [F:ITM]ZTYPARTEPI
+Else
+  [M:ZME1]ZTYPARTEPI(WNOL) = 1
+Endif
+Affzo [M:ZME1]ZTYPARTEPI(WNOL)
+End
+

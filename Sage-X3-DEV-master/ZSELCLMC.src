@@ -1,0 +1,42 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### ZSELCLMC
+##################################################### créé le 19/08/2019
+##################################################### modifié le 19/08/2019
+
+###################################################################################### ACTION
+$ACTION
+#Infbox ACTION
+Case ACTION
+  When "SEL_LISTE" : Gosub SEL_LISTE
+Endcase
+Return
+
+###################################################################################### SEL_LISTE
+$SEL_LISTE
+Local Shortint I
+Local Integer WNUMLIG
+Local Integer WNOL : WNOL = nolign-1
+Local Char TEXTE(GLONDES)(1..200,1..2)    #- The dimension is 2, TEXTE needs to be declared
+                                          #- in order To initialize dimension
+#- Titre de la fenêtre
+TIT(0) = "Selection du client chargeur"
+#- Titre des colonnes
+TIT(1) = "Code"
+TIT(2) = "Client Chargeur"
+
+I=1
+NBTEX=0    #- Nombre de ligne
+For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+  If([M:ZCMC2]TRIAFAIRE(WNUMLIG)=2 and [M:ZCMC2]YZCODCHARG(WNUMLIG)=[M:ZCMC2]ZCODCHARG(WNOL) and [M:ZCMC2]DATEVALTRI(WNUMLIG)=[0/0/0] and [M:ZCMC2]QTERECEP(WNUMLIG)>0)Then
+    NBTEX = I
+    TEX(I)     = [M:ZCMC2]YZCODCLT(WNUMLIG)    # - Valeur retournée lors de la sélection
+    TEXTE(I,1) = [M:ZCMC2]YZCODCLT(WNUMLIG)    # - Valeur de la ligne pour la colonne 1
+    TEXTE(I,2) = [M:ZCMC2]YZCODCLTNAM(WNUMLIG) # - Valeur de la ligne pour la colonne 2
+    I = I+1
+  Endif
+Next
+If(NBTEX=0)Then
+  GERR = 1
+  GMESSAGE = "Pas d'enregistrement disponible."
+Endif
+Return

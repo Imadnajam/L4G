@@ -1,0 +1,112 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### SPEZDSCOL
+##################################################### créé le 23/08/2019
+##################################################### modifié le 23/08/2019
+
+$ACTION
+#infbox ACTION
+Case ACTION
+  When "OUVRE" : Gosub OUVRE
+  When "DEBUT" : Gosub DEBUT
+  When "OK"    : Gosub OK
+Endcase
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           LABELS                                                  #
+#---------------------------------------------------------------------------------------------------#
+
+######################################################################### OUVRE
+$OUVRE
+If clalev([F:ZSCOL])=0 : Local File ZSPECOL [ZSCOL] : Endif
+Return
+
+######################################################################### DEBUT
+$DEBUT
+[M:ZDSCOL]ZARNUM       = PARAM(1)
+[M:ZDSCOL]ZCODCHARG    = PARAM(2)
+[M:ZDSCOL]ZCODCLTCHARG = PARAM(3)
+Affzo [M:ZDSCOL]5
+#On va maintenant récupérer les enregistrements dans la table concernant l'article de prestation
+Effzo [M:ZDSCOL]10
+Raz [M:ZDSCOL]NBLIG
+For[F:ZSCOL]ZSCOL0 Where [F:ZSCOL]ZARNUM=[M:ZDSCOL]ZARNUM and [F:ZSCOL]ZCODCHARG=[M:ZDSCOL]ZCODCHARG and [F:ZSCOL]ZCODCLTCHARG=[M:ZDSCOL]ZCODCLTCHARG
+  [M:ZDSCOL]ZPAYS([M:ZDSCOL]NBLIG)   = [F:ZSCOL]ZPAYS
+  [M:ZDSCOL]ZSITE([M:ZDSCOL]NBLIG)   = [F:ZSCOL]ZSITE
+  [M:ZDSCOL]ZTARIF([M:ZDSCOL]NBLIG)  = [F:ZSCOL]ZTARIF
+  [M:ZDSCOL]ZCLTFOU([M:ZDSCOL]NBLIG) = [F:ZSCOL]ZCLTFOU
+  [M:ZDSCOL]ZQTYMIN([M:ZDSCOL]NBLIG) = [F:ZSCOL]ZQTYMIN
+  [M:ZDSCOL]ZQTYMAX([M:ZDSCOL]NBLIG) = [F:ZSCOL]ZQTYMAX
+  [M:ZDSCOL]NBLIG += 1
+Next
+Affzo [M:ZDSCOL]10
+Return
+
+######################################################################### OK
+$OK
+#On va sauvegarder les lignes du tableau
+#L'opération va se faire à l'intérieure d'une transaction
+Local Integer WERR : WERR = 0
+Local Integer WNUMLIG : WNUMLIG = 0
+Trbegin [F:ZSCOL]
+#On commence par supprimer toute les lignes de la table concernant l'article de prestation
+Delete [F:ZSCOL] Where [F:ZSCOL]ZARNUM=[M:ZDSCOL]ZARNUM and [F:ZSCOL]ZCODCHARG=[M:ZDSCOL]ZCODCHARG and [F:ZSCOL]ZCODCLTCHARG=[M:ZDSCOL]ZCODCLTCHARG
+If(fstat=0)Then
+  #On va maintenant parcourir le tableau pour sauvegarder les lignes
+  For WNUMLIG=0 To [M:ZDSCOL]NBLIG-1
+    [F:ZSCOL]ZARNUM       = [M:ZDSCOL]ZARNUM
+    [F:ZSCOL]ZCODCHARG    = [M:ZDSCOL]ZCODCHARG
+    [F:ZSCOL]ZCODCLTCHARG = [M:ZDSCOL]ZCODCLTCHARG
+    [F:ZSCOL]ZPAYS        = [M:ZDSCOL]ZPAYS(WNUMLIG)
+    [F:ZSCOL]ZSITE        = [M:ZDSCOL]ZSITE(WNUMLIG)
+    [F:ZSCOL]ZTARIF       = [M:ZDSCOL]ZTARIF(WNUMLIG)
+    [F:ZSCOL]ZCLTFOU      = [M:ZDSCOL]ZCLTFOU(WNUMLIG)
+    [F:ZSCOL]ZQTYMIN      = [M:ZDSCOL]ZQTYMIN(WNUMLIG)
+    [F:ZSCOL]ZQTYMAX      = [M:ZDSCOL]ZQTYMAX(WNUMLIG)
+    Write[F:ZSCOL]
+    If(fstat<>0)Then
+      WERR = 1
+      Break
+    Endif
+  Next
+Else
+  WERR = 1
+Endif
+If(WERR=0)Then
+  Commit
+Else
+  Rollback
+  Call ERREUR("Impossible de sauvegarder les lignes !!") From GESECRAN
+Endif
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           SUBPROGS                                                #
+#---------------------------------------------------------------------------------------------------#
+
+Subprog C_ZPAYS(VALEUR)
+Variable Char    VALEUR()
+#On va controler que la valeur du code pays est bien dans le vue de sélection
+If(VALEUR<>"")Then
+  If clalev([F:ZSCRY])=0 : Local File ZSELCRY [ZSCRY] : Endif
+  Read[F:ZSCRY]ZSCRY0=VALEUR
+  If(fstat<>0)Then
+    mkstat = 2
+    GMESSAGE = "Impossible, ce code pays n'existe pas."
+  Endif
+Endif
+End
+
+Subprog C_ZSITE(VALEUR)
+Variable Char    VALEUR()
+#On va controler que la valeur du site est bien dans le vue de sélection
+If(VALEUR<>"")Then
+  If clalev([F:ZSFCY])=0 : Local File ZSELFCY [ZSFCY] : Endif
+  Read[F:ZSFCY]ZSFCY0=VALEUR
+  If(fstat<>0)Then
+    mkstat = 2
+    GMESSAGE = "Impossible, ce code site n'existe pas."
+  Endif
+Endif
+End
+

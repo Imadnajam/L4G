@@ -1,0 +1,47 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### ZSELARTTRI
+##################################################### créé le 17/07/2019
+##################################################### modifié le 17/07/2019
+
+###################################################################################### ACTION
+$ACTION
+#Infbox ACTION
+Case ACTION
+ When "SEL_TABLE" : Gosub SEL_TABLE
+ When Default
+Endcase
+Return
+
+###################################################################################### SEL_TABLE
+$SEL_TABLE
+#  Infbox PARAM(1)
+  If clalev([F:ZSART])=0 : Local File ZSELARTTRI [F:ZSART] : Endif
+  Raz CRITERE
+  #On défini la table par défaut, celle qui va servir pour la sélection
+  Default File [F:ZSART]
+  #On défini le nombre de colonne de la fenêtre de sélection
+  NBCOL = 2
+  #On défini le nom de chaque colonne
+  TIT(1) = "code article"
+  TIT(2) = "Article"
+  #On défini les champs à afficher
+  COL(1) = "ITMREF"
+  COL(2) = "ITMDES"
+  #On indique le titre de la sélection
+  TIT(0) = "Sélection des articles de tris du chargeur " + PARAM(1)
+  START = "ITMREF"
+  #On indique au système de gérer les pages
+  DEFPAG = 1
+  #Critère de sélection
+  CRITERE = " [F:ZSART]ZCODCHARG='" + PARAM(1) + "'"
+  If(PARAM(2)<>"OUI")Then
+    CRITERE += " & [F:ZSART]ITMREF<>'ALL'"
+  Endif
+  #Trier
+  ORDRE = "ITMREF"
+  #Ordre Décroissant
+  #SENS = 2
+  ORDCHO="ITMREF"
+  EXPSTART="ITMREF>=''"
+Return
+

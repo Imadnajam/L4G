@@ -1,0 +1,2742 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+$ACTION
+#Infbox ACTION
+Case ACTION
+  When "OUVRE"       : Gosub OUVRE
+  When "RAZCRE"      : Gosub RAZCRE
+  When "RAZDUP"      : Gosub RAZDUP
+  When "LIENS"       : Gosub LIENS
+  When "INICRE"      : Gosub INICRE
+  When "FILTRE"      : Gosub FILTRE
+  When "CREATION"    : Gosub CREATION
+  When "MODIF"       : Gosub MODIF
+  When "ANNULE"      : Gosub ANNULE
+  When "APRES_CRE"   : Gosub APRES_CRE
+  When "APRES_MOD"   : Gosub APRES_MOD
+  When "DEFLIG"      : Gosub DEFLIG
+  When "VERIF_CRE"   : Gosub VERIF_CRE
+  When "VERIF_MOD"   : Gosub VERIF_MOD
+  When "ABANDON"     : Gosub ABANDON
+  When "SETBOUT"     : Gosub SETBOUT
+  When "EXEBOUT"     : Gosub EXEBOUT
+  When "DEFLIG"      : Gosub DEFLIG
+  When "INICRE_LIG"  : Gosub INICRE_LIG
+  When "APRES_MODIF" : Gosub APRES_MODIF
+  When "INIMOD"      : Gosub INIMOD
+  When "AFFMASK"     : Gosub AFFMASK
+  When "FIN_ACTION"  : Gosub FIN_ACTION
+Endcase
+
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           LABELS                                                  #
+#---------------------------------------------------------------------------------------------------#
+
+################################################# OUVRE
+$OUVRE
+If clalev([F:ZCE])=0    : Local File ZCHEPI       [F:ZCE]    : Endif
+If clalev([F:BPC])=0    : Local File BPCUSTOMER   [F:BPC]    : Endif
+If clalev([F:ZCPI])=0   : Local File ZCHAEPI      [F:ZCPI]   : Endif
+If clalev([F:ZIE])=0    : Local File ZEPALIS      [F:ZIE]    : Endif
+If clalev([F:ZDPO])=0   : Local File ZDEPOT       [F:ZDPO]   : Endif
+If clalev([F:ZCMC])=0   : Local File ZCOLMULTICHG [F:ZCMC]   : Endif
+If clalev([F:ZTMC])=0   : Local File ZTRIMULTICHG [F:ZTMC]   : Endif
+If clalev([F:ZMC])=0    : Local File ZCHGMULTICHG [F:ZMC]    : Endif
+If clalev([F:ZAI])=0    : Local File ZADREPI      [F:ZAI]    : Endif
+If clalev([F:ZZS])=0    : Local File ZZSTOCK      [F:ZZS]    : Endif
+If clalev([F:ZZHL])=0   : Local File ZZHISTOLIGNE [F:ZZHL]   : Endif
+If clalev([F:ZZHF])=0   : Local File ZZHISTOFAC   [F:ZZHF]   : Endif
+If clalev([F:ZZSA])=0   : Local File ZZSTOCKARCH  [F:ZZSA]   : Endif
+If clalev([F:ZSART])=0  : Local File ZSELARTTRI   [F:ZSART]  : Endif
+If clalev([F:ZZAT])=0   : Local File ZZATRIER     [F:ZZAT]   : Endif
+If clalev([F:ZAD])=0    : Local File ZARTCOLLECTE [F:ZAD]    : Endif
+If clalev([F:ZARE])=0   : Local File ZARTRECEP    [F:ZARE]   : Endif
+If clalev([F:ZTE])=0    : Local File ZTEMPEPI     [F:ZTE]    : Endif
+If clalev([F:SDD])=0    : Local File SDELIVERYD   [F:SDD]    : Endif
+If clalev([F:PTD])=0    : Local File PRECEIPTD    [F:PTD]    : Endif
+If clalev([F:ZCHA])=0   : Local File ZCHANTIER    [F:ZCHA]   : Endif
+If clalev([F:ZRMC])=0   : Local File ZRECMULTICHG [F:ZRMC]   : Endif
+If clalev([F:ZC2D])=0   : Local File ZCHARG2DEP   [F:ZC2D]   : Endif
+If clalev([M:ZRMC10])=0 : Local Mask ZRMC0        [M:ZRMC10] : Endif
+If clalev([F:ZEGP])=0   : Local File ZEPIGENPIE   [F:ZEGP]   : Endif
+If clalev([F:ZLU])=0    : Local File ZLISTUSINE   [F:ZLU]    : Endif
+If clalev([F:ZCMC2])=0  : Local File ZCOLMULTICHG [F:ZCMC2]  : Endif
+If clalev([F:ZRD])=0    : Local File ZRECHDEPOT   [F:ZRD]    : Endif
+If clalev([F:SDH])=0    : Local File SDELIVERY    [F:SDH]    : Endif
+If clalev([F:PTH])=0    : Local File PRECEIPT     [F:PTH]    : Endif
+If clalev([F:ZIER])=0   : Local File ZICREPXR     [F:ZIER]   : Endif
+If clalev([F:ZIET])=0   : Local File ZICREPXT     [F:ZIET]   : Endif
+Gosub DECLARE From TABLEAUX
+Global Integer WCHGEPI : WCHGEPI = 0 #Permet de savoir s'il y a un chargeur synchronisé avec EPALIS dans la liste des chargeurs de la multi. La valeur est 1 s'il y a au moins 1 chargeur synchronisé
+# avec EPALIS
+Global Integer WSOLDEPX : WSOLDEPX = 0
+Return
+
+################################################# FIN_ACTION
+$FIN_ACTION
+If(BOUT="Z")Then
+  #L'utilisateur a cliqué sur le bouton pour solder l'EPX
+  If(WSOLDEPX=1)Then
+    Gosub RELIT From GOBJSUB
+  Endif
+Endif
+Return
+
+################################################# APRES_MODIF
+$APRES_MODIF
+#Après chaque modification d'un champ, on remet le champ SYNCHEPI à 1
+If([M:ZCMC0]SYNCHEPI<>1 and !GWEBSERV)Then
+  [M:ZCMC0]SYNCHEPI = 1
+  Affzo [M:ZCMC0]SYNCHEPI
+  [M:ZCMC0]FICASYNCH = 2
+  Affzo [M:ZCMC0]FICASYNCH
+Endif
+Return
+
+################################################# INIMOD
+$INIMOD
+#<------------------------------------------------------------------------------------------------------------------
+#On remet cette ligne car comme il y a un champ qui porte le meme nom dans le 2ème tableau de l'écran ZCMC2
+#Le trans classe remettait dans le champ SYNCHEPI de l'écran ZCMC0, la valeur du champ SYNCHEPI de la première ligne
+#du 2ème tableau de l'écran ZCMC2
+[F:ZCMC]SYNCHEPI = [M:ZCMC0]SYNCHEPI
+#------------------------------------------------------------------------------------------------------------------>
+If([M:ZCMC0]ZNUMEPM<>"")Then
+  [F:ZCMC]CONTINT = [M:ZCMC0]ZNUMEPM
+Endif
+Local Integer WNUMLIG
+#On va parcourir le tableau des chargeurs pour alimenter le champ ZLISTECHG
+[F:ZCMC]ZLISTECHG = ""
+For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+  If([M:ZCMC2]QTERECEP(WNUMLIG)>0)Then
+    If([F:ZCMC]ZLISTECHG="")Then
+      [F:ZCMC]ZLISTECHG = [M:ZCMC2]YZCODCHARG(WNUMLIG)
+    Else
+      [F:ZCMC]ZLISTECHG += "-" + [M:ZCMC2]YZCODCHARG(WNUMLIG)
+    Endif
+  Endif
+Next WNUMLIG
+Return
+
+################################################# SETBOUT
+$SETBOUT
+#On va également regarder s'il y a déjà une qté réceptionnée. si ce n'est pas le cas, on ne donne pas accès au bouton de validation en réception
+Local Integer WNUMLIG : WNUMLIG = 0
+Local Integer WOK : WOK = 0
+Local Integer WALLTRIVAL : WALLTRIVAL = 1
+For WNUMLIG = 0 To [M:ZCMC2]NBLIGCHG-1
+  If([M:ZCMC2]QTERECEP(WNUMLIG)>0)Then
+    WOK = 1
+  Endif
+  If([M:ZCMC2]TRIAFAIRE(WNUMLIG)=2 and [M:ZCMC2]DATEVALTRI(WNUMLIG)=[0/0/0] and [M:ZCMC2]QTERECEP(WNUMLIG)>0)Then
+    WALLTRIVAL = 0
+  Endif
+Next
+If(GREP<>"" or WOK=0 or [M:ZCMC0]DATEVAL<>[0/0/0] or [M:ZCMC0]SEMAREC=3 or [M:ZCMC0]DATESOLDE<>[0/0/0])Then
+  Call VIREBOUT(CHAINE,"V") From GOBJET #Validation réception
+Endif
+#Si la réception de la collecte multi-chargeur a été validée, on ne peut plus supprimer cette collecte
+#car la table ZZATRIER à été alimentée
+If([M:ZCMC0]DATEVAL<>[0/0/0] or [M:ZCMC0]DATESOLDE<>[0/0/0])Then
+  Call VIREBOUT(CHAINE,"A") From GOBJET
+Endif
+#On va maintenant regarder s'il faut afficher ou pas le bouton de validation globale de la collecte multichatgeur
+#Il faut enlever le bouton si :
+# 1 -> La collecte est déjà validée
+# 2 -> La validation de la réception n'a pas été effectuée
+# 3 -> Tous les tris systématique n'ont pas été validés
+#On commence par la condition 1
+Local Integer WMASQBOUT : WMASQBOUT = 0
+If([M:ZCMC0]FLGVAL<>2)Then
+  #La collecte n'est pas validée
+  #On regarde maintenant la condition 2
+  If([M:ZCMC0]DATEVAL<>[0/0/0])Then
+    #La validation de la réception a été effectuée
+    #On regarde maintenant la condition 3
+    If(WALLTRIVAL=0)Then
+      WMASQBOUT = 1
+    Endif
+  Else
+    WMASQBOUT = 1
+  Endif
+Else
+  WMASQBOUT = 1
+Endif
+If(WMASQBOUT=1 or GREP<>"" or WOK=0 or [M:ZCMC0]DATESOLDE<>[0/0/0])Then
+  Call VIREBOUT(CHAINE,"G") From GOBJET
+Endif
+If(GREP<>"" or [M:ZCMC0]DATESOLDE<>[0/0/0] or [M:ZCMC0]DATEVAL<>[0/0/0])Then
+  Call VIREBOUT(CHAINE,"Z") From GOBJET
+Endif
+##Si la collecte multi chargeur contient un chargeur synchronisé avec EPALIS posédant une quantité réceptionnée, alors
+##on ne peut pas solder ou supprimer la collecte multi-chargeur
+#For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+#  If([M:ZCMC2]QTERECEP(WNUMLIG)>0)Then
+#    Read[F:BPC]BPC0=[M:ZCMC2]YZCODCHARG(WNUMLIG)
+#    If(fstat=0)Then
+#      If([F:BPC]ZSYNCEPI=2 and GPROFIL<>"ADMIN")Then
+#        Call VIREBOUT(CHAINE,"Z") From GOBJET # Bouton Solde
+#        Call VIREBOUT(CHAINE,"A") From GOBJET # Bouton Supprimer
+#        Break
+#      Endif
+#    Endif
+#  Endif
+#Next WNUMLIG
+#On peut solder ou supprimer une collecte multi-chargeur si elle ne contient pas de n° EPM ou si l'utilisateur est l'administrateur
+If(not([M:ZCMC0]ZNUMEPM="" or GUSER="ADMIN" or GUSER="JBS"))Then
+  Call VIREBOUT(CHAINE,"Z") From GOBJET # Bouton Solde
+  Call VIREBOUT(CHAINE,"A") From GOBJET # Bouton Supprimer
+Endif
+#On ne peut pas solder ou supprimer la collecte multi chargeur si
+# 1 - L'étape de réception a été validée et des lignes dont la qté réceptionnée est supérieure à 0 et le tri a faire est à non
+# 2 - L'étape de réception a été validée et il y a des lignes dont le tri a faire est à oui et sont validées
+# 3 - La collecte multi-chargeur à une date de validation
+WMASQBOUT = 0
+If([M:ZCMC0]DATEVALCOL<>[0/0/0])Then
+  WMASQBOUT = 1
+Else
+  If([M:ZCMC0]DATEVAL<>[0/0/0])Then
+    #L'étape de réception a été validée
+    For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+      If([M:ZCMC2]TRIAFAIRE(WNUMLIG)<>2 and [M:ZCMC2]QTERECEP(WNUMLIG)>0)Then
+        WMASQBOUT = 1
+        Break
+      Endif
+      If([M:ZCMC2]TRIAFAIRE(WNUMLIG)=2 and [M:ZCMC2]DATEVALTRI(WNUMLIG)<>[0/0/0])Then
+        WMASQBOUT = 1
+        Break
+      Endif
+    Next WNUMLIG
+  Endif
+Endif
+If(WMASQBOUT = 1)Then
+  Call VIREBOUT(CHAINE,"Z") From GOBJET # Bouton Solde
+  Call VIREBOUT(CHAINE,"A") From GOBJET # Bouton Supprimer
+Endif
+Return
+
+################################################# EXEBOUT
+$EXEBOUT
+Local Integer WNUMLIG
+Local Integer WNBENR
+Local Integer WSTAT
+Local Char WSEQ(15)
+#On va regarder si dans la liste des chargeur de la multi-collecte il y a un chargeur dont le champ ZSYNCEPI=2
+#Si c'est le cas, alors les champs Date enlèvement et qté enlèvement seront obligatoire
+For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+  Read[F:BPC]BPC0=[M:ZCMC2]YZCODCHARG(WNUMLIG)
+  If(fstat=0)Then
+    If([F:BPC]ZSYNCEPI=2)Then
+      WCHGEPI = 1
+      Break
+    Endif
+  Endif
+Next
+If(func GET_LOCK_CMC()=0)Then
+If(BOUT="V")Then
+  #On ne peut valider les réceptions de cette collecte uniquement si la date d'enlèvement et la date de réception sont renseignées
+  If([M:ZCMC2]DATECOL<>[0/0/0]
+& and ([M:ZCMC2]DATEENL<>[0/0/0] or WCHGEPI=0)
+& and [M:ZCMC2]DATERECEP<>[0/0/0]
+& and [M:ZCMC2]QTYANN>0
+& and ([M:ZCMC2]QTYENL>0 or ([M:ZCMC2]QTYENL=0 and WCHGEPI=0))
+& and [M:ZCMC2]QTYREC>0
+&)Then
+    #On va avertir l'utilisateur de la conséquence de cette action et lui demandé confirmation
+    Local Integer WREP
+    Call OUINON("Suite à cette action, vous ne pourrez plus modifier les informations de la réception. Etes vous sûr(e) de vouloir continuer ?",WREP) From GESECRAN
+    If(WREP=2)Then
+      Call TEMPON("Veuillez patienter...") From GESECRAN
+      #L'utilisateur a cliqué sur la validation de la réception
+      #On va faire l'opération au travers d'une transaction
+      Local Integer WERR : WERR = 0
+#      Trbegin [F:ZCMC],[F:ZZAT]
+      Read[F:ZCMC]ZCMC=[M:ZCMC0]ZCMCNUM
+      If(fstat=0)Then
+        #Il va falloir ici alimenter la table ZZATRIER
+        #Nous allons donc parcourir l'ensemble du 1er tableau et pour chaque ligne dont le tri n'est pas à faire
+        #et que la quantité réceptionnée est supérieure à 0, on va créer une action de type réception
+        Local Char WCOMPTEUR(30) : WCOMPTEUR = ""
+        Local Char WZACTNUM(30)  : WZACTNUM  = ""
+        Local Integer WNBLIGCRE  : WNBLIGCRE = 1
+        Local Char WCODCHG(30)   : WCODCHG   = ""
+        Local Char WCODCLT(30)   : WCODCLT   = ""
+        Local Integer WTRIUSINE  : WTRIUSINE = 1
+        For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+#          If([M:ZCMC2]TRIAFAIRE(WNUMLIG)<>2 and [M:ZCMC2]QTERECEP(WNUMLIG)>0)Then
+          If([M:ZCMC2]QTERECEP(WNUMLIG)>0)Then
+            #Nous sommes dans le cas où il n'y a pas de tri à faire et la qté réceptionnée est supérieure à 0
+            #On va donc créer une ligne d'action
+            If(WZACTNUM="")Then
+              WCOMPTEUR = func Z2WSEPALIS.SPE_GET_COMPTEUR()
+              WZACTNUM  = func SPE_GET_COMPT_ACT()
+            Endif
+            #On regarde si c'est une dépose chargeur et si c'est le cas, si l'uine est en tri usine
+            WCODCHG = [M:ZCMC2]YZCODCHARG(WNUMLIG)
+            WCODCLT = [M:ZCMC2]YZCODCLT(WNUMLIG)
+            If([M:ZCMC0]ZCODUSINE<>"")Then
+              #Un code usine est renseigné, on va donc regarder si cette usine est en tri usine
+              Read[F:ZAI]ZAI0=[M:ZCMC0]ZCHGUSINE;[M:ZCMC0]ZCODUSINE
+              If(fstat=0)Then
+                WTRIUSINE = [F:ZAI]ZTRIUSINE
+              Endif
+            Endif
+            #On va regarder si le champ ZTYPCLCHA de la fiche du client chargeur = 1 (client) sinon, on ne déclenche pas de facturation éventuell
+            Local Integer WTYPCLTCHG : WTYPCLTCHG = 1
+#            Read[F:ZAI]ZAI0=[M:ZCMC2]YZCODCHARG(WNUMLIG);[M:ZCMC2]YZCODCLT(WNUMLIG)
+#            If(fstat=0)Then
+#              WTYPCLTCHG = [F:ZAI]ZTYPCLCHA
+#            Endif
+            If(WTYPCLTCHG=1)Then
+              For [F:ZRMC]ZRMC0 Where [F:ZRMC]ZCMCNUM=[M:ZCMC0]ZCMCNUM and [F:ZRMC]ZCMCLIN=[M:ZCMC2]YZCMCLIN(WNUMLIG) and [F:ZRMC]QTY>0
+                Raz [F:ZTE]
+                [F:ZTE]ZFCY       = [M:ZCMC0]FCYREC
+                [F:ZTE]ZBPCORD    = WCODCHG
+                [F:ZTE]ZUSER      = GUSER
+                [F:ZTE]ZITMREF    = [F:ZRMC]ITMREF
+                [F:ZTE]ZACT       = 12
+                [F:ZTE]ZCOMPTEUR  = WCOMPTEUR
+                [F:ZTE]ZDATACT    = [M:ZCMC2]DATERECEP
+                [F:ZTE]ZREFERENCE = left$([M:ZCMC0]REFERENCE,40)
+                Read[F:BPC]BPC0=WCODCHG
+                If(fstat=0)Then
+                  [F:ZTE]ZBPAADD  = [F:BPC]BPAADD
+                Endif
+                [F:ZTE]ZBPCORDF   = WCODCHG
+                [F:ZTE]ZFCYF      = [M:ZCMC0]FCYREC
+                [F:ZTE]ZSDHNUM    = ""
+                [F:ZTE]ZFCYREC    = ""
+                [F:ZTE]ZCHAUFFEUR = [M:ZCMC0]ZCHAUFEPI
+                [F:ZTE]VCRNUM     = [M:ZCMC0]ZCMCNUM
+                [F:ZTE]VCRTYP     = "ZCMC"
+                [F:ZTE]VCRLIN     = [M:ZCMC2]YZCMCLIN(WNUMLIG)
+                [F:ZTE]ZPAYS      = [M:ZCMC1]ZPAYSISO
+                [F:ZTE]ZACTNUM    = WZACTNUM
+                [F:ZTE]ZDATEFFET  = func Z2WSEPALISB.SPE_GET_DATEFFET([M:ZCMC2]DATERECEP, 1)
+                [F:ZTE]ZTYPPAL    = 0
+                [F:ZTE]ZQTY       = [F:ZRMC]QTY
+                [F:ZTE]ZEXEACT    = date$
+                [F:ZTE]ZEXEACTH   = time$
+                [F:ZTE]ZNUMLIG    = WNBLIGCRE*1000 : WNBLIGCRE += 1
+                [F:ZTE]ZCODCLT    = WCODCLT
+                [F:ZTE]ZDEPNUM    = [M:ZCMC0]ZDEPNUM
+                [F:ZTE]ZTRIUSINE  = WTRIUSINE
+                [F:ZTE]TRIAFAIRE  = [M:ZCMC2]TRIAFAIRE(WNUMLIG)
+                [F:ZTE]ZACTOK     = 1
+                Write [F:ZTE]
+                If(fstat<>0)Then
+                  WERR = 4  # -> Erreur n°4 : Problème d'écriture dans la table ZTEMPEPI
+                  Break 2
+                Endif
+              Next
+            Endif
+          Endif
+        Next WNUMLIG
+        #On va maintenant exécuter l'action s'il existe une action
+        If(WZACTNUM<>"")Then
+          #Nous allons maintenant exécuter l'action
+          Call EXEC_ACT_EPI(WCOMPTEUR, WERR) From Z2WSEPALIS
+        Endif
+      Else
+        WERR = 1  # -> Erreur n°1 : Problème de lecture des informations de la colecte multi-chargeur ZCOLMULTICHG
+      Endif
+      If(WERR=0)Then
+        [F:ZCMC]DATEVAL = date$
+        [F:ZCMC]HEUVALRECEP = time$
+        If([M:ZCMC0]ZCODUSINE<>"")Then
+#        If(WTRIUSINE=2)Then
+          #Si on est en tri usine, on va directement solder la collecte multi-chargeur
+          [F:ZCMC]DATEVALCOL = date$
+          [F:ZCMC]FLGVAL = 2
+          [F:ZCMC]SOLDTRIUSINE = 2
+          [F:ZCMC]DATESOLDE = date$
+          [F:ZCMC]HEUVALCOL = time$
+          [F:ZCMC]MOTIFSOLDE = "ZDU"
+          #On détruit le sémaphore de réception
+          [F:ZCMC]SEMAREC = 1
+          #On va parcourir tous les enregistrement da la table ZCHGMULTICHG pour relacher les sémaphores de tris
+          For[F:ZMC]ZMC0 Where [F:ZMC]ZCMCNUM=[M:ZCMC0]ZCMCNUM
+            [F:ZMC]SEMATRI = 1
+            Rewrite[F:ZMC]
+          Next
+        Endif
+        #On est en validation de l'étape de réception, si la réception a été faite depuis plus de 2 mois,
+        #alors on va demander à l'utilisateur s'il faut ou non forcer la déconsigne sur le site web EPALIS
+        If(addmonth(date$,-2)>[M:ZCMC2]DATERECEP)Then
+          #Dans ce cas, on demande à l'utilisateur s'il faut forcer la déconsignation de l'étape de réception
+          Local Integer WREP : WREP = 1
+          Call OUINON("La réception a été faite il y a plus de 2 mois. Voulez-vous forcer la déconsignation ?",WREP) From GESECRAN
+          [F:ZCMC]FORCEDECONSR = 1
+          If(WREP=2)Then
+            [F:ZCMC]FORCEDECONSR = 2
+          Endif
+        Endif
+        Rewrite[F:ZCMC]
+        If(fstat=0)Then
+          [M:ZCMC0]DATEVAL = date$
+          Affzo [M:ZCMC0]DATEVAL
+          If(WTRIUSINE=2)Then
+            [M:ZCMC0]DATEVALCOL = date$
+            Affzo [M:ZCMC0]DATEVALCOL
+            [M:ZCMC0]FLGVAL=2
+            Affzo [M:ZCMC0]FLGVAL
+          Endif
+          [M:ZCMC2]FORCEDECONSR = [F:ZCMC]FORCEDECONSR
+          Affzo [M:ZCMC2]FORCEDECONSR
+          Call MESSAGE("Traitement de la validation de la réception terminé avec succès.") From GESECRAN
+          #<--------------MODIF JBS du 15/05/2020--------------
+          Local Decimal BASPAG
+          #On va exécuter l'action ZTRSFDEC pour la gestion de la déconsigne
+          ## Action ZTRSFDEC
+          Local Char    PARMSK(250)(1..20) , SAVACT(20)
+          SAVACT = GACTION : GACTION = "ZTRSFDEC"
+          PARMSK(1) = [F:ZCMC]ZCMCNUM
+          Call TRAITE_NUM(BASPAG,PARMSK,"","","",1,"ZTRSFDEC") From GTRAITE
+          GACTION = SAVACT
+          #--------------------------------------------------->
+        Else
+          Call ERREUR("Problème lors de l'écriture des informations de la collecte multi-chargeur. [erreur n°" + num$(WERR) + "]") From GESECRAN
+        Endif
+      Else
+        Call ERREUR("Problème lors de la validation de la réception de cet EPM. Veuillez réessayer plus tard. [erreur n°" + num$(WERR) + "]") From GESECRAN
+      Endif
+      Call SPE_ALIM_PIECE_GENEREE()
+      Call TEMPOFF From GESECRAN
+      #On vient de valider l'étape de réception, on va donc parcourir les lignes des clients chargeurs et pour chaque
+      #ligne dont la qté réceptionnée est supérieure à 0, alors on va positionner la ligne à synchronisée avec EPALIS à oui
+      Local Integer WSYNCCHG
+      For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+        Read[F:ZMC]ZMC0=[M:ZCMC2]YZCMCNUM(WNUMLIG);[M:ZCMC2]YZCMCLIN(WNUMLIG)
+        If(fstat=0)Then
+          If([M:ZCMC2]QTERECEP(WNUMLIG)>0)Then
+            WSYNCCHG = 1
+          Else
+            WSYNCCHG = 2
+          Endif
+          [F:ZMC]SYNCHEPI = WSYNCCHG
+          Rewrite[F:ZMC]
+          If(fstat=0)Then
+            [M:ZCMC2]YZCMCLIN(WNUMLIG) = WSYNCCHG
+            Affzo [M:ZCMC2]YZCMCLIN(WNUMLIG)
+          Endif
+        Endif
+      Next WNUMLIG
+      Gosub RELIT From GOBJSUB
+      #On va regarder si'il faut valider la pièce multi-chargeur
+      #Il faut la valider s'il n'y a aucune ligne qui est en tri a faire
+      Local Integer WVALIDPIECE : WVALIDPIECE = 1
+      For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+        If([M:ZCMC2]TRIAFAIRE(WNUMLIG)=2)Then
+          WVALIDPIECE = 0
+          Break
+        Endif
+      Next WNUMLIG
+      If(WVALIDPIECE=1)Then
+        Call SPE_VAL_PIECE()
+      Endif
+    Endif
+  Else
+    If([M:ZCMC2]DATECOL=[0/0/0] or ([M:ZCMC2]DATEENL=[0/0/0] and WCHGEPI=1) or [M:ZCMC2]DATERECEP=[0/0/0])Then
+      If([M:ZCMC2]DATECOL=[0/0/0] and ([M:ZCMC2]DATEENL=[0/0/0] and WCHGEPI=1) and [M:ZCMC2]DATERECEP=[0/0/0])Then
+        Call ERREUR("Impossible ! Vous devez renseigner au préalable les dates de collecte, d'enlèvement et de réception.") From GESECRAN
+      Elsif([M:ZCMC2]DATECOL=[0/0/0])Then
+        Call ERREUR("Impossible ! Vous devez renseigner au préalable la date de collecte.") From GESECRAN
+      Elsif([M:ZCMC2]DATEENL=[0/0/0] and WCHGEPI=1)Then
+        Call ERREUR("Impossible ! Vous devez renseigner au préalable la date d'enlèvement.") From GESECRAN
+      Elsif([M:ZCMC2]DATERECEP=[0/0/0])Then
+        Call ERREUR("Impossible ! Vous devez renseigner au préalable la date de réception.") From GESECRAN
+      Endif
+    Endif
+    If([M:ZCMC2]QTYANN<=0 or [M:ZCMC2]QTYENL<0 or ([M:ZCMC2]QTYENL=0 and WCHGEPI=1) or [M:ZCMC2]QTYREC<=0)Then
+      If([M:ZCMC2]QTYANN<=0 and ([M:ZCMC2]QTYENL<0 or ([M:ZCMC2]QTYENL=0 and WCHGEPI=1)) and [M:ZCMC2]QTYREC<=0)Then
+        Call ERREUR("Impossible ! Vous devez renseigner au préalable les qantités annoncée, enlèvée et réceptionnée.") From GESECRAN
+      Elsif([M:ZCMC2]QTYANN<=0)Then
+        Call ERREUR("Impossible ! Vous devez renseigner au préalable la quantité annoncée.") From GESECRAN
+      Elsif([M:ZCMC2]QTYENL<0 or ([M:ZCMC2]QTYENL=0 and WCHGEPI=1))Then
+        Call ERREUR("Impossible ! Vous devez renseigner au préalable la quantité enlevée.") From GESECRAN
+      Elsif([M:ZCMC2]QTYREC<=0)Then
+        Call ERREUR("Impossible ! Vous devez renseigner au préalable la quantité réceptionnée.") From GESECRAN
+      Endif
+    Endif
+  Endif
+Endif
+If(BOUT="G")Then
+  Call SPE_VAL_PIECE()
+Endif
+#If(BOUT="Z")Then
+#  #L'utilisateur vient de cliquer sur le bouton permettant de solder la collecte multi-chargeur
+#  #Seul les profil ADMIN et BP ont accès à ce bouton
+#  If(GPROFIL="ADMIN")Then
+#    #On va demander à l'utilisateur le motif
+#    Local Char WMOTIFS(100)
+#    Local Integer WRETURN
+#    # Paramètres dans l'ordre :
+#    # Char : # Valeur retournée
+#    # Char : # Titre de la boîte
+#    # Char : # Intitulé du champ saisi
+#    # Char : # Type de donnée
+#    # Integer : # No de menu local (si menu local)
+#    # Integer : # Longueur du champ (si alpha)
+#    # Char    : # Paramètre objet (clé 2)
+#    # Integer : # Saisie validé (OK=2)
+#    Call SAICAR(WMOTIFS,"Solde","Motif solde","A",0,100,"",WRETURN) From GESECRAN
+#    If(WRETURN=2)Then
+#      Read[F:ZCMC]ZCMC=[M:ZCMC0]ZCMCNUM
+#      If(fstat=0)Then
+#        [F:ZCMC]DATESOLDE = date$
+#        [F:ZCMC]MOTIFSOLDE = WMOTIFS
+#        Rewrite[F:ZCMC]
+#        If(fstat=0)Then
+#          Gosub RELIT From GOBJSUB
+#        Else
+#          Call ERREUR("Impossible de solder la collecte multi-chargeur. Veuillez essayer ultérieurement.") From GESECRAN
+#        Endif
+#      Endif
+#    Endif
+#  Else
+#    Call MESSAGE("Vous n'êtes pas autorisé(e) à utiliser cette fonction.") From GESECRAN
+#  Endif
+#Endif
+Else
+  Local Integer WRESULT
+  Local Char WUSER(50)
+  Local Char WMACHINE(50)
+  Local Char SYMBOLE(30)
+  SYMBOLE = "ZCMC~" + [M:ZCMC0]ZCMCNUM
+  Call QUILOCKE(SYMBOLE,WMACHINE,WUSER) From OBJDIV
+  Call MESSAGE("Impossible ! La fiche est verrouilée par l'utilisateur " + WUSER + ".") From GESECRAN
+Endif
+Return
+
+################################################# FILTRE
+$FILTRE
+Default File [F:ZCMC]
+Return
+
+################################################# INICRE_LIG
+$INICRE_LIG
+[F:ZTMC]ZCMCNUM=[M:ZCMC0]ZCMCNUM
+[F:ZTMC]DATEOPE=date$
+[F:ZTMC]HEUREOPE=time$
+Return
+
+################################################# CREATION
+$CREATION
+#On sauvegarde les infos des chargeurs
+Call SPE_SAVE_INFO_CHARGEUR()
+Gosub CREATION From TABLEAUX
+Return
+
+################################################# MODIF
+$MODIF
+#On sauvegarde les infos des chargeurs
+Call SPE_SAVE_INFO_CHARGEUR()
+Gosub MODIF From TABLEAUX
+Return
+
+################################################# ANNULE
+$ANNULE
+Gosub ANNULE From TABLEAUX
+Return
+
+################################################# APRES_CRE
+$APRES_CRE
+Gosub LIENS From TABLEAUX
+#On va mettre à jour le code de la multi chargeur dans l'écran de travail [M:ZRMC10]
+Local Integer WNUMLIG : WNUMLIG = 0
+For WNUMLIG=0 To [M:ZRMC10]NBLIG-1
+  [M:ZRMC10]YZCMCNUM(WNUMLIG) = [M:ZCMC0]ZCMCNUM
+Next WNUMLIG
+Affzo [M:ZRMC10]
+Call SPE_SAVE_REC()
+Gosub RELIT From GOBJSUB
+Return
+
+################################################# APRES_MOD
+$APRES_MOD
+Gosub LIENS From TABLEAUX
+Call SPE_SAVE_REC()
+Gosub RELIT From GOBJSUB
+Return
+
+################################################# VERIF_CRE
+$VERIF_CRE
+## Au moins une ligne
+#If [M:ZCMC2]NBLIG=0
+#    GERR=1
+#    GMESSAGE=mess(61,199,1)
+#    OK=0
+#    Return
+#Endif
+Return
+
+################################################### VERIF_MOD
+$VERIF_MOD
+## Au moins une ligne
+#If [M:ZCMC2]NBLIG=0
+#    GERR=1
+#    GMESSAGE=mess(61,199,1)
+#    OK=0
+#    Return
+#Endif
+Return
+
+################################################### ABANDON
+$ABANDON
+If GREP="C"
+    Effzo [M:ZCMC0]
+    Effzo [M:ZCMC1]
+    Effzo [M:ZCMC2]
+    Actzo [M:ZCMC0]ZCMCNUM
+Endif
+Return
+
+################################################### DEFLIG
+$DEFLIG
+Default Mask [ZCMC2]
+Default File [F:ZTMC]
+CRIT='[F:ZTMC]ZCMCNUM="'+[M:ZCMC0]ZCMCNUM+'"'
+FICLIG="ZTRIMULTICHG"
+ABLIG="ZTMC"
+ZONLIG="ZCMCLIN"
+Return
+
+################################################# AFFMASK
+$AFFMASK
+Chgfmt [M:ZCMC2]FORCEDECONST With "-LA:1"
+Chgfmt [M:ZCMC2]ZCODEPI With "-K:30X"
+Affzo [M:ZCMC2]
+Return
+
+################################################# RAZCRE
+$RAZCRE
+Effzo [M:ZCMC0]
+Effzo [M:ZCMC1]
+Effzo [M:ZCMC2]
+Diszo [M:ZCMC0]ZCMCNUM
+Effzo [M:ZRMC10]
+Raz [M:ZRMC10]NBLIG
+If(!GWEBSERV)Then
+  Diszo [M:ZCMC0]ZNUMEPM
+Endif
+Chgfmt [M:ZCMC0]ZCHGUSINE With "-K:30X"
+Chgfmt [M:ZCMC0]ZCODUSINE With "-K:30X"
+Chgfmt [M:ZCMC0]DATESOLDE With "DZ:"+GFMDAT
+Chgfmt [M:ZCMC0]MOTIFSOLDE With "-K:100X"
+Chgfmt [M:ZCMC2]FORCEDECONST With "-LA:1"
+Chgfmt [M:ZCMC2]ZCODEPI With "-K:30X"
+Diszo [M:ZCMC0]DATESOLDE
+If(!GWEBSERV)Then
+  Diszo[M:ZCMC2]QTYREC
+  Diszo[M:ZCMC0]FICASYNCH
+Else
+  Actzo[M:ZCMC2]QTYREC
+  Actzo[M:ZCMC0]FICASYNCH
+Endif
+Return
+
+################################################# RAZDUP
+$RAZDUP
+#On vide le champ [M:ZDEP0]ZDEPNUM et le champ [M:ZDEP0]ZDEPNAM
+[M:ZCMC0]ZCMCNUM = ""
+Affzo [M:ZCMC0]ZCMCNUM
+Diszo [M:ZCMC0]ZCMCNUM
+Effzo [M:ZRMC10]
+Raz [M:ZRMC10]NBLIG
+If(!GWEBSERV)Then
+  Diszo [M:ZCMC0]ZNUMEPM
+Endif
+Chgfmt [M:ZCMC0]ZCHGUSINE With "-K:30X"
+Chgfmt [M:ZCMC0]ZCODUSINE With "-K:30X"
+Chgfmt [M:ZCMC0]DATESOLDE With "DZ:"+GFMDAT
+Chgfmt [M:ZCMC0]MOTIFSOLDE With "-K:100X"
+Chgfmt [M:ZCMC2]FORCEDECONST With "-LA:1"
+Chgfmt [M:ZCMC2]ZCODEPI With "-K:30X"
+Diszo [M:ZCMC0]DATESOLDE
+If(!GWEBSERV)Then
+  Diszo[M:ZCMC2]QTYREC
+  Diszo[M:ZCMC0]FICASYNCH
+Else
+  Actzo[M:ZCMC2]QTYREC
+  Actzo[M:ZCMC0]FICASYNCH
+Endif
+Return
+
+################################################# LIENS
+$LIENS
+[M:ZCMC1]ZACTREC = ""
+If([M:ZCMC0]ZCMCNUM<>"")Then
+#  Read[F:ZTE]ZTE8=[M:ZCMC0]ZCMCNUM
+#  If(fstat=0)Then
+#    [M:ZCMC1]ZACTREC = [F:ZTE]ZACTNUM
+#    Affzo [M:ZCMC1]ZACTREC
+#  Endif
+  For[F:ZTE]ZTE8 Where [F:ZTE]VCRNUM=[M:ZCMC0]ZCMCNUM and [F:ZTE]ZACT=12
+    [M:ZCMC1]ZACTREC = [F:ZTE]ZACTNUM
+    Break
+  Next
+  Affzo [M:ZCMC1]ZACTREC
+Endif
+If([M:ZCMC0]DATESOLDE=[0/0/0])Then
+  Chgfmt [M:ZCMC0]DATESOLDE With "DZ:"+GFMDAT
+  Chgfmt [M:ZCMC0]MOTIFSOLDE With "-K:100X"
+Else
+  Chgfmt [M:ZCMC0]DATESOLDE With "DZ:"+GFMDAT
+  Chgfmt [M:ZCMC0]MOTIFSOLDE With "K:100X"
+Endif
+Gosub LIENS From TABLEAUX
+Actzo [M:ZCMC0]ZCMCNUM
+Chgfmt [M:ZCMC2]YSYNCHEPI With "-LA:1"
+Chgfmt [M:ZCMC2]SYNCHEPI With "-LA:1"
+If(not(GWEBSERV))Then
+  #On va masquer les champs sur le forcage de la déconsignation
+  Chgfmt [M:ZCMC2]FORCEDECONSR With "-LA:1"
+  Chgfmt [M:ZCMC2]FORCEDECONST With "-LA:1"
+Else
+  Chgfmt [M:ZCMC2]FORCEDECONSR With "LA:1"
+  Chgfmt [M:ZCMC2]FORCEDECONST With "LA:1"
+Endif
+If([M:ZCMC1]IPOSCOD<>"")Then
+  [M:ZCMC1]ZADRESSE(0) = [M:ZCMC1]IADRESSE(0)
+  [M:ZCMC1]ZADRESSE(1) = [M:ZCMC1]IADRESSE(1)
+  [M:ZCMC1]ZADRESSE(2) = [M:ZCMC1]IADRESSE(2)
+  [M:ZCMC1]ZCITY       = [M:ZCMC1]ICITY
+  [M:ZCMC1]ZPOSCOD     = [M:ZCMC1]IPOSCOD
+  [M:ZCMC1]ZPAYSISO    = [M:ZCMC1]IPAYSISO
+  [M:ZCMC1]ZPAYS       = [M:ZCMC1]IPAYS
+  [M:ZCMC1]ZTEL        = [M:ZCMC1]ITEL
+  [M:ZCMC1]ZMOB        = [M:ZCMC1]IMOB
+  [M:ZCMC1]ZFAX        = [M:ZCMC1]IFAX
+  [M:ZCMC1]ZMAIL       = [M:ZCMC1]IMAIL
+  Affzo [M:ZCMC1]5
+Else
+  #On met à jour les informations du dépôt
+  If([M:ZCMC1]ZCHANUM<>"")Then
+    [M:ZCMC1]ZCHANTIER=2
+  Else
+    [M:ZCMC1]ZCHANTIER=1
+  Endif
+  If([M:ZCMC1]ZCHANTIER=2 and [M:ZCMC1]ZCHANUM<>"")Then
+    Call SPE_SET_INFO_CHANTIER([M:ZCMC1]ZCHANUM)
+    Read[F:ZDPO]ZDPO0=[M:ZCMC0]ZDEPNUM
+    If(fstat=0)Then
+      [M:ZCMC0]ZDEPNAM = [F:ZDPO]ZDEPNAM
+#      [M:ZCMC1] = [F:ZDPO]
+      Affzo [M:ZCMC1]5
+    Endif
+  Else
+    Call SPE_SET_INFO_DEPOT([M:ZCMC0]ZDEPNUM)
+  Endif
+Endif
+#<--------------------------------------
+#On remet ce champ à jour car les 2 procédure ci-dessus font un effzo de l'adresse du dépôt/chantier
+[M:ZCMC1]ZCHANTIER=[F:ZCMC]ZCHANTIER
+Affzo [M:ZCMC1]ZCHANTIER
+#-------------------------------------->
+#On va récupérer les informations des chargeurs liés à l'EPM
+Effzo[M:ZCMC2]5
+Raz[M:ZCMC2]NBLIGCHG
+For [F:ZMC]ZMC0 Where [F:ZMC]ZCMCNUM=[M:ZCMC0]ZCMCNUM
+  [M:ZCMC2]YZCMCNUM([M:ZCMC2]NBLIGCHG)     = [F:ZMC]ZCMCNUM
+  [M:ZCMC2]YZCMCLIN([M:ZCMC2]NBLIGCHG)     = [F:ZMC]ZCMCLIN
+  [M:ZCMC2]YZCODCHARG([M:ZCMC2]NBLIGCHG)   = [F:ZMC]ZCODCHARG
+  [M:ZCMC2]YZCODCLT([M:ZCMC2]NBLIGCHG)     = [F:ZMC]ZCODCLT
+  [M:ZCMC2]YZCODCLTNAM([M:ZCMC2]NBLIGCHG)  = [F:ZMC]ZNOMCLT
+  [M:ZCMC2]QTERECEP([M:ZCMC2]NBLIGCHG)     = [F:ZMC]QTERECEP
+  [M:ZCMC2]TRIAFAIRE([M:ZCMC2]NBLIGCHG)    = [F:ZMC]TRIAFAIRE
+  [M:ZCMC2]DATEVALTRI([M:ZCMC2]NBLIGCHG)   = [F:ZMC]DATEVALTRI
+  [M:ZCMC2]DATETRI([M:ZCMC2]NBLIGCHG)      = [F:ZMC]DATETRI
+  [M:ZCMC2]HEUREVALTRI([M:ZCMC2]NBLIGCHG)  = [F:ZMC]HEUREVALTRI
+  [M:ZCMC2]ZACTNUM([M:ZCMC2]NBLIGCHG)      = [F:ZMC]ZACTNUM
+  [M:ZCMC2]SEMATRI([M:ZCMC2]NBLIGCHG)      = [F:ZMC]SEMATRI
+  [M:ZCMC2]NUMEPI([M:ZCMC2]NBLIGCHG)       = [F:ZMC]NUMEPI
+  [M:ZCMC2]YSYNCHEPI([M:ZCMC2]NBLIGCHG)    = [F:ZMC]SYNCHEPI
+  [M:ZCMC2]FORCEDECONST([M:ZCMC2]NBLIGCHG) = [F:ZMC]FORCEDECONST
+  [M:ZCMC2]CHGASYNCH([M:ZCMC2]NBLIGCHG)    = 1
+  If([F:ZMC]SYNCHEPI<>2)Then
+    [M:ZCMC2]CHGASYNCH([M:ZCMC2]NBLIGCHG)  = 2
+  Endif
+  #On va regarder si la réception a été importé par ICR
+#  [M:ZCMC2]ICRREC([M:ZCMC2]NBLIGCHG) = "119"
+  If([F:ZMC]QTERECEP>0)Then
+    Read[F:ZIER]ZIER0=[F:ZMC]ZCMCNUM
+    If(fstat=0)Then
+      [M:ZCMC2]ICRREC([M:ZCMC2]NBLIGCHG)    = "119"
+      [M:ZCMC2]ICRFICREC([M:ZCMC2]NBLIGCHG) = ctrans([F:ZIER]NOMFIC,"XML","PDF")
+    Else
+      [M:ZCMC2]ICRREC([M:ZCMC2]NBLIGCHG)    = ""
+      [M:ZCMC2]ICRFICREC([M:ZCMC2]NBLIGCHG) = ""
+    Endif
+    Affzo [M:ZCMC2]ICRREC([M:ZCMC2]NBLIGCHG)
+    Affzo [M:ZCMC2]ICRFICREC([M:ZCMC2]NBLIGCHG)
+  Endif
+  #On va regarder si le tri a été importé par ICR
+  If([F:ZMC]QTERECEP>0 and [F:ZMC]TRIAFAIRE=2)Then
+    Read[F:ZIET]ZIET0=[F:ZMC]ZCMCNUM;[F:ZMC]ZCODCHARG;[F:ZMC]ZCODCLT
+    If(fstat=0)Then
+      [M:ZCMC2]ICRTRI([M:ZCMC2]NBLIGCHG)    = "117"
+      [M:ZCMC2]ICRFICTRI([M:ZCMC2]NBLIGCHG) = ctrans([F:ZIET]NOMFIC,"XML","PDF")
+    Else
+      [M:ZCMC2]ICRTRI([M:ZCMC2]NBLIGCHG)    = ""
+      [M:ZCMC2]ICRFICTRI([M:ZCMC2]NBLIGCHG) = ""
+    Endif
+    Affzo [M:ZCMC2]ICRTRI([M:ZCMC2]NBLIGCHG)
+    Affzo [M:ZCMC2]ICRFICTRI([M:ZCMC2]NBLIGCHG)
+  Endif
+  [M:ZCMC2]NBLIGCHG += 1
+Next
+Affzo [M:ZCMC2]5
+#On va parcourir le tableau des tri pour mettre à jour les désignation :
+# - du code chargeur
+# - du code client chargeur
+# - du code article
+Local Integer WNUMLIG
+For WNUMLIG=0 To [M:ZCMC2]NBLIG-1
+  nolign = WNUMLIG+1
+  Call AM_ZCODCHARG([M:ZCMC2]ZCODCHARG(WNUMLIG)) : Affzo [M:ZCMC2]ZCODCHARGN(WNUMLIG)
+  Call AM_ZCODCLT([M:ZCMC2]ZCODCLT(WNUMLIG)) : Affzo [M:ZCMC2]ZCODCLTN(WNUMLIG)
+  Call AM_ITMREF([M:ZCMC2]ITMREF(WNUMLIG)) : Affzo [M:ZCMC2]ITMREFN(WNUMLIG)
+Next WNUMLIG
+Call SPE_CALC_DIFF_TRI()
+Call SPE_ALIM_PIECE_GENEREE()
+#On met à jour les informations du chauffeur
+Call AM_ZCHAUFEPI([M:ZCMC0]ZCHAUFEPI)
+#Affzo [M:ZCMC2]10
+#On va récupérer toutes les infos des réceptions pour les mettre dans un mask
+Effzo[M:ZRMC10]
+Raz[M:ZRMC10]NBLIG
+If([M:ZCMC0]ZCMCNUM<>"")Then
+  For[F:ZRMC]ZRMC0 Where [F:ZRMC]ZCMCNUM=[M:ZCMC0]ZCMCNUM
+    [M:ZRMC10]YZCMCNUM([M:ZRMC10]NBLIG) = [F:ZRMC]ZCMCNUM
+    [M:ZRMC10]YZCMCLIN([M:ZRMC10]NBLIG) = [F:ZRMC]ZCMCLIN
+    [M:ZRMC10]ITMREF([M:ZRMC10]NBLIG)   = [F:ZRMC]ITMREF
+    [M:ZRMC10]QTY([M:ZRMC10]NBLIG)      = [F:ZRMC]QTY
+    [M:ZRMC10]NBLIG += 1
+  Next
+Endif
+Affzo [M:ZRMC10]
+#Si la validation de la réception a eu lieu, le champ ZINFOSEMA doit être vide (plus de couleur)
+If([M:ZCMC0]DATEVAL<>[0/0/0])Then
+  [M:ZCMC0]ZINFOSEMA = ""
+  Chgstl [M:ZCMC0]ZINFOSEMA With ""
+Else
+  [M:ZCMC0]ZINFOSEMA="----------------------------------------------------------------------------------------------------------------------------------------------------"
+#&  + "--------------------------------------------------------------------------------------------------------------------------------------------------------"
+  #On est dans le cas où la réception n'a pas eu lieu, on va donc regarder le sémaphore de réception
+  If([M:ZCMC0]SEMAREC<=1)Then
+    #On est dans le cas où la collecte multi chargeur n'est pas vérrouillée
+    [M:ZCMC0]ZINFOSEMA = ""
+    Chgstl [M:ZCMC0]ZINFOSEMA With ""
+  Elsif([M:ZCMC0]SEMAREC=2)Then
+    #On est dans le cas où la collecte multi chargeur est vérrouillée par X3
+    Chgstl [M:ZCMC0]ZINFOSEMA With "ZMODIFOK"
+  Else
+    #On est dans le cas où la collecte est vérrouillé par le site web EPALIS
+    Chgstl [M:ZCMC0]ZINFOSEMA With "ZMODIFKO"
+  Endif
+Endif
+#On va maintenant s'occuper des petites puces des sémaphores sur les tris
+Local Integer WNUMLIG : WNUMLIG = 0
+For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+  If([M:ZCMC0]DATEVAL=[0/0/0])Then
+    #La réception de la collecte multi-chargeur n'est pas validée, on efface toutes les petites puces
+    [M:ZCMC2]STATUTTRI(WNUMLIG)=""
+  Else
+    #L'étape de réception a été validée
+    If([M:ZCMC2]TRIAFAIRE(WNUMLIG)=2 and [M:ZCMC2]DATEVALTRI(WNUMLIG)=[0/0/0])Then
+      #On est dans le cas où il y a un tri à faire ce tri n'est pas validé
+      #Il faut donc regarder le sémaphore de tri de la ligne
+      If([M:ZCMC2]SEMATRI(WNUMLIG)=3)Then
+        #Le tri est vérrouillé par le site web EPALIS
+        [M:ZCMC2]STATUTTRI(WNUMLIG)="127"
+      Elsif([M:ZCMC2]SEMATRI(WNUMLIG)=2)Then
+        #Le tri est vérrouillé par X3
+        [M:ZCMC2]STATUTTRI(WNUMLIG)="128"
+      Else
+        #Le tri n'est pas vérrouillé
+        [M:ZCMC2]STATUTTRI(WNUMLIG)=""
+      Endif
+    Else
+      #On est dans les autres cas
+      [M:ZCMC2]STATUTTRI(WNUMLIG)=""
+    Endif
+  Endif
+Next WNUMLIG
+#On met à jour l'indicateur qui indique si la fiche doit être synchronisée
+If([M:ZCMC0]SYNCHEPI=2)Then
+  [M:ZCMC0]FICASYNCH = 1
+Else
+  [M:ZCMC0]FICASYNCH = 2
+Endif
+Affzo [M:ZCMC0]FICASYNCH
+#On va mettre à jour l'indicateur qui nous permet de savoir si la ligne de tri est à synchronisée
+For WNUMLIG=0 To [M:ZCMC2]NBLIG-1
+  [M:ZCMC2]TRIASYNCH(WNUMLIG) = 1
+  If([M:ZCMC2]SYNCHEPI(WNUMLIG)<>2)Then
+    [M:ZCMC2]TRIASYNCH(WNUMLIG) = 2
+  Endif
+Next WNUMLIG
+Affzo [M:ZCMC2]10
+#On va regarder maintenant si la collecte n'est pas validée. si c'est le cas, on grise toute la fiche
+If(([M:ZCMC0]DATESOLDE<>[0/0/0] or [M:ZCMC0]FLGVAL=2) and !GWEBSERV)Then
+  #La collecte est validée
+  Diszo [M:ZCMC0]
+  Diszo [M:ZCMC1]
+  Diszo [M:ZCMC2]2
+  Diszo [M:ZCMC2]7
+  Diszo [M:ZCMC2]10
+Else
+  #La collecte n'est pas validée
+  Actzo [M:ZCMC0]
+  Actzo [M:ZCMC1]
+  Actzo [M:ZCMC2]
+Endif
+Diszo [M:ZCMC1]ZCHANUM
+Diszo [M:ZCMC1]ZCHANTIER
+#Si la réception est validée, alors on ne peut plus rien modifier des champs de l'entête de la collecte
+If([M:ZCMC0]DATEVAL<>[0/0/0] and !GWEBSERV)Then
+  Diszo [M:ZCMC0]
+  Diszo [M:ZCMC1]
+  Diszo [M:ZCMC2]2
+  Diszo [M:ZCMC2]7
+  If(left$([M:ZCMC0]ZCMCNUM,3)="EPC")Then
+    Actzo [M:ZCMC2]QTENC
+  Endif
+Endif
+If(!GWEBSERV)Then
+  Diszo [M:ZCMC0]ZNUMEPM
+Else
+  Actzo [M:ZCMC0]ZNUMEPM
+Endif
+Chgfmt [M:ZCMC0]ZCHGUSINE With "-K:30X"
+If([M:ZCMC0]ZCODUSINE="")Then
+  Chgfmt [M:ZCMC0]ZCODUSINE With "-K:30X"
+Else
+  Chgfmt [M:ZCMC0]ZCODUSINE With "K:30X"
+Endif
+If(!GWEBSERV)Then
+  Diszo[M:ZCMC0]DATESOLDE
+  Diszo[M:ZCMC2]QTYREC
+  Diszo[M:ZCMC0]FICASYNCH
+Else
+  Actzo[M:ZCMC0]DATESOLDE
+  Actzo[M:ZCMC2]QTYREC
+  Actzo[M:ZCMC0]FICASYNCH
+Endif
+#[M:ZCMC1]=[F:ZCMC]
+If(GPROFIL<>"ADMIN" and GPROFIL<>"BP") Then
+  Chgfmt [M:ZCMC1]BTADRESSE With "-K:20X"
+Else
+  Chgfmt [M:ZCMC1]BTADRESSE With "K:20X"
+Endif
+If([M:ZCMC1]ZCHANTIER=2)Then
+  Chgfmt [M:ZCMC1]INOMCHT With "K:100X"
+  Chgfmt [M:ZCMC1]IREFCHT With "K:50X"
+Else
+  Chgfmt [M:ZCMC1]INOMCHT With "-K:100X"
+  Chgfmt [M:ZCMC1]IREFCHT With "-K:50X"
+Endif
+If([M:ZCMC2]ZCODEPI<>'')Then
+  Chgfmt [M:ZCMC2]ZCODEPI With "K:30X"
+Else
+  Chgfmt [M:ZCMC2]ZCODEPI With "-K:30X"
+Endif
+#Si le numéro d'EPX commence par EPC, alors on empèche la modification du site et du code dépôt
+If(left$([M:ZCMC0]ZCMCNUM,3)="EPC")Then
+  Diszo [M:ZCMC0]ZDEPNUM
+  Diszo [M:ZCMC0]FCYREC
+Endif
+If(GUSER="ADMIN")Then
+  Actzo [M:ZCMC0]ZCHAUFEPI
+Endif
+Diszo[M:ZCMC2]10
+Return
+
+################################################# INICRE
+$INICRE
+Local Integer WSTAT, WNOL
+Local Char WYPSNUM(15)
+Local Integer WNUMLIG
+Call NUMERO("ZEPM",[M:ZCMC0]FCYREC,date$,"",WYPSNUM,WSTAT) From SUBANM
+If GOK<0 : Return : Endif
+If WSTAT=0
+    [M:ZCMC0]ZCMCNUM = WYPSNUM
+    [F:ZCMC]ZCMCNUM = WYPSNUM
+    If([M:ZCMC0]ZNUMEPM<>"")Then
+      [F:ZCMC]CONTINT = [M:ZCMC0]ZNUMEPM
+    Else
+      [F:ZCMC]CONTINT = WYPSNUM
+    Endif
+    Affzo [M:ZCMC0]ZCMCNUM
+    #On va parcourir le tableau des chargeurs pour alimenter le champ ZLISTECHG
+    [F:ZCMC]ZLISTECHG = ""
+    For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+      If([M:ZCMC2]QTERECEP(WNUMLIG)>0)Then
+        If([F:ZCMC]ZLISTECHG="")Then
+          [F:ZCMC]ZLISTECHG = [M:ZCMC2]YZCODCHARG(WNUMLIG)
+        Else
+          [F:ZCMC]ZLISTECHG += "-" + [M:ZCMC2]YZCODCHARG(WNUMLIG)
+        Endif
+      Endif
+    Next WNUMLIG
+Else
+    GERR=1
+    GMESSAGE=mess(60,199,1)
+    GOK=0
+    Return
+Endif
+#<------------------------------------------------------------------------------------------------------------------
+#On remet cette ligne car comme il y a un champ qui porte le meme nom dans le 2ème tableau de l'écran ZCMC2
+#Le trans classe remettait dans le champ SYNCHEPI de l'écran ZCMC0, la valeur du champ SYNCHEPI de la première ligne
+#du 2ème tableau de l'écran ZCMC2
+[F:ZCMC]SYNCHEPI = [M:ZCMC0]SYNCHEPI
+#------------------------------------------------------------------------------------------------------------------>
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           SUBPROGS                                                #
+#---------------------------------------------------------------------------------------------------#
+
+Subprog C_ZCHAUFEPI(VALEUR)
+Variable Char    VALEUR()
+#On va regarder dans la fiche du chargeur pour voir si on peut renseigner une valeur qui n'est pas
+#contenue dans la table des chauffeurs EPALIS
+Local Integer WTYPCHAUF : WTYPCHAUF = 1
+Local Integer WADDCHEPI : WADDCHEPI = 1
+Local Char WCHGTRAITE(250) : WCHGTRAITE = ""
+
+For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+  If(instr(1,";" + WCHGTRAITE + ";",";" + [M:ZCMC2]YZCODCHARG(WNUMLIG) + "")=0)Then
+    If(WCHGTRAITE="")Then
+      WCHGTRAITE = [M:ZCMC2]YZCODCHARG(WNUMLIG)
+    Else
+      WCHGTRAITE += ";" + [M:ZCMC2]YZCODCHARG(WNUMLIG)
+    Endif
+  Endif
+Next
+If(VALEUR<>"")Then
+  For[F:ZCE]ZCE1 Where [F:ZCE]ZCHFNAM=VALEUR and [F:ZCE]ZBPCNUM<>"" and instr(1,";" + WCHGTRAITE + ";",";" + [F:ZCE]ZBPCNUM + ";")>0
+    [M:ZCMC0]ZBPCNUM=[F:ZCE]ZBPCNUM
+    Affzo [M:ZCMC0]ZBPCNUM
+    Break
+  Next
+Endif
+If([M:ZCMC0]ZBPCNUM<>"")Then
+  Read [F:BPC]BPC0=[M:ZCMC0]ZBPCNUM
+  If(fstat=0)Then
+    If([F:BPC]ZADDCHEPI<>2 and VALEUR<>"")Then
+      WTYPCHAUF = [F:BPC]ZCHCHEPI
+      #Ouverture du fichier des chauffeurs de chargeur
+      Local Char WCRITERE(250)
+      #Critère de sélection
+      WCRITERE = "[F:ZCPI]ZCHAUFEPI='" + VALEUR + "' and [F:ZCPI]BPCORD='" + [M:ZCMC0]ZBPCNUM + "'"
+      If(WTYPCHAUF=1)Then
+        #On est dans le cas ou l'utilisateur ne peut choisir les chauffeur que dans les collectes
+        WCRITERE += " and [F:ZCPI]TYP_CHAUF='Collecte'"
+      Elsif(WTYPCHAUF=3)Then
+        #On est dans le cas ou l'utilisateur ne peut choisir les chauffeur que dans la table des chauffeurs EPALIS
+        WCRITERE += " and [F:ZCPI]TYP_CHAUF='Table'"
+      Endif
+      Local Integer WOK : WOK = 0
+      For [F:ZCPI]ZCPI0 Where evalue(WCRITERE)
+        WOK = 1
+      Next
+  #    If(WOK=0 and GUSER<>"WEB")Then
+      If(WOK=0)Then
+        GMESSAGE = "Impossible ! Vous n'êtes pas autorisé(e) à ajouter des nouveaux chauffeurs."
+        mkstat = 2
+      Endif
+    Endif
+  Endif
+Endif
+#On va afficher le nom du chauffeur
+Read[F:ZCE]ZCE0=[M:ZCMC0]ZBPCNUM;VALEUR
+If(fstat<>0)Then
+  GMESSAGE = "Impossible ! Ce chauffeur n'existe pas ou ne peut pas être sélectionné."
+  mkstat = 2
+Endif
+End
+
+Subprog AM_ZCHAUFEPI(VALEUR)
+Variable Char    VALEUR()
+#A la sortie du champ, nous allons regarder comment est paramétré le champ ZCHCHEPI du client
+#si le champ vaut :
+#1 : Chauffeurs collectes uniquement
+#2 : Chauffeurs collectes + table
+#3 : Chauffeurs table uniquement
+#Si le champ vaut 1, on ne fait rien, s'il vaut 3, on ajoute le chauffeur dans la table s'il n'existe pas
+#Si le champ vaut 2 alors on pose la question à l'utilisateur si il veut l'enregistrer dans la table.
+Local Integer WTYPCHAUF : WTYPCHAUF = 1
+Local Integer WADDCHEPI : WADDCHEPI = 1
+Local Char WCHGTRAITE(250) : WCHGTRAITE = ""
+
+For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+  If(instr(1,";" + WCHGTRAITE + ";",";" + [M:ZCMC2]YZCODCHARG(WNUMLIG) + "")=0)Then
+    If(WCHGTRAITE="")Then
+      WCHGTRAITE = [M:ZCMC2]YZCODCHARG(WNUMLIG)
+    Else
+      WCHGTRAITE += ";" + [M:ZCMC2]YZCODCHARG(WNUMLIG)
+    Endif
+  Endif
+Next
+If(VALEUR<>"")Then
+  For[F:ZCE]ZCE1 Where [F:ZCE]ZCHFNAM=VALEUR and [F:ZCE]ZBPCNUM<>"" and instr(1,";" + WCHGTRAITE + ";",";" + [F:ZCE]ZBPCNUM + ";")>0
+    [M:ZCMC0]ZBPCNUM=[F:ZCE]ZBPCNUM
+    Affzo [M:ZCMC0]ZBPCNUM
+    Break
+  Next
+Endif
+#If([M:ZCMC0]ZBPCNUM<>"")Then
+#  Read [F:BPC]BPC0=[M:ZCMC0]ZBPCNUM
+#  If(fstat=0)Then
+#    WTYPCHAUF = [F:BPC]ZCHCHEPI
+#    WADDCHEPI = [F:BPC]ZADDCHEPI
+#  # Mise en commentaire à la demande de SLB le 17/05/2017
+#  #  If(GUSER="WEB")Then
+#  #  If(GWEBSERV)Then
+#  #    WTYPCHAUF = 3
+#  #    WADDCHEPI = 2
+#  #  Endif
+#    If(WTYPCHAUF=3 and WADDCHEPI=2)Then
+#      #On ajoute le chauffeur dans la table des chauffeurs EPALIS s'il n'existe pas déjà
+#      Read [F:ZCE]ZCE0=[M:ZCMC0]ZBPCNUM;VALEUR
+#      If(fstat=5)Then
+#        Raz [F:ZCE]
+#        [F:ZCE]ZCHFNAM = VALEUR
+#        [F:ZCE]ZBPCNUM = [M:ZCMC0]ZBPCNUM
+#        [F:ZCE]ZTRPINT = 2
+#        Write [F:ZCE]
+#      Endif
+#    Elsif(WTYPCHAUF=2 and WADDCHEPI=2)Then
+#      #On va regarder si le chauffeur EPALIS est présent dans la table des chauffeurs EPALIS
+#      #s'il n'est pas présent, on va demander à l'utilisateur s'il faut le sauvegarder dans cette table.
+#      Read [F:ZCE]ZCE0=[M:ZCMC0]ZBPCNUM;VALEUR
+#      If(fstat=5)Then
+#        #L'enregistrement n'existe pas
+#        Local Integer WREP : WREP=1
+#        If(!GWEBSERV)Then
+#          Call OUINON("Voulez-vous sauvegarder ce chauffeur EPALIS ?",WREP) From GESECRAN
+#        Else
+#          WREP=2
+#        Endif
+#        If(WREP=2)Then
+#          #L'utilisateur répondu oui
+#          Raz [F:ZCE]
+#          [F:ZCE]ZCHFNAM = VALEUR
+#          [F:ZCE]ZBPCNUM = [M:ZCMC0]ZBPCNUM
+#          [F:ZCE]ZTRPINT = 2
+#          Write [F:ZCE]
+#        Endif
+#      Endif
+#    Endif
+#  Endif
+#Endif
+##On va regarder maintenant si le client de la collecte possède des articles de prestation soumis au test du transport interne.
+#Nous allons faire apparaitre le champ permettant de savoir si le chauffeur est un trnsport interne ou externe
+Chgfmt [M:ZCMC0]ZTYPTRSP With "K:20X"
+Diszo [M:ZCMC0]ZTYPTRSP
+#On va définir que le champ ZTYPTRSP est obligatoire
+GZTYPTRSPOBG = 1
+#On est dans le cas ou il existe des articles de prestation soumis à test sur le transport interne
+#On va regarder si le chauffeur existe pour ce client dans la table des chauffeur
+Read [F:ZCE]ZCE0=[M:ZCMC0]ZBPCNUM;VALEUR
+If(fstat=0)Then
+  #On est dans le cas où le chauffeur existe pour le client de la collecte
+  #On va regarder si le champ [F:ZCE]ZTRPINT est différent de 1 ou 2
+  If([F:ZCE]ZTRPINT<>1 and [F:ZCE]ZTRPINT<>2)Then
+    #On est dans le cas ou la valeur n'est pas définie, l'utilisateur va devoir rensigner cette information
+    #On rend actif le champ
+    [M:ZCMC0]ZTYPTRSP = 3
+    Actzo [M:ZCMC0]ZTYPTRSP
+  Else
+
+    #On est dans le cas où il existe une valeur définie au niveau du chauffeur, on va la récupérer
+    #mais l'utilisateur ne pourra pas la modifier
+    [M:ZCMC0]ZTYPTRSP = [F:ZCE]ZTRPINT
+    Affzo [M:ZCMC0]ZTYPTRSP
+  Endif
+Else
+  #On est dans le cas où le chauffeur n'existe pas pour le client de la collecte.
+  #Dans ce cas, l'utilisateur va devoir renseigner le paramètre
+  [M:ZCMC0]ZTYPTRSP = 3
+  Actzo [M:ZCMC0]ZTYPTRSP
+Endif
+#On va afficher le nom du chauffeur
+Read[F:ZCE]ZCE0=[M:ZCMC0]ZBPCNUM;VALEUR
+If(fstat=0)Then
+  [M:ZCMC0]ZNOMCHAUF = [F:ZCE]ZCHNAM2
+Else
+  [M:ZCMC0]ZNOMCHAUF = "Ce chauffeur n'existe pas!"
+Endif
+Affzo [M:ZCMC0]ZNOMCHAUF
+#Si le chauffeur est "DEPOSE CHARGEUR" alors, on va demander à l'utilisateur sur quelle usine a été faite la dépose
+If(VALEUR="DEPOSE CHARGEUR")Then
+  Chgfmt [M:ZCMC0]ZCODUSINE With "K:30X"
+Else
+  [M:ZCMC0]ZCODUSINE = ""
+  [M:ZCMC0]ZCHGUSINE = ""
+  Chgfmt [M:ZCMC0]ZCODUSINE With "-K:30X"
+Endif
+End
+
+Subprog AM_ZDEPNUM(VALEUR)
+Variable Char    VALEUR()
+#On va commencer par regarder si on peut changer de code dépôt
+#On peut changer de code dépôt si :
+# - Aucun enregistrements de la table ZCHGMULTICHG lié à l'EPM sur lequel on se trouve ne possède de données de qté
+# - Il n'existe aucun enregistrements de l'EPM dans la table ZTRIMULTICHG
+#On commence par parcourir la table ZCHGMULTICHG
+Local Integer WNUMLIG : WNUMLIG = 0
+Local Integer WMODDEPOK : WMODDEPOK = 1
+For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+  If([M:ZCMC2]QTERECEP(WNUMLIG)>0)Then
+    WMODDEPOK = 0
+    Break
+  Endif
+Next
+#si WMODDEPOK = 1 on s'assure quand même qu'il n'y a rien au niveau des lignes de tris
+If([M:ZCMC2]NBLIG>0)Then
+  WMODDEPOK = 0
+Endif
+If(WMODDEPOK = 1)Then
+  If([M:ZCMC0]ZCMCNUM<>"")Then
+    Delete [F:ZMC] Where [F:ZMC]ZCMCNUM=[M:ZCMC0]ZCMCNUM
+    Delete [F:ZRMC] Where [F:ZRMC]ZCMCNUM=[M:ZCMC0]ZCMCNUM
+  Endif
+  #On est dans le cas où le changement de dépôt est possible
+  [M:ZCMC0]ZCHAUFEPI = "" : Affzo [M:ZCMC0]ZCHAUFEPI
+  [M:ZCMC0]ZNOMCHAUF = "" : Affzo [M:ZCMC0]ZNOMCHAUF
+  [M:ZCMC0]ZTYPTRSP = 3   : Affzo [M:ZCMC0]ZTYPTRSP
+  [M:ZCMC0]ZCODUSINE = "" : Affzo [M:ZCMC0]ZCODUSINE
+  [M:ZCMC0]ZCHGUSINE = "" : Affzo [M:ZCMC0]ZCHGUSINE
+#  #On va récupérer le site collecte du dépôt
+#  Read[F:ZDPO]ZDPO0=VALEUR
+#  [M:ZCMC0]FCYREC = ""
+#  If(fstat=0)Then
+#    [M:ZCMC0]FCYREC = [F:ZDPO]ZFCY
+#  Endif
+#  Affzo [M:ZCMC0]FCYREC
+  #On vide les tableaux de l'écran [M:ZCMC2]
+  Effzo [M:ZCMC2]5
+  Raz [M:ZCMC2]NBLIGCHG
+  Effzo [M:ZCMC2]10
+  Raz [M:ZCMC2]NBLIG
+#  If(!GWEBSERV)Then
+    If([M:ZCMC0]FCYREC<>"")Then
+      #On va maintenant alimenter le tableau des chargeurs du dépôt
+      For [F:ZC2D]ZC2D0 Where [F:ZC2D]COD_DEP=VALEUR
+        #On alimente le tableau si le chargeur peut-ëtre collectée par le site
+        If([F:ZC2D]ZAUTHALLSITE=2 or ([F:ZC2D]ZAUTHALLSITE=1 and instr(1,[F:ZC2D]ZAUTHSITE,";" + [M:ZCMC0]FCYREC + ";")>0))
+          If(GWEBSERV or (!GWEBSERV and [F:ZC2D]ZCREMCINT<>2))Then
+            [M:ZCMC2]YZCMCNUM([M:ZCMC2]NBLIGCHG)   = [M:ZCMC0]ZCMCNUM
+            [M:ZCMC2]YZCMCLIN([M:ZCMC2]NBLIGCHG)   = ([M:ZCMC2]NBLIGCHG+1)*1000
+            [M:ZCMC2]YZCODCHARG([M:ZCMC2]NBLIGCHG) = [F:ZC2D]COD_CHG
+            [M:ZCMC2]YZCODCLT([M:ZCMC2]NBLIGCHG)   = [F:ZC2D]COD_CLT
+            [M:ZCMC2]YZCODCLTNAM([M:ZCMC2]NBLIGCHG)= [F:ZC2D]NOM_CLT
+            [M:ZCMC2]QTERECEP([M:ZCMC2]NBLIGCHG)   = 0
+            [M:ZCMC2]DATEVALTRI([M:ZCMC2]NBLIGCHG) = [0/0/0]
+            [M:ZCMC2]DATETRI([M:ZCMC2]NBLIGCHG)    = [0/0/0]
+            [M:ZCMC2]HEUREVALTRI([M:ZCMC2]NBLIGCHG)= ""
+            [M:ZCMC2]TRIAFAIRE([M:ZCMC2]NBLIGCHG)  = [F:ZC2D]TRI_SYST
+            [M:ZCMC2]YSYNCHEPI([M:ZCMC2]NBLIGCHG)  = 2
+            [M:ZCMC2]CHGASYNCH([M:ZCMC2]NBLIGCHG)  = 1
+            [M:ZCMC2]NBLIGCHG += 1
+          Endif
+        Endif
+      Next
+      If([M:ZCMC2]NBLIGCHG=0)Then
+        #Le tableau des chargeurs est vide, on va le signifie à l'utilisateur
+        Call MESSAGE("ATTENTION ! Il n'y a aucun chargeur associé à ce dépôt et à ce site de collecte ou vous n'êtes pas authorisé à y faire des réceptions.") From GESECRAN
+      Endif
+    Endif
+#  Endif
+  Affzo [M:ZCMC2]
+  Call SPE_SET_INFO_DEPOT(VALEUR)
+Else
+  #On est dans le cas où le changement de dépôt n'est pas possible
+  Call ERREUR("Impossible de mofifier le dépôt car des données ont déjà été renseignées.") From GESECRAN
+  mkstat = 2
+Endif
+End
+
+Subprog SPE_SET_INFO_DEPOT(WDEPNUM)
+Value Char WDEPNUM
+#On efface toutes les zones des infos du dépôt
+Effzo [M:ZCMC0]ZDEPNAM
+Effzo [M:ZCMC1]5
+#On récupère les informations du dépôt
+Read[F:ZDPO]ZDPO0=WDEPNUM
+If(fstat=0)Then
+  [M:ZCMC0]ZDEPNAM = [F:ZDPO]ZDEPNAM
+  [M:ZCMC1] = [F:ZDPO]
+  Affzo [M:ZCMC1]5
+Endif
+End
+
+Subprog SPE_SET_INFO_CHANTIER(WZCHNUM)
+Value Char WZCHNUM
+#On va récupérer les informations du chantier
+Effzo [M:ZCMC1]5
+Read[F:ZCHA]ZCHA0=WZCHNUM
+If(fstat=0)Then
+  [M:ZCMC1] = [F:ZCHA]
+  [M:ZCMC1]INOMCHT      = [F:ZCHA]ZCHANAM : Affzo [M:ZCMC1]INOMCHT
+  [M:ZCMC1]IREFCHT      = [F:ZCHA]ZREFCHANTIER : Affzo [M:ZCMC1]IREFCHT
+  [M:ZCMC1]IADRESSE(0)  = [F:ZCHA]ZADRESSE(0)
+  [M:ZCMC1]IADRESSE(1)  = [F:ZCHA]ZADRESSE(1)
+  [M:ZCMC1]IADRESSE(2)  = [F:ZCHA]ZADRESSE(2)
+  [M:ZCMC1]ICITY        = [F:ZCHA]ZCITY
+  [M:ZCMC1]IPOSCOD      = [F:ZCHA]ZPOSCOD
+  [M:ZCMC1]IPAYSISO     = [F:ZCHA]ZPAYSISO
+  [M:ZCMC1]IPAYS        = [F:ZCHA]ZPAYS
+  [M:ZCMC1]ITEL         = [F:ZCHA]ZCTC1TEL
+  [M:ZCMC1]ZTEL         = [F:ZCHA]ZCTC1TEL
+  [M:ZCMC1]ZMAIL        = [F:ZCHA]ZCTC1MAIL
+  [M:ZCMC1]IMAIL        = [F:ZCHA]ZCTC1MAIL
+  [M:ZCMC1]ZINFOCONTACT = [F:ZCHA]ZCTC1 + "(" + [F:ZCHA]ZCTC1FONC + ")"
+  Affzo [M:ZCMC1]5
+Endif
+End
+
+Subprog SPE_SAVE_INFO_CHARGEUR()
+#On va sauvegarder le tableau des chargeurs
+#On peut le sauvegarder uniquement si la réception de la collecte multi-chargeur n'a pas été validéé
+#Local Integer WNBENR : WNBENR = 0
+#If([M:ZCMC0]ZCMCNUM<>"")Then
+#  Filter[F:ZTMC] Where [F:ZTMC]ZCMCNUM=[M:ZCMC0]ZCMCNUM
+#  WNBENR = rowcount([F:ZTMC])
+#  Filter[F:ZTMC]
+#Endif
+#If([M:ZCMC0]DATEVAL=[0/0/0])Then
+#  #On commence par supprimer les anciens enregistrements
+#  Delete [F:ZMC] Where [F:ZMC]ZCMCNUM=[M:ZCMC0]ZCMCNUM
+  #On va maintenant parcourir le premier tableau pour le sauvegarder
+  Local Integer WNUMLIG : WNUMLIG = 0
+  For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+    Read[F:ZMC]ZMC0=[M:ZCMC0]ZCMCNUM;(WNUMLIG+1)*1000
+    If(fstat=0)Then
+      #L'enregistrement existe, on va donc regarder si on le modifie
+      #Seul les champs TRIAFAIRE et QTERECEP peuvent être modifié
+      If([F:ZMC]QTERECEP<>[M:ZCMC2]QTERECEP(WNUMLIG) or [F:ZMC]TRIAFAIRE<>[M:ZCMC2]TRIAFAIRE(WNUMLIG) or [F:ZMC]SEMATRI<>[M:ZCMC2]SEMATRI(WNUMLIG) or [F:ZMC]DATETRI<>[M:ZCMC2]DATETRI(WNUMLIG))Then
+#        Infbox "Je modifie"
+        [F:ZMC]QTERECEP    = [M:ZCMC2]QTERECEP(WNUMLIG)
+        [F:ZMC]TRIAFAIRE   = [M:ZCMC2]TRIAFAIRE(WNUMLIG)
+        [F:ZMC]DATETRI     = [M:ZCMC2]DATETRI(WNUMLIG)
+        If([F:ZMC]SEMATRI<>[M:ZCMC2]SEMATRI(WNUMLIG))Then
+          [F:ZMC]SEMATRI     = [M:ZCMC2]SEMATRI(WNUMLIG)
+#        Else
+#          [F:ZMC]SYNCHEPI    = 1
+        Endif
+        Rewrite[F:ZMC]
+        If(fstat<>0)Then
+          Call ERREUR("Impossible de sauvegarder les informations des clients chargeurs.") From GESECRAN
+        Endif
+      Else
+#        Infbox "Pas de mise à jour"
+      Endif
+    Else
+#      Infbox "je crée"
+      #L'enregistrement n'existe pas, on va le créer
+      Raz[F:ZMC]
+      [F:ZMC]ZCMCNUM      = [M:ZCMC0]ZCMCNUM
+      [F:ZMC]ZCMCLIN      = (WNUMLIG+1)*1000
+      [F:ZMC]ZCODCHARG    = [M:ZCMC2]YZCODCHARG(WNUMLIG)
+      [F:ZMC]ZCODCLT      = [M:ZCMC2]YZCODCLT(WNUMLIG)
+      [F:ZMC]ZNOMCLT      = [M:ZCMC2]YZCODCLTNAM(WNUMLIG)
+      [F:ZMC]QTERECEP     = [M:ZCMC2]QTERECEP(WNUMLIG)
+      [F:ZMC]TRIAFAIRE    = [M:ZCMC2]TRIAFAIRE(WNUMLIG)
+      [F:ZMC]DATEVALTRI   = [M:ZCMC2]DATEVALTRI(WNUMLIG)
+      [F:ZMC]ZACTNUM      = [M:ZCMC2]ZACTNUM(WNUMLIG)
+      [F:ZMC]DATETRI      = [M:ZCMC2]DATETRI(WNUMLIG)
+      [F:ZMC]HEUREVALTRI  = [M:ZCMC2]HEUREVALTRI(WNUMLIG)
+      [F:ZMC]FORCEDECONST = [M:ZCMC2]FORCEDECONST(WNUMLIG)
+      [F:ZMC]SEMATRI      = 1
+      [F:ZMC]NUMEPI       = [M:ZCMC2]NUMEPI(WNUMLIG)
+      [F:ZMC]SYNCHEPI     = 2
+#      If(GUSER="JBS")Then
+#        Infbox [F:ZMC]ZCMCNUM + "---" + num$([F:ZMC]ZCMCLIN) + "---" + [F:ZMC]ZCODCHARG + "---" + [F:ZMC]ZCODCLT
+#      Endif
+      Write[F:ZMC]
+      If(fstat<>0)Then
+        Call ERREUR("Impossible de créer les informations des clients chargeurs. [Erreur n°" + num$(fstat) + "]") From GESECRAN
+      Endif
+    Endif
+  Next
+#Endif
+End
+
+Subprog B10_NBLIGCHG
+
+Local Integer OK
+Local Integer WNOL : WNOL = nolign-1
+Local Integer WNUMLIG : WNUMLIG = 0
+Local Integer WCONTINUE : WCONTINUE = 0
+Local Integer WSAVSYNCHEPI : WSAVSYNCHEPI = [M:ZCMC2]SYNCHEPI(WNOL)
+Local Date WDATEACT : WDATEACT = [M:ZCMC2]DATETRI(WNOL)
+
+If(func GET_LOCK_CMC()=0)Then
+If([M:ZCMC0]FLGVAL<>2)Then
+  #Pour pouvoir faire un tri, il faut absolument que l'EPM soit validé au niveau réception
+  If([M:ZCMC0]DATEVAL<>[0/0/0])Then
+    If([M:ZCMC2]DATEVALTRI(WNOL)=[0/0/0])Then
+      If([M:ZCMC2]TRIAFAIRE(WNOL)=2 and [M:ZCMC2]SEMATRI(WNOL)<>3)Then
+        If(WDATEACT<>[0/0/0])Then
+          If(GREP="")Then
+            #On est dans le cas où il y a un tri à faire
+            #On va donc regarder si le tri a été effectué pour ce chargeur et pour ce client chargeur
+            For WNUMLIG=0 To [M:ZCMC2]NBLIG-1
+              If([M:ZCMC2]ZCODCHARG(WNUMLIG)=[M:ZCMC2]YZCODCHARG(WNOL) and [M:ZCMC2]ZCODCLT(WNUMLIG)=[M:ZCMC2]YZCODCLT(WNOL) and ([M:ZCMC2]QTEOK(WNUMLIG)+[M:ZCMC2]QTEKC(WNUMLIG)+[M:ZCMC2]QTEHS(WNUMLIG
+& ))>0)Then
+                WCONTINUE = 1
+                Break
+              Endif
+            Next
+            If(WCONTINUE = 1)Then
+              #On est dans le cas où il faut effectuer le traitement de validation du tri
+              Call TEMPON("Opération en cours...") From GESECRAN
+              #On va effectuer les modification au travers d'une transaction
+              Local Integer WERR : WERR = 0
+#              Trbegin [F:ZZS],[F:ZZHF],[F:ZZHL],[F:ZZSA],[F:ZTE]
+              #Nous sommes en train de valider un tri
+              #On va créer une action de type collecte, puis on va l'exécuter
+              Local Integer WNUMLIG : WNUMLIG = 1
+              Local Integer WNBLIGCRE : WNBLIGCRE = 1
+              Local Char WCOMPTEUR(30) : WCOMPTEUR = func Z2WSEPALIS.SPE_GET_COMPTEUR()
+              Local Char WZACTNUM(30)  : WZACTNUM  = func SPE_GET_COMPT_ACT()
+              For WNUMLIG=0 To [M:ZCMC2]NBLIG-1
+                If([M:ZCMC2]ZCODCHARG(WNUMLIG)=[M:ZCMC2]YZCODCHARG(WNOL) and [M:ZCMC2]ZCODCLT(WNUMLIG)=[M:ZCMC2]YZCODCLT(WNOL))Then
+                  #On va créer une action dans ZTEMPEPI pour les OK
+                  If([M:ZCMC2]QTEOK(WNUMLIG)>0)Then
+                    Raz [F:ZTE]
+                    [F:ZTE]ZFCY       = [M:ZCMC0]FCYREC
+                    [F:ZTE]ZBPCORD    = [M:ZCMC2]YZCODCHARG(WNOL)
+                    [F:ZTE]ZUSER      = GUSER
+                    [F:ZTE]ZITMREF    = [M:ZCMC2]ITMREF(WNUMLIG)
+                    [F:ZTE]ZACT       = 11
+                    [F:ZTE]ZCOMPTEUR  = WCOMPTEUR
+                    [F:ZTE]ZDATACT    = WDATEACT
+                    [F:ZTE]ZREFERENCE = left$([M:ZCMC0]REFERENCE,40)
+                    Read[F:BPC]BPC0=[M:ZCMC2]YZCODCHARG(WNOL)
+                    If(fstat=0)Then
+                      [F:ZTE]ZBPAADD  = [F:BPC]BPAADD
+                    Endif
+                    [F:ZTE]ZBPCORDF   = [M:ZCMC2]YZCODCHARG(WNOL)
+                    [F:ZTE]ZFCYF      = [M:ZCMC0]FCYREC
+                    [F:ZTE]ZSDHNUM    = ""
+                    [F:ZTE]ZFCYREC    = ""
+                    [F:ZTE]ZCHAUFFEUR = [M:ZCMC0]ZCHAUFEPI
+                    [F:ZTE]VCRNUM     = [M:ZCMC0]ZCMCNUM
+                    [F:ZTE]VCRTYP     = "ZCMC"
+                    [F:ZTE]VCRLIN     = [M:ZCMC2]YZCMCLIN(WNOL)
+                    [F:ZTE]ZPAYS      = [M:ZCMC1]ZPAYSISO
+                    [F:ZTE]ZACTNUM    = WZACTNUM
+                    [F:ZTE]ZDATEFFET  = WDATEACT
+                    [F:ZTE]ZTYPPAL    = 1
+                    [F:ZTE]ZQTY       = [M:ZCMC2]QTEOK(WNUMLIG)
+                    [F:ZTE]ZEXEACT    = date$
+                    [F:ZTE]ZEXEACTH   = time$
+                    [F:ZTE]ZNUMLIG    = WNBLIGCRE*1000 : WNBLIGCRE += 1
+                    [F:ZTE]ZCODCLT    = [M:ZCMC2]YZCODCLT(WNOL)
+                    [F:ZTE]ZDEPNUM    = [M:ZCMC0]ZDEPNUM
+                    [F:ZTE]ZTRIUSINE  = 1
+                    [F:ZTE]ZACTOK     = 1
+                    Write [F:ZTE]
+                    If(fstat<>0)Then
+                      WERR = fstat
+                    Endif
+                  Endif
+                  #On va créer une action dans ZTEMPEPI pour les KC
+                  If([M:ZCMC2]QTEKC(WNUMLIG)>0)Then
+                    Raz [F:ZTE]
+                    [F:ZTE]ZFCY       = [M:ZCMC0]FCYREC
+                    [F:ZTE]ZBPCORD    = [M:ZCMC2]YZCODCHARG(WNOL)
+                    [F:ZTE]ZUSER      = GUSER
+                    [F:ZTE]ZITMREF    = [M:ZCMC2]ITMREF(WNUMLIG)
+                    [F:ZTE]ZACT       = 11
+                    [F:ZTE]ZCOMPTEUR  = WCOMPTEUR
+                    [F:ZTE]ZDATACT    = WDATEACT
+                    [F:ZTE]ZREFERENCE = left$([M:ZCMC0]REFERENCE,40)
+                    Read[F:BPC]BPC0=[M:ZCMC2]YZCODCHARG(WNOL)
+                    If(fstat=0)Then
+                      [F:ZTE]ZBPAADD  = [F:BPC]BPAADD
+                    Endif
+                    [F:ZTE]ZBPCORDF   = [M:ZCMC2]YZCODCHARG(WNOL)
+                    [F:ZTE]ZFCYF      = [M:ZCMC0]FCYREC
+                    [F:ZTE]ZSDHNUM    = ""
+                    [F:ZTE]ZFCYREC    = ""
+                    [F:ZTE]ZCHAUFFEUR = [M:ZCMC0]ZCHAUFEPI
+                    [F:ZTE]VCRNUM     = [M:ZCMC0]ZCMCNUM
+                    [F:ZTE]VCRTYP     = "ZCMC"
+                    [F:ZTE]VCRLIN     = [M:ZCMC2]YZCMCLIN(WNOL)
+                    [F:ZTE]ZPAYS      = [M:ZCMC1]ZPAYSISO
+                    [F:ZTE]ZACTNUM    = WZACTNUM
+                    [F:ZTE]ZDATEFFET  = WDATEACT
+                    [F:ZTE]ZTYPPAL    = 2
+                    [F:ZTE]ZQTY       = [M:ZCMC2]QTEKC(WNUMLIG)
+                    [F:ZTE]ZEXEACT    = date$
+                    [F:ZTE]ZEXEACTH   = time$
+                    [F:ZTE]ZNUMLIG    = WNBLIGCRE*1000 : WNBLIGCRE += 1
+                    [F:ZTE]ZCODCLT    = [M:ZCMC2]YZCODCLT(WNOL)
+                    [F:ZTE]ZDEPNUM    = [M:ZCMC0]ZDEPNUM
+                    [F:ZTE]ZTRIUSINE  = 1
+                    [F:ZTE]ZACTOK     = 1
+                    Write [F:ZTE]
+                    If(fstat<>0)Then
+                      WERR = fstat
+                    Endif
+                  Endif
+                  #On va créer une action dans ZTEMPEPI pour les HS
+                  If([M:ZCMC2]QTEHS(WNUMLIG)>0)Then
+                    Raz [F:ZTE]
+                    [F:ZTE]ZFCY       = [M:ZCMC0]FCYREC
+                    [F:ZTE]ZBPCORD    = [M:ZCMC2]YZCODCHARG(WNOL)
+                    [F:ZTE]ZUSER      = GUSER
+                    [F:ZTE]ZITMREF    = [M:ZCMC2]ITMREF(WNUMLIG)
+                    [F:ZTE]ZACT       = 11
+                    [F:ZTE]ZCOMPTEUR  = WCOMPTEUR
+                    [F:ZTE]ZDATACT    = WDATEACT
+                    [F:ZTE]ZREFERENCE = left$([M:ZCMC0]REFERENCE,40)
+                    Read[F:BPC]BPC0=[M:ZCMC2]YZCODCHARG(WNOL)
+                    If(fstat=0)Then
+                      [F:ZTE]ZBPAADD  = [F:BPC]BPAADD
+                    Endif
+                    [F:ZTE]ZBPCORDF   = [M:ZCMC2]YZCODCHARG(WNOL)
+                    [F:ZTE]ZFCYF      = [M:ZCMC0]FCYREC
+                    [F:ZTE]ZSDHNUM    = ""
+                    [F:ZTE]ZFCYREC    = ""
+                    [F:ZTE]ZCHAUFFEUR = [M:ZCMC0]ZCHAUFEPI
+                    [F:ZTE]VCRNUM     = [M:ZCMC0]ZCMCNUM
+                    [F:ZTE]VCRTYP     = "ZCMC"
+                    [F:ZTE]VCRLIN     = [M:ZCMC2]YZCMCLIN(WNOL)
+                    [F:ZTE]ZPAYS      = [M:ZCMC1]ZPAYSISO
+                    [F:ZTE]ZACTNUM    = WZACTNUM
+                    [F:ZTE]ZDATEFFET  = WDATEACT
+                    [F:ZTE]ZTYPPAL    = 3
+                    [F:ZTE]ZQTY       = [M:ZCMC2]QTEHS(WNUMLIG)
+                    [F:ZTE]ZEXEACT    = date$
+                    [F:ZTE]ZEXEACTH   = time$
+                    [F:ZTE]ZNUMLIG    = WNBLIGCRE*1000 : WNBLIGCRE += 1
+                    [F:ZTE]ZCODCLT    = [M:ZCMC2]YZCODCLT(WNOL)
+                    [F:ZTE]ZDEPNUM    = [M:ZCMC0]ZDEPNUM
+                    [F:ZTE]ZTRIUSINE  = 1
+                    [F:ZTE]ZACTOK     = 1
+                    Write [F:ZTE]
+                    If(fstat<>0)Then
+                      WERR = fstat
+                    Endif
+                  Endif
+                Endif
+              Next
+              If(WERR=0)Then
+                #Nous allons maintenant exécuter l'action
+                Call EXEC_ACT_EPI(WCOMPTEUR, WERR) From Z2WSEPALIS
+                #Il faudra ensuite alimenter la date de validation du tri de la ligne sur laquelle on se trouve
+                #On va modifier l'enregistrement de la ligne sur laquelle on se trouve
+                Trbegin [F:ZMC],[F:ZTMC]
+                Read[F:ZMC]ZMC0=[M:ZCMC2]YZCMCNUM(WNOL);[M:ZCMC2]YZCMCLIN(WNOL)
+                If(fstat=0)Then
+                  [F:ZMC]DATEVALTRI  = date$
+                  [F:ZMC]ZACTNUM     = WZACTNUM
+                  [F:ZMC]DATETRI     = WDATEACT
+                  [F:ZMC]HEUREVALTRI = time$
+                  [F:ZMC]SEMATRI     = 1
+                  [F:ZMC]SYNCHEPI    = 1
+                  #On est en validation de tri, si le a été fait plus de 2 mois après la réception,
+                  #alors on va demander à l'utilisateur s'il faut ou non forcer la déconsigne sur le site web EPALIS
+                  If(addmonth(WDATEACT,-2)>[M:ZCMC2]DATERECEP)Then
+                    #Dans ce cas, on demande à l'utilisateur s'il faut forcer la déconsignation de l'étape de réception
+                    Local Integer WREP : WREP = 1
+                    Call OUINON("La réception a été faite il y a plus de 2 mois. Voulez-vous forcer la déconsignation ?",WREP) From GESECRAN
+                    [F:ZMC]FORCEDECONST = 1
+                    If(WREP=2)Then
+                      [F:ZMC]FORCEDECONST = 2
+                    Endif
+                  Endif
+                  Rewrite[F:ZMC]
+                  If(fstat=0)Then
+                    [M:ZCMC2]DATEVALTRI(WNOL) = [F:ZMC]DATEVALTRI
+                    Affzo [M:ZCMC2]DATEVALTRI(WNOL)
+                    [M:ZCMC2]ZACTNUM(WNOL) = [F:ZMC]ZACTNUM
+                    Affzo [M:ZCMC2]ZACTNUM(WNOL)
+                    [M:ZCMC2]DATETRI(WNOL) = [F:ZMC]DATETRI
+                    Affzo [M:ZCMC2]DATETRI(WNOL)
+                    [M:ZCMC2]HEUREVALTRI(WNOL) = [F:ZMC]HEUREVALTRI
+                    Affzo [M:ZCMC2]HEUREVALTRI(WNOL)
+                    [M:ZCMC2]SEMATRI(WNOL) = [F:ZMC]SEMATRI
+                    Affzo [M:ZCMC2]SEMATRI(WNOL)
+#                    [M:ZCMC2]YSYNCHEPI(WNOL) = 1
+#                    Affzo [M:ZCMC2]YSYNCHEPI(WNOL)
+                    [M:ZCMC2]STATUTTRI(WNOL) = ""
+                    Affzo [M:ZCMC2]STATUTTRI(WNOL)
+                    [M:ZCMC2]FORCEDECONST(WNOL) = [F:ZMC]FORCEDECONST
+                    Affzo [M:ZCMC2]FORCEDECONST(WNOL)
+                    #On va maintenant parcourir l'ensemble des lignes de tri validées pour le mettre à synchroniser avec EPALIS
+                    For[F:ZTMC]ZTMC0 Where [F:ZTMC]ZCMCNUM=[M:ZCMC2]YZCMCNUM(WNOL) and [F:ZTMC]ZCODCHARG=[M:ZCMC2]YZCODCHARG(WNOL) and [F:ZTMC]ZCODCLT=[M:ZCMC2]YZCODCLT(WNOL)
+                      [F:ZTMC]SYNCHEPI = 1
+                      Rewrite[F:ZTMC]
+                      If(fstat<>0)Then
+                        WERR = 2
+                      Endif
+                    Next
+                  Else
+                    WERR = 1
+                  Endif
+                Else
+                  WERR = 1
+                Endif
+                If(WERR=0)Then
+                  Commit
+                  For WNUMLIG=0 To [M:ZCMC2]NBLIG-1
+                    If([M:ZCMC2]ZCODCHARG(WNUMLIG)=[M:ZCMC2]YZCODCHARG(WNOL) and [M:ZCMC2]ZCODCLT(WNUMLIG)=[M:ZCMC2]YZCODCLT(WNOL))Then
+                      [M:ZCMC2]SYNCHEPI(WNUMLIG) = 1
+                      [M:ZCMC2]TRIASYNCH(WNUMLIG) = 2
+                      Affzo [M:ZCMC2]SYNCHEPI(WNUMLIG)
+                      Affzo [M:ZCMC2]TRIASYNCH(WNUMLIG)
+                    Endif
+                  Next WNUMLIG
+                  Call MESSAGE("Traitement de la validation du tri terminé avec succès.") From GESECRAN
+                  Call SPE_ALIM_PIECE_GENEREE()
+                  #On va maintenant regarder si toutes les lignes de tris ont été validées, si c'est le cas, on valide la pièce
+                  Local Integer WVALIDPIECE : WVALIDPIECE = 1
+                  For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+                    If([M:ZCMC2]TRIAFAIRE(WNUMLIG)=2 and [M:ZCMC2]DATEVALTRI(WNUMLIG)=[0/0/0])Then
+                      WVALIDPIECE = 0
+                      Break
+                    Endif
+                  Next WNUMLIG
+                  If(WVALIDPIECE=1)Then
+                    Call SPE_VAL_PIECE()
+                  Endif
+                  #<--------------MODIF JBS du 15/05/2020--------------
+                  #On va exécuter l'action ZTRSFDEC pour la gestion de la déconsigne
+                  Local Decimal BASPAG
+                  ## Action ZTRSFDEC
+                  Local Char    PARMSK(250)(1..20) , SAVACT(20)
+                  SAVACT = GACTION : GACTION = "ZTRSFDEC"
+                  PARMSK(1) = [M:ZCMC2]YZCMCNUM(WNOL)
+                  Call TRAITE_NUM(BASPAG,PARMSK,"","","",1,"ZTRSFDEC") From GTRAITE
+                  GACTION = SAVACT
+                  #--------------------------------------------------->
+                Else
+                  Rollback
+                  #Il y a eu un problème, il faut supprimer manuellement les enregistrements de la table ZTEMPEPI
+                  Delete [F:ZTE] Where [F:ZTE]ZCOMPTEUR=WCOMPTEUR and [F:ZTE]ZACTNUM=WZACTNUM
+                  [M:ZCMC2]DATEVALTRI(WNOL) = [0/0/0]
+                  Affzo [M:ZCMC2]DATEVALTRI(WNOL)
+                  [M:ZCMC2]ZACTNUM(WNOL) = ""
+                  Affzo [M:ZCMC2]ZACTNUM(WNOL)
+                  [M:ZCMC2]DATETRI(WNOL) = [0/0/0]
+                  Affzo [M:ZCMC2]DATETRI(WNOL)
+                  [M:ZCMC2]HEUREVALTRI(WNOL) = ""
+                  Affzo [M:ZCMC2]HEUREVALTRI(WNOL)
+                  [M:ZCMC2]SEMATRI(WNOL) = 2
+                  Affzo [M:ZCMC2]SEMATRI(WNOL)
+                  [M:ZCMC2]YSYNCHEPI(WNOL) = WSAVSYNCHEPI
+                  [M:ZCMC2]CHGASYNCH(WNOL) = 1
+                  If(WSAVSYNCHEPI<>2)Then
+                    [M:ZCMC2]CHGASYNCH(WNOL) = 2
+                  Endif
+                  Affzo [M:ZCMC2]YSYNCHEPI(WNOL)
+                  Affzo [M:ZCMC2]CHGASYNCH(WNOL)
+                  Call ERREUR("Problème lors de la validation du tri pour le chargeur : " + [M:ZCMC2]YZCODCHARG(WNOL) + ". Veuillez réessayer plus tard.") From GESECRAN
+                Endif
+              Else
+                #On est dans le cas où le tri n'a pas encore été fait, on va le signaler à l'utilisateur
+                Call ERREUR("Impossible ! Il y a eu des erreurs dans l'enregistrement de l'action. Code erreur : " + num$(WERR)) From GESECRAN
+              Endif
+              Call TEMPOFF From GESECRAN
+            Else
+              #On est dans le cas où le tri n'a pas encore été fait, on va le signaler à l'utilisateur
+              Call ERREUR("Impossible ! Aucun tri n'a encore été saisi sur ce chargeur.") From GESECRAN
+            Endif
+          Else
+            #On est dans le cas où on est en modification
+            Call ERREUR("Impossible ! Enregistrer d'abord les modifications effectuées.") From GESECRAN
+          Endif
+        Else
+          #On est dans le cas où il n'y a pas de date de tri
+          Call ERREUR("Impossible ! Vous devez d'avord renseigner une date de tri.") From GESECRAN
+        Endif
+      Else
+        #On est dans le cas où il n'y a pas de tri à faire
+        Call ERREUR("Impossible ! Ce chargeur n'est pas en tri à faire ou il y a un sémaphore de posé côté web.") From GESECRAN
+      Endif
+    Else
+      #On est dans le cas où le tri a déjà été validé
+      Call ERREUR("Impossible ! Le tri a déjà été validé.") From GESECRAN
+    Endif
+  Else
+    Call ERREUR("Impossible de valider un tri sans avoir validé au préalable la réception.") From GESECRAN
+  Endif
+Endif
+Else
+  Local Integer WRESULT
+  Local Char WUSER(50)
+  Local Char WMACHINE(50)
+  Local Char SYMBOLE(30)
+  SYMBOLE = "ZCMC~" + [M:ZCMC0]ZCMCNUM
+  Call QUILOCKE(SYMBOLE,WMACHINE,WUSER) From OBJDIV
+  Call MESSAGE("Impossible ! La fiche est verrouilée par l'utilisateur " + WUSER + ".") From GESECRAN
+Endif
+End
+
+Subprog AS_QTERECEP(VALEUR)
+Variable Decimal VALEUR
+#On interdit la modification si il y a une date de validation de la réception
+If([M:ZCMC0]DATEVAL<>[0/0/0] or [M:ZCMC0]SEMAREC=3 or [M:ZCMC0]DATESOLDE<>[0/0/0])Then
+  If([M:ZCMC0]SEMAREC=3)Then
+    #On avverti l'utilisateur que la modification doit être faite coté site web EPALIS
+    Call MESSAGE("Impossible ! La saisie de la réception doit se faire sur le site web EPALIS") From GESECRAN
+  Endif
+  mkstat=2
+Endif
+End
+
+Subprog AS_TRIAFAIRE(VALEUR)
+Variable Integer VALEUR
+#On interdit la modification si il y a une date de validation de la réception
+If([M:ZCMC0]DATEVAL<>[0/0/0] or GPROFIL<>"ADMIN" or [M:ZCMC0]SEMAREC=3 or [M:ZCMC0]DATESOLDE<>[0/0/0])Then
+  mkstat=2
+Endif
+End
+
+Subprog C_TRIAFAIRE(VALEUR)
+Variable Integer VALEUR
+#On ne peut passer le champ de oui à non que s'il n'y a aucune ligne de tri de saisie, sinon on indique
+#à l'utilisateur de supprimer les lignes de tri au préalable
+Local Integer WNOL : WNOL = nolign-1
+Local Integer WNUMLIG
+Local Integer WERR : WERR = 0
+If(VALEUR=1)Then
+  #On commence par regarder s'il existe des lignes de tri pour ce chargeur et ce client chargeur
+  For WNUMLIG=0 To [M:ZCMC2]NBLIG-1
+    If([M:ZCMC2]ZCODCHARG(WNUMLIG)=[M:ZCMC2]YZCODCHARG(WNOL) and [M:ZCMC2]ZCODCLT(WNUMLIG)=[M:ZCMC2]YZCODCLT(WNOL))Then
+      WERR = 1
+      Break
+    Endif
+  Next
+  If(WERR=1)Then
+    #On est dans le cas où ce n'est pas possible de passer le champ de oui à non car il existe des lignes de tris
+    Call ERREUR("Impossible ! Il existe des lignes de tris attachées à ce chargeur et ce client chargeur. Veuiller les supprimer au préalable.") From GESECRAN
+    mkstat = 2
+  Endif
+Endif
+End
+
+Subprog C_ZCODCHARG(VALEUR)
+Variable Char    VALEUR()
+#On va ici controler que le code du chargeur est correcte, c'est à dire :
+# il faut au moins une ligne dans le premier tableau faisant référence à ce code chargeur ayant le champ TRIAFAIRE à oui
+# avec une quantité réceptionnée supérieure à 0
+# et une date de validation de tri vide
+Local Integer WNOL : WNOL = nolign-1
+Local Integer WNUMLIG
+Local Integer WERR : WERR = 1
+#On va maintenant parcourir les lignes du premier tableau pour voir si le code du chargeur correspond à un code autorisé
+For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+  If([M:ZCMC2]YZCODCHARG(WNUMLIG)=VALEUR and [M:ZCMC2]TRIAFAIRE(WNUMLIG)=2 and [M:ZCMC2]QTERECEP(WNUMLIG)>0 and [M:ZCMC2]DATEVALTRI(WNUMLIG)=[0/0/0])Then
+    WERR = 0
+    Break
+  Endif
+Next
+If(WERR=1)Then
+  Call ERREUR("Impossible ! Vous ne pouvez pas faire un tri sur ce code chargeur.") From GESECRAN
+  mkstat = 2
+Endif
+If(WERR=0)Then
+  #On va également regarder qu'il n'existe pas une autre ligne contenant :
+  # Le même code chargeur
+  # Le même code client chargeur
+  # Le même code article
+  # Si c'est le cas, on interdit la valeur
+  Local Char WCODCHARG(30)     : WCODCHARG     = VALEUR
+  Local Char WCODCLTCHARG(30)  : WCODCLTCHARG  = [M:ZCMC2]ZCODCLT(WNOL)
+  Local Char WITMREF(30)       : WITMREF       = [M:ZCMC2]ITMREF(WNOL)
+  #On va maintenant parcourir l'ensemble des lignes du tableau des tris
+  For WNUMLIG=0 To [M:ZCMC2]NBLIG-1
+    If(WNUMLIG<>WNOL)Then
+      If(WCODCHARG=[M:ZCMC2]ZCODCHARG(WNUMLIG) and WCODCLTCHARG=[M:ZCMC2]ZCODCLT(WNUMLIG) and WITMREF=[M:ZCMC2]ITMREF(WNUMLIG))Then
+        WERR = 1
+        Break
+      Endif
+    Endif
+  Next
+  If(WERR=1)Then
+    Call ERREUR("Impossible ! Il existe déjà une ligne avec ces mêmes références.") From GESECRAN
+    mkstat = 2
+  Endif
+Endif
+End
+
+Subprog AS_ZCODCLT(VALEUR)
+Variable Char    VALEUR()
+#Dans ce sous programme s'il n'y a qu'un seul code client chargeur, on le préremplie directement.
+Local Integer WNOL : WNOL = nolign-1
+Local Integer WNUMLIG
+Local Char WCOD(30) : WCOD = ""
+Local Integer WNBCOD : WNBCOD = 0
+If(VALEUR="")Then
+  #On va parcourir les lignes du premier tableau pour récupérer le nombre de code client chargeur
+  For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+    If([M:ZCMC2]YZCODCHARG(WNUMLIG)=[M:ZCMC2]ZCODCHARG(WNOL) and [M:ZCMC2]TRIAFAIRE(WNUMLIG)=2 and [M:ZCMC2]QTERECEP(WNUMLIG)>0 and [M:ZCMC2]DATEVALTRI(WNUMLIG)=[0/0/0])Then
+      #On est dans le cas où le client chargeur peut être trié
+      If(WNBCOD=0)Then
+        WNBCOD += 1
+        WCOD = [M:ZCMC2]YZCODCLT(WNUMLIG)
+      Elsif(WNBCOD=1)Then
+        If(WCOD<>[M:ZCMC2]YZCODCLT(WNUMLIG))Then
+          WNBCOD += 1
+          Break
+        Endif
+      Else
+        WNBCOD += 1
+        Break
+      Endif
+    Endif
+  Next
+  If(WNBCOD=1)Then
+    #On est dans le cas où il n'y a qu'un client chargeur possible, on va donc directement le renseigner dans la zone
+    VALEUR = WCOD
+  Endif
+Else
+  #On doit interdire la modification si le tri est validé
+  Local Integer WERR : WERR = 0
+  For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+    If([M:ZCMC2]YZCODCHARG(WNUMLIG)=[M:ZCMC2]ZCODCHARG(WNOL) and [M:ZCMC2]YZCODCLT(WNUMLIG)=[M:ZCMC2]ZCODCLT(WNOL) and [M:ZCMC2]DATEVALTRI(WNUMLIG)<>[0/0/0])Then
+      WERR = 1
+      Break
+    Endif
+  Next WNUMLIG
+  If(WERR=1)Then
+    mkstat = 2
+  Endif
+Endif
+End
+
+Subprog C_ZCODCLT(VALEUR)
+Variable Char    VALEUR()
+#On va ici controler que le code du client chargeur est correcte, c'est à dire :
+# il faut au moins une ligne dans le premier tableau faisant référence à ce code chargeur et à ce code client chargeur ayant le champ TRIAFAIRE à oui
+# avec une quantité réceptionnée supérieure à 0
+# et une date de validation de tri vide
+Local Integer WNOL : WNOL = nolign-1
+Local Integer WNUMLIG
+Local Integer WERR : WERR = 1
+#On va maintenant parcourir les lignes du premier tableau pour voir si le code du chargeur correspond à un code autorisé
+For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+  If([M:ZCMC2]YZCODCHARG(WNUMLIG)=[M:ZCMC2]ZCODCHARG(WNOL) and [M:ZCMC2]YZCODCLT(WNUMLIG)=VALEUR and [M:ZCMC2]TRIAFAIRE(WNUMLIG)=2 and [M:ZCMC2]QTERECEP(WNUMLIG)>0 and [M:ZCMC2]
+& DATEVALTRI(WNUMLIG)=[0/0/0])Then
+    WERR = 0
+    Break
+  Endif
+Next
+If(WERR=1)Then
+  Call ERREUR("Impossible ! Vous ne pouvez pas faire un tri sur ce code client chargeur.") From GESECRAN
+  mkstat = 2
+Endif
+If(WERR=0)Then
+  #On va également regarder qu'il n'existe pas une autre ligne contenant :
+  # Le même code chargeur
+  # Le même code client chargeur
+  # Le même code article
+  # Si c'est le cas, on interdit la valeur
+  Local Char WCODCHARG(30)     : WCODCHARG     = [M:ZCMC2]ZCODCHARG(WNOL)
+  Local Char WCODCLTCHARG(30)  : WCODCLTCHARG  = VALEUR
+  Local Char WITMREF(30)       : WITMREF       = [M:ZCMC2]ITMREF(WNOL)
+  #On va maintenant parcourir l'ensemble des lignes du tableau des tris
+  For WNUMLIG=0 To [M:ZCMC2]NBLIG-1
+    If(WNUMLIG<>WNOL)Then
+      If(WCODCHARG=[M:ZCMC2]ZCODCHARG(WNUMLIG) and WCODCLTCHARG=[M:ZCMC2]ZCODCLT(WNUMLIG) and WITMREF=[M:ZCMC2]ITMREF(WNUMLIG))Then
+        WERR = 1
+        Break
+      Endif
+    Endif
+  Next
+  If(WERR=1)Then
+    Call ERREUR("Impossible ! Il existe déjà une ligne avec ces mêmes références.") From GESECRAN
+    mkstat = 2
+  Endif
+Endif
+End
+
+Subprog C_ITMREF(VALEUR)
+Variable Char    VALEUR()
+#On va ici controler que le code de l'article saisi appartient bien aux articles de tris du chargeur de la ligne
+Local Integer WERR : WERR = 1
+Local Integer WNOL : WNOL = nolign-1
+Read[F:ZSART]ZSART=[M:ZCMC2]ZCODCHARG(WNOL);VALEUR
+If(fstat=0 and VALEUR<>"ALL")Then
+  WERR = 0
+Endif
+If(WERR=1)Then
+  Call ERREUR("Impossible ! Ce code article n'est pas un article de tri du chargeur " + [M:ZCMC2]ZCODCHARG(WNOL)) From GESECRAN
+  mkstat = 2
+Endif
+If(WERR=0)Then
+  #On va également regarder qu'il n'existe pas une autre ligne contenant :
+  # Le même code chargeur
+  # Le même code client chargeur
+  # Le même code article
+  # Si c'est le cas, on interdit la valeur
+  Local Char WCODCHARG(30)     : WCODCHARG     = [M:ZCMC2]ZCODCHARG(WNOL)
+  Local Char WCODCLTCHARG(30)  : WCODCLTCHARG  = [M:ZCMC2]ZCODCLT(WNOL)
+  Local Char WITMREF(30)       : WITMREF       = VALEUR
+  #On va maintenant parcourir l'ensemble des lignes du tableau des tris
+  For WNUMLIG=0 To [M:ZCMC2]NBLIG-1
+    If(WNUMLIG<>WNOL)Then
+      If(WCODCHARG=[M:ZCMC2]ZCODCHARG(WNUMLIG) and WCODCLTCHARG=[M:ZCMC2]ZCODCLT(WNUMLIG) and WITMREF=[M:ZCMC2]ITMREF(WNUMLIG))Then
+        WERR = 1
+        Break
+      Endif
+    Endif
+  Next
+  If(WERR=1)Then
+    Call ERREUR("Impossible ! Il existe déjà une ligne avec ces mêmes références.") From GESECRAN
+    mkstat = 2
+  Endif
+Endif
+End
+
+Subprog AS_NBLIG
+##On va regarder s'il y a des tris à faire sur des clients chargeurs, s'il n'y en a pas, on interdit la saisie
+#Local Integer WPASSAISIE : WPASSAISIE = 0
+#Local Integer WNUMLIG
+#For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+#  If([M:ZCMC2]TRIAFAIRE(WNUMLIG)=2 and [M:ZCMC2]DATEVALTRI(WNUMLIG)=[0/0/0] and [M:ZCMC2]QTERECEP(WNUMLIG)>0)Then
+#    WPASSAISIE = 1
+#    Break
+#  Endif
+#Next WNUMLIG
+#If([M:ZCMC0]DATEVAL=[0/0/0] or WPASSAISIE=0)Then
+#  mkstat=2
+#Endif
+#Suite demande SLB du 27/09/2019, le tableau ne peut plus être renseigné paar l'utilisateur
+#mkstat = 2
+End
+
+Subprog AS_ZCODCHARG(VALEUR)
+Variable Char    VALEUR()
+#Dans ce sous programme s'il n'y a qu'un seul chargeur, on le préremplie directement.
+Local Integer WNOL : WNOL = nolign-1
+Local Integer WNUMLIG
+Local Char WCOD(30) : WCOD = ""
+Local Integer WNBCOD : WNBCOD = 0
+If(VALEUR="")Then
+  #On va parcourir les lignes du premier tableau pour récupérer le nombre de code chargeur
+  For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+    If([M:ZCMC2]TRIAFAIRE(WNUMLIG)=2 and [M:ZCMC2]QTERECEP(WNUMLIG)>0 and [M:ZCMC2]DATEVALTRI(WNUMLIG)=[0/0/0])Then
+      #On est dans le cas où le chargeur peut être trié
+      If(WNBCOD=0)Then
+        WNBCOD += 1
+        WCOD = [M:ZCMC2]YZCODCHARG(WNUMLIG)
+      Elsif(WNBCOD=1)Then
+        If(WCOD<>[M:ZCMC2]YZCODCHARG(WNUMLIG))Then
+          WNBCOD += 1
+          Break
+        Endif
+      Else
+        WNBCOD += 1
+        Break
+      Endif
+    Endif
+  Next
+  If(WNBCOD=1)Then
+    #On est dans le cas où il n'y a qu'un chargeur possible, on va donc directement le renseigner dans la zone
+    VALEUR = WCOD
+  Endif
+Else
+  #On doit interdire la modification si le tri est validé
+  Local Integer WERR : WERR = 0
+  For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+    If([M:ZCMC2]YZCODCHARG(WNUMLIG)=[M:ZCMC2]ZCODCHARG(WNOL) and [M:ZCMC2]YZCODCLT(WNUMLIG)=[M:ZCMC2]ZCODCLT(WNOL) and [M:ZCMC2]DATEVALTRI(WNUMLIG)<>[0/0/0])Then
+      WERR = 1
+      Break
+    Endif
+  Next WNUMLIG
+  If(WERR=1)Then
+    mkstat = 2
+  Endif
+Endif
+End
+
+Subprog C_NBLIG
+#On doit empêcher la suppression d'un ligne si le tri est validé
+Local Integer NOL
+Local Integer WNUMLIG
+Local Integer WERR : WERR = 0
+GMODIF=2
+# --> contrôle de suppression d'une ligne
+# ATTENTION, on ne peut pas supprimer une ligne que l'on vient de picker
+If(status = 65)Then
+  WERR = 0
+  # On ne fait le traitemeent que dans le cas ou le type de pièce est différent de 7 (Passage plateforme) et différent de 8 (Bon de négoce - Livraison)
+  NOL=nolign-1
+  #On va regarder si le tri n'est pas validé
+  For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+    If([M:ZCMC2]YZCODCHARG(WNUMLIG)=[M:ZCMC2]ZCODCHARG(NOL) and [M:ZCMC2]YZCODCLT(WNUMLIG)=[M:ZCMC2]ZCODCLT(NOL) and [M:ZCMC2]DATEVALTRI(WNUMLIG)<>[0/0/0])Then
+      WERR = 1
+      Break
+    Endif
+  Next
+  If(WERR=1)Then
+    Call ERREUR("Impossible ! Le tri a été validé") From GESECRAN
+    mkstat = 2
+  Else
+    GMODIF = 1
+  Endif
+Endif
+# --> contrôle de suppression de plusieurs lignes
+# ATTENTION, on ne peut pas supprimer une ligne que l'on vient de picker
+If((status = 68 | status = 83))Then
+  WERR = 0
+  For NOL=nolign-1 To nolign1-1
+    #On va regarder si le tri n'est pas validé
+    For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+      If([M:ZCMC2]YZCODCHARG(WNUMLIG)=[M:ZCMC2]ZCODCHARG(NOL) and [M:ZCMC2]YZCODCLT(WNUMLIG)=[M:ZCMC2]ZCODCLT(NOL) and [M:ZCMC2]DATEVALTRI(WNUMLIG)<>[0/0/0])Then
+        WERR = 1
+        Break 2
+      Endif
+    Next WNUMLIG
+  Next NOL
+  If(WERR=1)Then
+    Call ERREUR("Impossible ! Certaines lignes snt liées à un tri validé.") From GESECRAN
+    mkstat = 2
+  Else
+    GMODIF = 1
+  Endif
+Endif
+End
+
+Subprog AS_ITMREF(VALEUR)
+Variable Char    VALEUR()
+#On doit interdire la modification si le tri est validé
+Local Integer WNOL : WNOL = nolign-1
+Local Integer WNUMLIG
+Local Integer WERR : WERR = 0
+For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+  If([M:ZCMC2]YZCODCHARG(WNUMLIG)=[M:ZCMC2]ZCODCHARG(WNOL) and [M:ZCMC2]YZCODCLT(WNUMLIG)=[M:ZCMC2]ZCODCLT(WNOL) and [M:ZCMC2]DATEVALTRI(WNUMLIG)<>[0/0/0])Then
+    WERR = 1
+    Break
+  Endif
+Next WNUMLIG
+If(WERR=1)Then
+  mkstat = 2
+Endif
+End
+
+Subprog AS_QTEOK(VALEUR)
+Variable Decimal VALEUR
+#On doit interdire la modification si le tri est validé
+Local Integer WNOL : WNOL = nolign-1
+Local Integer WNUMLIG
+Local Integer WERR : WERR = 0
+For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+  If([M:ZCMC2]YZCODCHARG(WNUMLIG)=[M:ZCMC2]ZCODCHARG(WNOL) and [M:ZCMC2]YZCODCLT(WNUMLIG)=[M:ZCMC2]ZCODCLT(WNOL) and [M:ZCMC2]DATEVALTRI(WNUMLIG)<>[0/0/0])Then
+    WERR = 1
+    Break
+  Endif
+Next WNUMLIG
+If(WERR=1)Then
+  mkstat = 2
+Endif
+End
+
+Subprog AS_QTEKC(VALEUR)
+Variable Decimal VALEUR
+#On doit interdire la modification si le tri est validé
+Local Integer WNOL : WNOL = nolign-1
+Local Integer WNUMLIG
+Local Integer WERR : WERR = 0
+For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+  If([M:ZCMC2]YZCODCHARG(WNUMLIG)=[M:ZCMC2]ZCODCHARG(WNOL) and [M:ZCMC2]YZCODCLT(WNUMLIG)=[M:ZCMC2]ZCODCLT(WNOL) and [M:ZCMC2]DATEVALTRI(WNUMLIG)<>[0/0/0])Then
+    WERR = 1
+    Break
+  Endif
+Next WNUMLIG
+If(WERR=1)Then
+  mkstat = 2
+Endif
+End
+
+Subprog AS_QTEHS(VALEUR)
+Variable Decimal VALEUR
+#On doit interdire la modification si le tri est validé
+Local Integer WNOL : WNOL = nolign-1
+Local Integer WNUMLIG
+Local Integer WERR : WERR = 0
+For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+  If([M:ZCMC2]YZCODCHARG(WNUMLIG)=[M:ZCMC2]ZCODCHARG(WNOL) and [M:ZCMC2]YZCODCLT(WNUMLIG)=[M:ZCMC2]ZCODCLT(WNOL) and [M:ZCMC2]DATEVALTRI(WNUMLIG)<>[0/0/0])Then
+    WERR = 1
+    Break
+  Endif
+Next WNUMLIG
+If(WERR=1)Then
+  mkstat = 2
+Endif
+End
+
+Subprog AS_USR(VALEUR)
+Variable Char    VALEUR()
+#On doit interdire la modification si le tri est validé
+Local Integer WNOL : WNOL = nolign-1
+Local Integer WNUMLIG
+Local Integer WERR : WERR = 0
+For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+  If([M:ZCMC2]YZCODCHARG(WNUMLIG)=[M:ZCMC2]ZCODCHARG(WNOL) and [M:ZCMC2]YZCODCLT(WNUMLIG)=[M:ZCMC2]ZCODCLT(WNOL) and [M:ZCMC2]DATEVALTRI(WNUMLIG)<>[0/0/0])Then
+    WERR = 1
+    Break
+  Endif
+Next WNUMLIG
+If(WERR=1)Then
+  mkstat = 2
+Endif
+End
+
+Subprog AM_ZCODCHARG(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL = nolign-1
+Read[F:BPC]BPC0=VALEUR
+If(fstat=0)Then
+  [M:ZCMC2]ZCODCHARGN(WNOL) = [F:BPC]BPCNAM
+Else
+  [M:ZCMC2]ZCODCHARGN(WNOL) = ""
+Endif
+Affzo [M:ZCMC2]ZCODCHARGN(WNOL)
+End
+
+Subprog AM_ZCODCLT(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL = nolign-1
+Read[F:ZAI]ZAI0=[M:ZCMC2]ZCODCHARG(WNOL);VALEUR
+If(fstat=0)Then
+  [M:ZCMC2]ZCODCLTN(WNOL) = [F:ZAI]ZNOMCLT
+Else
+  [M:ZCMC2]ZCODCLTN(WNOL) = ""
+Endif
+Affzo [M:ZCMC2]ZCODCLTN(WNOL)
+End
+
+Subprog AM_ITMREF(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL = nolign-1
+Read[F:ZSART]ZSART=[M:ZCMC2]ZCODCHARG(WNOL);VALEUR
+If(fstat=0)Then
+  [M:ZCMC2]ITMREFN(WNOL) = [F:ZSART]ITMDES
+Else
+  [M:ZCMC2]ITMREFN(WNOL) = ""
+Endif
+Affzo [M:ZCMC2]ITMREFN(WNOL)
+End
+
+Subprog SPE_CALC_DIFF_TRI()
+#On va maintenant calculer pour chaque ligne du premier tableau la différence entre la réception et le tri s'il y a un tri à faire
+Local Integer WNBPALTRI
+Local Integer WNUMLIG
+Local Integer WNUMLIG2
+For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+  If([M:ZCMC2]TRIAFAIRE(WNUMLIG)=2 and [M:ZCMC2]QTERECEP(WNUMLIG)>0)Then
+    #On va parcourir le tableau des tri pour connaitre le nombre de palettes triées
+    WNBPALTRI = 0
+    WNUMLIG2 = 0
+    While([M:ZCMC2]ZCODCHARG(WNUMLIG2)<>"")
+#    For WNUMLIG2=0 To [M:ZCMC2]NBLIG-1
+      If([M:ZCMC2]YZCODCHARG(WNUMLIG)=[M:ZCMC2]ZCODCHARG(WNUMLIG2) and [M:ZCMC2]YZCODCLT(WNUMLIG)=[M:ZCMC2]ZCODCLT(WNUMLIG2))Then
+        WNBPALTRI += ([M:ZCMC2]QTEOK(WNUMLIG2)+[M:ZCMC2]QTEKC(WNUMLIG2)+[M:ZCMC2]QTEHS(WNUMLIG2))
+      Endif
+      WNUMLIG2 += 1
+#    Next WNUMLIG2
+    Wend
+    [M:ZCMC2]DIFFTRI(WNUMLIG) = WNBPALTRI-[M:ZCMC2]QTERECEP(WNUMLIG)
+  Else
+    [M:ZCMC2]DIFFTRI(WNUMLIG) = 0
+  Endif
+  If([M:ZCMC2]DIFFTRI(WNUMLIG)>=0)Then
+    Chgstl [M:ZCMC2]DIFFTRI(WNUMLIG) With "ZDIFFTRIPO"
+  Else
+    Chgstl [M:ZCMC2]DIFFTRI(WNUMLIG) With "ZDIFFTRINE"
+  Endif
+  Affzo [M:ZCMC2]DIFFTRI(WNUMLIG)
+Next WNUMLIG
+End
+
+Subprog APRES_NBLIG
+  Call SPE_CALC_DIFF_TRI()
+End
+
+Funprog SPE_GET_COMPT_ACT()
+  Local Char RESULT(17)
+  Local Integer WSTAT, WNOL
+  Local Char WZACTNUM(15)
+  Call NUMERO("ZACT",[M:ZCMC0]FCYREC,date$,"",WZACTNUM,WSTAT) From SUBANM
+  If GOK<0 : Return : Endif
+  If WSTAT=0
+      RESULT = WZACTNUM
+  Else
+      GERR=1
+      GMESSAGE=mess(60,199,1)
+      GOK=0
+      Return
+  Endif
+End RESULT
+
+Subprog SPE_ALIM_PIECE_GENEREE()
+#Dans cette procédure, nous allons alimenter le tableaux des pièces générées
+Local Integer WNUMLIG
+Local Char WZACTNUM(30)
+Local Char REQUETE(255)(5)
+#Nous allons parcourir les lignes du tableau des chargeurs et pour chaque lignes contenant un n° d'action, on va aller chercher
+#les pièces générées
+Effzo[M:ZCMC3]
+Raz [M:ZCMC3]NBLIGPG
+#For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+#  If([M:ZCMC2]ZACTNUM(WNUMLIG)<>"")Then
+#    #On met à jour le tableau des pièces générées
+#    WZACTNUM = [M:ZCMC2]ZACTNUM(WNUMLIG)
+#    REQUETE(0)="DECLARE @NUMACTION varchar(30) = '" + WZACTNUM + "'; "
+#    REQUETE(1)="select distinct ZACTG_0,ZTYPPIECE_0,ZNUMPIECE_0 "
+#    REQUETE(2)="from ZZHISTOFAC where ZSEQ_0 in "
+#    REQUETE(3)="(select distinct ZSEQ_0 from ZZSTOCK where ZORIGIN_0=@NUMACTION union select distinct ZSEQ_0 from ZZSTOCKARCH where ZORIGIN_0=@NUMACTION)"
+#    REQUETE(4)=""
+#    For (Integer ZACTG,Integer ZTYPPIECE,Char ZNUMPIECE(30)) From "5" Sql REQUETE As [XXX]
+#      [M:ZCMC3]ZACTG([M:ZCMC3]NBLIGPG)     = [F:XXX]ZACTG
+#      [M:ZCMC3]ZTYPPIECE([M:ZCMC3]NBLIGPG) = [F:XXX]ZTYPPIECE
+#      [M:ZCMC3]ZNUMPIECE([M:ZCMC3]NBLIGPG) = [F:XXX]ZNUMPIECE
+#      If([F:XXX]ZTYPPIECE=4)Then
+#        #On est sur une livraison
+#        [M:ZCMC3]ZOBJ([M:ZCMC3]NBLIGPG) = "SDH"
+#      Else
+#        #On est sur une réception
+#        [M:ZCMC3]ZOBJ([M:ZCMC3]NBLIGPG) = "PTH"
+#      Endif
+#      [M:ZCMC3]ZCODCHARG([M:ZCMC3]NBLIGPG) = [M:ZCMC2]YZCODCHARG(WNUMLIG)
+#      [M:ZCMC3]ZCODCLT([M:ZCMC3]NBLIGPG)   = [M:ZCMC2]YZCODCLT(WNUMLIG)
+#      [M:ZCMC3]ZACTNUM([M:ZCMC3]NBLIGPG)   = [M:ZCMC2]ZACTNUM(WNUMLIG)
+#      [M:ZCMC3]ZCODCLTNAM([M:ZCMC3]NBLIGPG)= [M:ZCMC2]YZCODCLTNAM(WNUMLIG)
+#      [M:ZCMC3]NBLIGPG += 1
+#    Next
+#  Endif
+#Next WNUMLIG
+For[F:ZEGP]ZEGP0 Where [F:ZEGP]NUM_ACTION=[M:ZCMC0]ZCMCNUM or ([F:ZEGP]NUMPIECEORI=[M:ZCMC0]ZCMCNUM and left$([M:ZCMC0]ZCMCNUM,3)="EPC")
+  [M:ZCMC3]ZTYPPIECE([M:ZCMC3]NBLIGPG) = [F:ZEGP]ZTYPPIECE
+  [M:ZCMC3]ZNUMPIECE([M:ZCMC3]NBLIGPG) = [F:ZEGP]NUM_PIECE
+  [M:ZCMC3]ZACTNUM([M:ZCMC3]NBLIGPG)   = [F:ZEGP]ZACTNUM
+  [M:ZCMC3]ZACTG([M:ZCMC3]NBLIGPG)     = [F:ZEGP]ZACT
+  [M:ZCMC3]ZACTVAL([M:ZCMC3]NBLIGPG)   = [F:ZEGP]ACTVAL
+  If([F:ZEGP]ZTYPPIECE=4)Then
+    #On est sur une livraison
+    [M:ZCMC3]ZOBJ([M:ZCMC3]NBLIGPG) = "SDH"
+#    Read[F:SDH]SDH0=[F:ZEGP]NUM_PIECE
+#    If(fstat=0)Then
+#      [M:ZCMC3]ZACTNUM([M:ZCMC3]NBLIGPG) = [F:SDH]ZSOHNUMEPI
+#    Endif
+  Else
+    #On est sur une réception
+    [M:ZCMC3]ZOBJ([M:ZCMC3]NBLIGPG) = "PTH"
+#    Read[F:PTH]PTH0=[F:ZEGP]NUM_PIECE
+#    If(fstat=0)Then
+#      [M:ZCMC3]ZACTNUM([M:ZCMC3]NBLIGPG) = [F:PTH]ZACTNUM
+#    Endif
+  Endif
+  [M:ZCMC3]DATE_PIECE([M:ZCMC3]NBLIGPG) = [F:ZEGP]DATE_PIECE
+  [M:ZCMC3]NBLIGPG += 1
+Next
+End
+
+Subprog AS_NBLIGPG
+Local Integer WNOL : WNOL = nolign-1
+Local Char WNUMPIECE(30) : WNUMPIECE = [M:ZCMC3]ZNUMPIECE(WNOL)
+#L'utilisateur vient de sélectionner une pièce générée,
+#On va lui afficher le détails de la pice en question
+Chgstl [M:ZCMC3]NBLIGPG With ""
+#Chgstl [M:ZCMC3]NBLIGPG(WNOL) With "GDD1G"
+Chgstl [M:ZCMC3]NBLIGPG(WNOL) With "BACKORANGE"
+If(WNUMPIECE<>"")Then
+  Effzo[M:ZCMC3]25
+  Raz[M:ZCMC3]NBLIGD
+  If([M:ZCMC3]ZOBJ(WNOL)="SDH")Then
+    #On va récupérer les lignes de détails de la livraison
+    For[F:SDD]SDD0 Where [F:SDD]SDHNUM=WNUMPIECE
+      [M:ZCMC3]ITMREF([M:ZCMC3]NBLIGD)  = [F:SDD]ITMREF
+      [M:ZCMC3]QTY([M:ZCMC3]NBLIGD)     = [F:SDD]QTY
+      [M:ZCMC3]PRIX([M:ZCMC3]NBLIGD)    = [F:SDD]GROPRI
+      [M:ZCMC3]NBLIGD += 1
+    Next
+  Elsif([M:ZCMC3]ZOBJ(WNOL)="PTH")Then
+    #On va récupérer les lignes de détails de la réception
+    For[F:PTD]PTD0 Where [F:PTD]PTHNUM=WNUMPIECE
+      [M:ZCMC3]ITMREF([M:ZCMC3]NBLIGD)  = [F:PTD]ITMREF
+      [M:ZCMC3]QTY([M:ZCMC3]NBLIGD)     = [F:PTD]QTYSTU
+      [M:ZCMC3]PRIX([M:ZCMC3]NBLIGD)    = [F:PTD]GROPRI
+      [M:ZCMC3]NBLIGD += 1
+    Next
+  Endif
+  Affzo[M:ZCMC3]25
+Endif
+End
+
+Subprog SPE_SAVE_REC()
+Local Integer WERR : WERR = 0
+Local Integer WNUMLIG
+#On enregistre les informations contenu dans le mask [M:ZRMC10]
+If([M:ZRMC10]NBLIG>0 and [F:ZCMC]ZCMCNUM<>"" and [M:ZCMC0]DATEVAL=[0/0/0] and [M:ZCMC0]SEMAREC<>3)Then
+  Trbegin [F:ZRMC]
+    For WNUMLIG=0 To [M:ZRMC10]NBLIG-1
+      Read[F:ZRMC]ZRMC0=[M:ZRMC10]YZCMCNUM(WNUMLIG);[M:ZRMC10]YZCMCLIN(WNUMLIG);[M:ZRMC10]ITMREF(WNUMLIG)
+      If(fstat=0)Then
+        #On est dans le cas où l'enregistrement existe déjà, on va regarder si la quantité a été modifiée
+        If([F:ZRMC]QTY<>[M:ZRMC10]QTY(WNUMLIG))Then
+          [F:ZRMC]QTY      = [M:ZRMC10]QTY(WNUMLIG)
+          [F:ZRMC]SYNCHEPI = 1
+          Rewrite[F:ZRMC]
+          If(fstat<>0)Then
+            WERR = 1
+            Break
+          Endif
+        Endif
+      Else
+        #On est dans le cas où l'enregitrement n'existe pas, on va donc le créer
+        Raz[F:ZRMC]
+        [F:ZRMC]ZCMCNUM  = [M:ZRMC10]YZCMCNUM(WNUMLIG)
+        [F:ZRMC]ZCMCLIN  = [M:ZRMC10]YZCMCLIN(WNUMLIG)
+        [F:ZRMC]ITMREF   = [M:ZRMC10]ITMREF(WNUMLIG)
+        [F:ZRMC]QTY      = [M:ZRMC10]QTY(WNUMLIG)
+        [F:ZRMC]SYNCHEPI = 1
+        Write[F:ZRMC]
+        If(fstat<>0)Then
+          WERR = 2
+          Break
+        Endif
+      Endif
+    Next
+  If(WERR=0)Then
+    Commit
+  Else
+    Rollback
+    Call ERREUR("Impossible ! Des erreurs se sont produites lors de l'enregistrement des données (erreur n°" + num$(WERR) + ")") From GESECRAN
+  Endif
+Endif
+End
+
+Subprog SPE_VAL_PIECE()
+  #On va avertir l'utilisateur de la conséquence de cette action et lui demandé confirmation
+  Local Integer WREP
+#  Call OUINON("Suite à cette action, vous ne pourrez plus modifier les informations de la collecte. Etes vous sûr(e) de vouloir continuer ?",WREP) From GESECRAN
+#  If(WREP=2)Then
+    Call TEMPON("Veuillez patienter...") From GESECRAN
+    #L'utilisateur a cliqué sur la validation de la collecte
+    Local Integer WERR : WERR = 0
+    Trbegin [F:ZCMC]
+    Read[F:ZCMC]ZCMC=[M:ZCMC0]ZCMCNUM
+    If(fstat=0)Then
+      [F:ZCMC]DATEVALCOL = date$
+      [F:ZCMC]HEUVALCOL = time$
+      [F:ZCMC]FLGVAL = 2
+      #On détruit le sémaphore de réception
+      [F:ZCMC]SEMAREC = 1
+      Rewrite[F:ZCMC]
+      If(fstat<>0)Then
+        WERR = 2  # -> Erreur n°2 : Problème d'écriture dans la collecte multi-chargeur ZCOLMULTICHG
+      Else
+        #On va parcourir tous les enregistrement da la table ZCHGMULTICHG pour relacher les sémaphores de tris
+        For[F:ZMC]ZMC0 Where [F:ZMC]ZCMCNUM=[M:ZCMC0]ZCMCNUM
+          [F:ZMC]SEMATRI = 1
+          Rewrite[F:ZMC]
+        Next
+      Endif
+    Else
+      WERR = 1  # -> Erreur n°1 : Problème de lecture des information de la colecte multi-chargeur ZCOLMULTICHG
+    Endif
+    If(WERR=0)Then
+      [M:ZCMC0]DATEVALCOL = date$
+      Affzo [M:ZCMC0]DATEVALCOL
+      [M:ZCMC0]HEUVALCOL = time$
+      Affzo [M:ZCMC0]HEUVALCOL
+      [M:ZCMC0]FLGVAL=2
+      Affzo [M:ZCMC0]FLGVAL
+      Commit
+#      Call MESSAGE("Traitement de la validation de la collecte terminé avec succès.") From GESECRAN
+    Else
+      Rollback
+      Call ERREUR("Problème lors de la validation de la collecte. Veuillez réessayer plus tard. [erreur n°" + num$(WERR) + "]") From GESECRAN
+    Endif
+    Call TEMPOFF From GESECRAN
+    Disable GSTABOU+3
+#  Endif
+#  Gosub RELIT From GOBJSUB
+End
+
+Subprog AM_TRIAFAIRE(VALEUR)
+Variable Integer VALEUR
+Local Integer WNUMLIG
+Local Integer WNOL : WNOL = nolign-1
+If(VALEUR=2)Then
+  #L'utilisateur vient de passer la valeur à oui.
+  #Il faut donc supprimer les enregistrement liés à cette ligne dans le mask [M:ZRMC10]
+  For WNUMLIG=0 To [M:ZRMC10]NBLIG-1
+    If([M:ZRMC10]YZCMCNUM(WNUMLIG)=[M:ZCMC0]ZCMCNUM and [M:ZRMC10]YZCMCLIN(WNUMLIG)=[M:ZCMC2]YZCMCLIN(WNOL))Then
+      #On est sur une ligne q'il faut supprimer
+      Dela WNUMLIG,1 [M:ZRMC10]NBLIG
+      [M:ZRMC10]NBLIG -= 1
+      WNUMLIG -= 1
+    Endif
+  Next WNUMLIG
+  #On modifie le champ SYNCHEPI de la ligne
+#  [M:ZCMC2]YSYNCHEPI(WNOL) = 1
+#  Affzo [M:ZCMC2]YSYNCHEPI(WNOL)
+Else
+  #L'utilisateur vient de cliquer sur non, il faut fonc lancer l'action ZRMC
+  ## Action ZRMC
+  If([M:ZCMC2]QTERECEP(WNOL)>0)Then
+    Local Decimal BASPAG
+    If !GWEBSERV
+      ## Action ZRMC
+      Local Char    PARMSK(250)(1..20) , SAVACT(20)
+      SAVACT = GACTION : GACTION = "ZRMC"
+      Local Char ACTION(20), PROGSUB(GLONADC), PROGSPE(GLONADC), PROGSPV(GLONADC)
+      ACTION = "AB3_NBLIGCHG" : PROGSUB = "SUBZCMC" : PROGSPE = "SPEZCMC" : PROGSPV = ""
+      Gosub ACTSUB From GOBJSUB
+      PARMSK(1) = [M:ZCMC2]YZCMCNUM(WNOL)
+      PARMSK(2) = num$([M:ZCMC2]YZCMCLIN(WNOL))
+      PARMSK(3) = num$([M:ZCMC2]QTERECEP(WNOL))
+      PARMSK(4) = [M:ZCMC2]YZCODCHARG(WNOL)
+      PARMSK(5) = num$(WNOL)
+      PARMSK(6) = num$(VALEUR)
+      Call SAISIE_NUM(BASPAG,PARMSK,"ZRMC","","SPEZRMC") From GSAISIE
+      ACTION = "BB3_NBLIGCHG" : PROGSUB = "SUBZCMC" : PROGSPE = "SPEZCMC" : PROGSPV = ""
+      Gosub ACTSUB From GOBJSUB
+      GACTION = SAVACT
+    Endif
+  Endif
+Endif
+End
+
+Subprog AS_NBLIGCHG
+#Disable 131, 135, 138, 171
+#Local Integer ETABOU(1..500)
+#ETABOU (131) = 0
+#ETABOU (135) = 0
+#ETABOU (138) = 0
+#ETABOU (171) = 0
+#Call SETBOUT(ETABOU) From GESECRAN
+#On va mettre en surbrillance le code et la désignation de l'article des aarticle de tri de la ligne sur laquelle on vient de cliquer
+Local Integer WNOL : WNOL = nolign-1
+Local Integer WNUMLIG
+#If([M:ZCMC2]TRIAFAIRE(WNOL))
+For WNUMLIG=0 To [M:ZCMC2]NBLIG-1
+  If([M:ZCMC2]ZCODCHARG(WNUMLIG)=[M:ZCMC2]YZCODCHARG(WNOL) and [M:ZCMC2]ZCODCLT(WNUMLIG)=[M:ZCMC2]YZCODCLT(WNOL))Then
+    #On est sur une ligne qu'il faut colorier
+    Chgstl [M:ZCMC2]ITMREF(WNUMLIG) With "GDD3G"
+    Chgstl [M:ZCMC2]ITMREFN(WNUMLIG) With "GDD3G"
+  Else
+    #On n'est sur une ligne qu'il ne faut pas colorier
+    Chgstl [M:ZCMC2]ITMREF(WNUMLIG) With ""
+    Chgstl [M:ZCMC2]ITMREFN(WNUMLIG) With ""
+  Endif
+Next WNUMLIG
+End
+
+Subprog AM_QTERECEP(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL = nolign-1
+#On va mettre à jour le champ Qté réceptionnée QTYREC
+Local Integer WNUMLIG
+[M:ZCMC2]QTYREC = 0
+For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+  If(WNUMLIG<>WNOL)Then
+    [M:ZCMC2]QTYREC += [M:ZCMC2]QTERECEP(WNUMLIG)
+  Else
+    [M:ZCMC2]QTYREC += VALEUR
+  Endif
+Next
+Affzo [M:ZCMC2]QTYREC
+[M:ZCMC2]DIFFTRI(WNOL) = (-1)*VALEUR
+Affzo [M:ZCMC2]DIFFTRI(WNOL)
+End
+
+Subprog CL_STATUTTRI(VALEUR)
+Variable Char    VALEUR()
+If(VALEUR<>"")Then
+  If(VALEUR="127")Then
+    Call MESSAGE("L'enregistrement est vérrouillé par le site Web EPALIS. Aucune modification n'est posssible depuis Sage X3 concernant le tri.") From GESECRAN
+  Elsif(VALEUR="128")Then
+    Call MESSAGE("L'enregistrement est vérrouillé par Sage X3. Le tri peut être éffectué depuis cette application.") From GESECRAN
+  Endif
+Endif
+End
+
+Subprog AM_FCYREC(VALEUR)
+Variable Char    VALEUR()
+#On va commencer par regarder si on peut changer le site de collecte
+#Soit on est en création et on passe d'un site blanc à un site
+#Soit on est en modification et on passe d'un site à un autre
+#If([M:ZCMC0]FCYREC<>VALEUR and [M:ZCMC0]FCYREC<>"")Then
+#  #On est dans le cas d'un changment de site
+#  #On peut changer de code site de collecte si :
+#  # - la liste des chargeurs liée au dépôt et au nouveau site ne contiendrait pas un chargeur de l'ancien site sur lequel on aurait
+#  # déjà renseigné une quantité réceptionnée
+#  # Seuls les enregistrements ou tous les sites ne sont pas authorisés nous interesse
+#
+#Else
+  #On est dans le cas d'une création
+  #On va commencer par regarder si on peut changer le site de collecte
+  # - Aucun enregistrements de la table ZCHGMULTICHG lié à l'EPM sur lequel on se trouve ne possède de données de qté
+  # - Il n'existe aucun enregistrements de l'EPM dans la table ZTRIMULTICHG
+  #On commence par parcourir la table ZCHGMULTICHG
+  Local Integer WNUMLIG : WNUMLIG = 0
+  Local Integer WMODDEPOK : WMODDEPOK = 1
+  For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+    If([M:ZCMC2]QTERECEP(WNUMLIG)>0)Then
+      WMODDEPOK = 0
+      Break
+    Endif
+  Next
+  #si WMODDEPOK = 1 on s'assure quand même qu'il n'y a rien au niveau des lignes de tris
+  If([M:ZCMC2]NBLIG>0)Then
+    WMODDEPOK = 0
+  Endif
+  If(WMODDEPOK = 1)Then
+    #On est dans le cas où le changement de site est possible
+    #On va supprimer les enregistrement de la table ZCHGMULTICH et ZRECMULTICHG
+    If([M:ZCMC0]ZCMCNUM<>"")Then
+      Delete [F:ZMC] Where [F:ZMC]ZCMCNUM=[M:ZCMC0]ZCMCNUM
+      Delete [F:ZRMC] Where [F:ZRMC]ZCMCNUM=[M:ZCMC0]ZCMCNUM
+    Endif
+    #On vide les tableaux de l'écran [M:ZCMC2]
+    Effzo [M:ZCMC2]5
+    Raz [M:ZCMC2]NBLIGCHG
+    Effzo [M:ZCMC2]10
+    Raz [M:ZCMC2]NBLIG
+    If(VALEUR<>"")Then
+      #On va maintenant alimenter le tableau des chargeurs du dépôt
+      For [F:ZC2D]ZC2D0 Where [F:ZC2D]COD_DEP=[M:ZCMC0]ZDEPNUM
+        #On alimente le tableau si le chargeur peut-ëtre collectée par le site
+        If([F:ZC2D]ZAUTHALLSITE=2 or ([F:ZC2D]ZAUTHALLSITE=1 and instr(1,[F:ZC2D]ZAUTHSITE,";" + VALEUR + ";")>0))
+          If(GWEBSERV or (!GWEBSERV and [F:ZC2D]ZCREMCINT<>2))Then
+            [M:ZCMC2]YZCMCNUM([M:ZCMC2]NBLIGCHG)   = [M:ZCMC0]ZCMCNUM
+            [M:ZCMC2]YZCMCLIN([M:ZCMC2]NBLIGCHG)   = ([M:ZCMC2]NBLIGCHG+1)*1000
+            [M:ZCMC2]YZCODCHARG([M:ZCMC2]NBLIGCHG) = [F:ZC2D]COD_CHG
+            [M:ZCMC2]YZCODCLT([M:ZCMC2]NBLIGCHG)   = [F:ZC2D]COD_CLT
+            [M:ZCMC2]YZCODCLTNAM([M:ZCMC2]NBLIGCHG)= [F:ZC2D]NOM_CLT
+            [M:ZCMC2]QTERECEP([M:ZCMC2]NBLIGCHG)   = 0
+            [M:ZCMC2]DATEVALTRI([M:ZCMC2]NBLIGCHG) = [0/0/0]
+            [M:ZCMC2]DATETRI([M:ZCMC2]NBLIGCHG)    = [0/0/0]
+            [M:ZCMC2]HEUREVALTRI([M:ZCMC2]NBLIGCHG)= ""
+            [M:ZCMC2]TRIAFAIRE([M:ZCMC2]NBLIGCHG)  = [F:ZC2D]TRI_SYST
+            [M:ZCMC2]YSYNCHEPI([M:ZCMC2]NBLIGCHG)  = 2
+            [M:ZCMC2]NBLIGCHG += 1
+          Endif
+        Endif
+      Next
+      If([M:ZCMC2]NBLIGCHG=0)Then
+        #Le tableau des chargeurs est vide, on va le signifie à l'utilisateur
+        Call MESSAGE("ATTENTION ! Il n'y a aucun chargeur associé à ce dépôt et à ce site de collecte ou vous n'êtes pas authorisé à y faire des réceptions.") From GESECRAN
+      Endif
+    Endif
+    Affzo [M:ZCMC2]
+  Else
+    #On est dans le cas où le changement de site n'est pas possible
+    Call ERREUR("Impossible de mofifier le site de collecte car des données ont déjà été renseignées.") From GESECRAN
+    mkstat = 2
+  Endif
+#Endif
+End
+
+Subprog C_ZCODUSINE(VALEUR)
+Variable Char    VALEUR()
+#On va controler que ce qui est saisie par l'utilisateur est une usine autorisé, c'est à dire appartenent à un chargeur du dépôt
+Local Integer WNUMLIG
+Local Integer WCODUSIOK : WCODUSIOK = 0
+For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+  Read [F:ZLU]ZLU0=[M:ZCMC2]YZCODCHARG(WNUMLIG);VALEUR
+  If(fstat=0)Then
+    WCODUSIOK = 1
+    Break
+  Endif
+Next
+If(WCODUSIOK=0)Then
+  GMESSAGE = "Impossible ! Ce code usine n'est pas réttaché à un chargeur du dépôt."
+  mkstat = 2
+Endif
+End
+
+Subprog AM_ZCODUSINE(VALEUR)
+Variable Char    VALEUR()
+#On va récupérer le code chargeur de l'usine sélectionnée
+Read[F:ZLU]ZLU1=VALEUR
+[M:ZCMC0]ZCHGUSINE=""
+If(fstat=0)Then
+  [M:ZCMC0]ZCHGUSINE = [F:ZLU]CODCHG
+Endif
+Affzo [M:ZCMC0]ZCHGUSINE
+End
+
+Subprog AM_FICASYNCH(VALEUR)
+Variable Integer VALEUR
+If(VALEUR=1)Then
+  [M:ZCMC0]SYNCHEPI = 2
+Else
+  [M:ZCMC0]SYNCHEPI = 1
+Endif
+Affzo [M:ZCMC0]SYNCHEPI
+End
+
+Subprog C_ZDEPNUM(VALEUR)
+Variable Char    VALEUR()
+If clalev([F:AUS])=0 : Local File AUTILIS [AUS] : Endif
+#On va maintenant récupérer le champ ZACTLSENS de l'utilisateur
+Local Integer WAFFCLTSENS : WAFFCLTSENS=1
+Read[F:AUS]CODUSR=GUSER
+If(fstat=0)Then
+  WAFFCLTSENS = [F:AUS]ZACTLSENS
+Endif
+#On va controler que le dépôt existe
+Read[F:ZRD]ZRD0=VALEUR
+If(fstat<>0)Then
+  GMESSAGE = "Impossible ! Ce code dépôt n'existe pas."
+  mkstat = 2
+Else
+  #Le dépôt existe, on va regarder si c'est un dépôt inconnu
+  #Si c'est le cas, il faut que WAFFCLTSENS=2 pour que l'utilisateur puisse le voir
+  If([F:ZRD]ZDEPINC=2)Then
+    If(WAFFCLTSENS<>2)Then
+      GMESSAGE = "Impossible ! Ce code dépôt n'existe pas."
+      mkstat = 2
+    Endif
+  Endif
+Endif
+End
+
+Subprog AS_BTADRESSE(VALEUR)
+Variable Char    VALEUR()
+If(GPROFIL<>"ADMIN" and GPROFIL<>"BP")Then
+  mkstat=2
+Endif
+End
+
+Subprog AS_REFERENCE(VALEUR)
+Variable Char    VALEUR()
+#Dans le cas du web service, on n'autorise pas la modification du champ s'il y a déjà quelque chose dedans
+If(GWEBSERV)Then
+  If(VALEUR<>"")Then
+    mkstat=2
+  Endif
+Endif
+End
+
+Subprog AM_REFERENCE(VALEUR)
+Variable Char    VALEUR()
+Local Char WREFEXIST(30) : WREFEXIST = ""
+If(!GWEBSERV)Then
+  #On va regarder si la référence n'existe pas déjà sur une autre PMC (Pièce multi-chargeur)
+  For[F:ZCMC2]ZCMC Where [F:ZCMC2]ZCMCNUM<>[M:ZCMC0]ZCMCNUM and toupper([F:ZCMC2]REFERENCE)=toupper(VALEUR)
+    WREFEXIST = [F:ZCMC2]ZCMCNUM
+    Break
+  Next
+  If(WREFEXIST<>"")Then
+    Call MESSAGE("Attention ! Il existe déjà un EPX contenant cette référence (" + WREFEXIST + ")") From GESECRAN
+  Endif
+Endif
+End
+
+Subprog CL_ICRREC(VALEUR)
+Variable Char    VALEUR()
+#Infbox "je passe 1"
+#Callui RETOUR="" With "UIAction="+chr$(1)+"OpenFile",
+#& "UILocalDir="+chr$(1) + "[Import EPALIA]/ICR/EPX_RECEPTION/BON_RECEPTION/Export_pdf",
+#& "UILocalFile="+ chr$(1) +"EPX2003-000004.pdf"
+#Callui RETOUR="" With "UIAction="+chr$(1)+"OpenFile",
+#& "UILocalDir="+chr$(1) + "\\192.168.200.111\x$\IMPORT\ICR\EPX_TRI\DEPALIA\ORIGINE",
+#& "UILocalFile="+ chr$(1) +"EPX2002-000068.xml"
+#Local Char URL(250)
+#Local Char RETOUR (250)
+#URL = "\\192.168.200.111\x$\IMPORT\ICR\EPX_TRI\DEPALIA\ORIGINE\EPX2002-000068.xml"
+#Callui RETOUR="" With "UIAction="+chr$(1)+"OpenFile",
+#& "UILocalDir="+ chr$(1) +"HTTP",
+#& "UILocalFile="+ chr$(1) +URL,
+#& "UIAdxPubSubFile="+ chr$(1) + "1"
+#Local Char FILES(100)(50)
+#System FILES='#@"\\192.168.200.111\x$\IMPORT\ICR\EPX_RECEPTION\BON_RECEPTION\Export_pdf\EPX2003-000004.pdf"'
+#Call APRIPDF("\\192.168.200.111\x$\IMPORT\ICR\EPX_RECEPTION\BON_RECEPTION\Export_pdf\EPX2003-000004.pdf")
+#& "UILocalDir="+chr$(1)+"APP",
+#Callui RETOUR="" With "UIAction="+chr$(1)+"OpenFile",
+#& "UILocalDir="+chr$(1)+"[Import EPALIA]/ICR/EPX_RECEPTION/BON_RECEPTION/Export_pdf/",
+#& "UIWindowTimeOut="+ chr$(1) +"10000",
+#& "UIWindowFeatures="+ chr$(1) +"width=300,height=300",
+#& "UILocalFile="+ chr$(2) +"EPX2003-000276.pdf"
+#& "UILocalFile="+ chr$(2) +"\\192.168.200.111\x$\IMPORT\ICR\EPX_RECEPTION\BON_RECEPTION\Export_pdf\EPX2003-000276.pdf"
+
+#Callui RETOUR="" With "UIAction="+chr$(1)+"OpenFile",
+#& "UILocalDir="+chr$(1)+"APP",
+#& "UIWindowFeatures="+ chr$(1) +"width=1920,height=1080",
+#& "UIWindowTimeOut="+ chr$(1) +"10000",
+#& "UILocalFile="+ chr$(2) +"\\192.168.200.111\x$\IMPORT\ICR\EPX_RECEPTION\BON_RECEPTION\Export_pdf\EPX2003-000914.pdf"
+
+#Call APRIPDF("[Import EPALIA]/ICR/EPX_RECEPTION/BON_RECEPTION/Export_pdf/EPX2003-000296.pdf")
+Local Char PARMSK(250)(1..20)
+Local Char SAVACT(20)
+Local Char WVALEUR(80)
+SAVACT = GACTION : GACTION = "ASYRVISU"
+# PARMSK(1) = [M]NPIC]/REQSQL.pdf"AM(nolign-1)
+
+WVALEUR = "[Import EPALIA]/ICR/EPX_RECEPTION/BON_RECEPTION/Export_pdf/EPX2003-000296.pdf"
+PARMSK(1)="[Import EPALIA]/ICR/EPX_RECEPTION/BON_RECEPTION/Export_pdf/EPX2003-000296.pdf"
+
+Call TRAITE_CHAR(WVALEUR,PARMSK,"","ASYRVISU","",1,"") From GTRAITE
+
+GACTION = SAVACT
+End
+
+Subprog CL_ICRTRI(VALEUR)
+Variable Char    VALEUR()
+Infbox "je passe 2"
+End
+
+Subprog AS_STATUTTRI(VALEUR)
+Variable Char    VALEUR()
+  If(VALEUR="")Then
+    mkstat=2
+  Endif
+End
+
+Subprog AS_ICRREC(VALEUR)
+Variable Char    VALEUR()
+  If(VALEUR="")Then
+    mkstat=2
+  Endif
+End
+
+Subprog AS_ICRTRI(VALEUR)
+Variable Char    VALEUR()
+  If(VALEUR="")Then
+    mkstat=2
+  Endif
+End
+
+Subprog APRIPDF(WFILENAME)
+ Value Char WFILENAME()
+# the following two are arrays
+# TBPAR contains the name of the print parameter
+# TBVAL contains its value
+Local Char TBPAR(15)(1..6), TBVAL(200)(1..6)
+
+#GSILENCE = 1              # global variable that inhibits all the messages on the screen
+TBPAR(1) = "docjoin"       # first and only parameter of the "ADOC" press code (attached print)
+TBVAL(1) = WFILENAME       # value of parameter
+
+Call ETAT("ADOC","","",1,"",TBPAR,TBVAL) From AIMP3
+#GSILENCE = 0              # restore the value of GSILENCE
+End
+
+Funprog GET_LOCK_CMC
+  Local Integer WRESULT
+  Local Char WUSER(50)
+  Local Char WMACHINE(50)
+
+  Local Char SYMBOLE(30)
+  SYMBOLE = "ZCMC~" + [M:ZCMC0]ZCMCNUM
+  Lock =SYMBOLE With lockwait = 0
+  If(fstat<>0)Then
+    WRESULT = 1
+  Endif
+End WRESULT

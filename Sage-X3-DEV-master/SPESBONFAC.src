@@ -1,0 +1,93 @@
+#<AdxTL>@(#)2.0.0.0 $Revision$
+#########################################################################
+# SPESBONFAC : Impression : Facture Ventes             créé le 02012012 #
+#########################################################################
+######################################################################
+
+
+$ACTION
+#Dbgaff
+Case ACTION
+  When "FICHIER"  : Gosub FICHIER
+  When "EXEC"     : Gosub EXEC
+Endcase
+Return
+
+$EXEC
+#Local Integer WTEST : WTEST = 0
+#Infbox "je passe"
+#For I = 1 To NBPAR
+#     If left$(PARAMETRE(I),12)="_ExportFile="
+#        PARAMETRE(I) = "_ExportFile=TEST_JBS"
+#        WTEST = 1
+#     Endif
+#Next I
+#If(WTEST=0)Then
+#  Infbox "Je passe 1"
+#  NBPAR +=1
+#  PARAMETRE(NBPAR) = "_ExportFile="+chr$(1)+"TEST_JBS.PDF"
+#Endif
+#I=find("_ExportFile",[M:AIP]TBPAR)
+#Infbox [M:AIP]TBVAL(I-1)
+#[M:AIP]TBVAL(I-1) = "TEST_JBS"
+Return
+
+$FICHIER
+#Dbgaff
+I=find("_ExportFile",[M:AIP]TBPAR)
+[L]FICHIER=[M:AIP]TBVAL(I-1)
+Return
+
+Subprog IMPRIME(NBPAR,PARAMETRE)
+Value    Integer NBPAR
+Variable Char    PARAMETRE()()
+#<---------MODIFICATION JBS DU 28-08-2019----------
+# Commentaire : Afficher un message si la sélection contient des factures EPI
+Local Char WFACDEB(30)
+Local Char WFACFIN(30)
+Local Char WREPORTCODE (40)
+Local Char PARAM(30)
+Local Char VALEUR(30)
+Local Integer WIMPFAC : WIMPFAC = 0
+For I=1 To NBPAR
+     J=instr(1,[L]PARAMETRE(I),"=")
+     If J
+        [L]PARAM = left$([L]PARAMETRE(I),J-1)
+        [L]VALEUR = right$([L]PARAMETRE(I),J+1)
+        Case [L]PARAM
+            When "facturedeb" : WFACDEB     = [L]VALEUR
+            When "facturefin" : WFACFIN     = [L]VALEUR
+            When "__REPORT"   : WREPORTCODE = [L]VALEUR
+        Endcase
+     Endif
+Next
+If(WREPORTCODE="SBONFACP2.rpt")Then
+  #Nous allons maintenant parcourir l'ensemble des factures à imprimer
+  #pour voir s'il n'y a pas de facture issues de BL commençcant par EPL
+  #Si c'est le cas, on va le signaler à l'utilisateur
+  #Call ERREUR("Facture début : " + WFACDEB + " --- Facture fin : " + WFACFIN) From GESECRAN
+  If clalev([F:ZFE])=0 : Local File ZFACTEPI [F:ZFE] : Endif
+  Local Integer WNBFACEPI : WNBFACEPI = 0
+  For [F:ZFE]ZFE0 Where [F:ZFE]NUM>=WFACDEB and [F:ZFE]NUM<=WFACFIN
+    If([F:ZFE]FACTEPI=2)Then
+      WNBFACEPI += 1
+    Else
+      WIMPFAC += 1
+    Endif
+  Next
+  If(WNBFACEPI>0)Then
+    If(WNBFACEPI=1)Then
+      Call ERREUR("ATTENTION ! Votre sélection comporte " + num$(WNBFACEPI) +
+& " facture EPALIS. Cette facture ne sera pas imprimée avec ce modèle. Veuillez utiliser un autre modèle pour cette facture.") From GESECRAN
+    Else
+      Call ERREUR("ATTENTION ! Votre sélection comporte " + num$(WNBFACEPI) +
+& " factures EPALIS. Ces factures ne seront pas imprimées avec ce modèle. Veuillez utiliser un autre modèle pour ces factures.") From GESECRAN
+    Endif
+  Endif
+  If(WIMPFAC=0)Then
+    GOK = 0
+    Call ERREUR ("ATTENTION ! Il n'y a rien à imprimer. Arrêt de l'impression.") From GESECRAN
+  Endif
+Endif
+#------------------------------------------------->
+End

@@ -1,0 +1,99 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### SPEZGPJ
+##################################################### créé le 22/05/2020
+##################################################### modifié le 22/05/2020
+
+$ACTION
+#Infbox ACTION
+Case ACTION
+  When "OUVRE"       : Gosub OUVRE
+  When "DEBUT"       : Gosub DEBUT
+  When "BOUTON"      : Gosub BOUTON
+  When "BB3_NBLIG"   : Gosub BB3_NBLIG
+Endcase
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           LABELS                                                  #
+#---------------------------------------------------------------------------------------------------#
+
+##################################################### OUVRE
+$OUVRE
+If clalev([F:ZPJFR])=0   : Local File ZPJFACTR         [F:ZPJFR]    : Endif
+If clalev([F:ZPJF])=0    : Local File ZPJFACT          [F:ZPJF]     : Endif
+Return
+
+##################################################### DEBUT
+$DEBUT
+#On initialise les zones du premier bloc
+[M:ZGPJ0]FNUM ="" : Affzo [M:ZGPJ0]FNUM
+[M:ZGPJ0]FNUM_PJ = "" : Affzo [M:ZGPJ0]FNUM_PJ
+Call SPE_APPLY_FILTER([M:ZGPJ0]FNUM,[M:ZGPJ0]FNUM_PJ)
+Return
+
+##################################################### BOUTON
+$BOUTON
+If(BOUT="R")Then
+  #L'utilisateur a cliqué sur le bouton RAFRAICHIR
+  Call SPE_APPLY_FILTER([M:ZGPJ0]FNUM,[M:ZGPJ0]FNUM_PJ)
+  WLIGENT = -1
+  Chgstl [M:ZGPJ0]NBLIG With ""
+Elsif(BOUT="E")Then
+  #L'utilisateur a cliqué sur le bouton EFFACER
+  Gosub DEBUT
+Endif
+Return
+
+##################################################### BB3_NBLIG
+$BB3_NBLIG
+Call AS_NBLIG
+Return
+
+Subprog SPE_APPLY_FILTER(WNUM,WNUMPJ)
+  Value Char WNUM
+  Value Char WNUMPJ
+  Call TEMPON("Récupération des informations...") From GESECRAN
+  #On efface les 2 tableaux
+  Effzo [M:ZGPJ0]10
+  Effzo [M:ZGPJ0]NBLIG
+  [M:ZGPJ0]NBLIG = 0 : Affzo [M:ZGPJ0]NBLIG
+  #On va maintenant alimenter le premier tableau
+  Local Char WFILTRE(250) : WFILTRE = "1=1"
+  If(WNUM<>"")Then
+    WFILTRE += " & [F:ZPJF]NUM='" + WNUM + "'"
+  Endif
+  If(WNUMPJ<>"")Then
+    WFILTRE += " & [F:ZPJF]NUM_PJ='" + WNUMPJ + "'"
+  Endif
+  For [F:ZPJF]ZPJF2 Where evalue(WFILTRE)
+    [M:ZGPJ0]ENUM([M:ZGPJ0]NBLIG)        = [F:ZPJF]NUM
+    [M:ZGPJ0]ENUM_PJ([M:ZGPJ0]NBLIG)     = [F:ZPJF]NUM_PJ
+    [M:ZGPJ0]EDATTRAIT([M:ZGPJ0]NBLIG)   = [F:ZPJF]DATTRAIT
+    [M:ZGPJ0]EHEUTRAIT([M:ZGPJ0]NBLIG)   = [F:ZPJF]HEUTRAIT
+    [M:ZGPJ0]EETATTRAIT([M:ZGPJ0]NBLIG)  = [F:ZPJF]ETATTRAIT
+    [M:ZGPJ0]EDATFACT([M:ZGPJ0]NBLIG)    = [F:ZPJF]DATFACT
+    [M:ZGPJ0]NBLIG += 1
+    If([M:ZGPJ0]NBLIG>=500)Then
+      Call MESSAGE ("Seules les 500 premières lignes seront affichées") From GESECRAN
+      Break
+    Endif
+  Next
+  Affzo [M:ZGPJ0]10
+  Call TEMPOFF From GESECRAN
+End
+
+######################################################################################
+## Etiquette ajoutée par le superviseur (écran ZGESTDECONS0) 11/05/2020 17:49:37 (JBS)
+######################################################################################
+Subprog AM_FNUM(VALEUR)
+Variable Char    VALEUR()
+Call SPE_APPLY_FILTER(VALEUR,[M:ZGPJ0]FNUM_PJ)
+End
+
+Subprog AM_FNUM_PJ(VALEUR)
+Variable Char    VALEUR
+Call SPE_APPLY_FILTER([M:ZGPJ0]FNUM,VALEUR)
+End
+
+Subprog AS_NBLIG
+End

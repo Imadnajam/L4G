@@ -4,16 +4,16 @@
 #* Client                   : AVV
 #* ******************************************************
 #* Traitement               : YAV01WSSELDATA
-#* Date de cr√©ation         : 03/07/2013
-#* Date de derni√®re MAJ     : 03/11/2015
+#* Date de crÈation         : 03/07/2013
+#* Date de derniËre MAJ     : 03/11/2015
 #* Version                  : 2.0
 #* Auteurs                  : OMA
 #* *******************************************************
-#* Fiches sp√©cifiques       :
-#* Codes  sp√©cifiques       : YAV01 - Bureautique
-#* Desc Fiches sp√©cifiques  : Librairie Web service s√©lection g√©n√©rique donn√©es
+#* Fiches spÈcifiques       :
+#* Codes  spÈcifiques       : YAV01 - Bureautique
+#* Desc Fiches spÈcifiques  : Librairie Web service sÈlection gÈnÈrique donnÈes
 #* *******************************************************
-#* Modifications ( √©volutions, bug,...)
+#* Modifications ( Èvolutions, bug,...)
 #* *******************************************************
 #* Date       : Auteur  : Description           : No evolution/bug
 #* *******************************************************
@@ -33,14 +33,14 @@ End
 
 #**
 #*
-#* Initialiser param√®tres Web service pour test uniquement
+#* Initialiser paramËtres Web service pour test uniquement
 #*!
 $INITWS
 
 [L]TYP="TRT(YAV01WSSELSOS)"
 [L]TABCRIT(1)= "AO011"   : # Site X3
-[L]TABCRIT(2)= "01/01/2000"   : # date d√©but
-[L]TABCRIT(3)= "01/01/2016"   : # date d√©but
+[L]TABCRIT(2)= "01/01/2000"   : # date dÈbut
+[L]TABCRIT(3)= "01/01/2016"   : # date dÈbut
 [L]NEXTT = 1
 #[L]NOREQ =107
 
@@ -48,7 +48,7 @@ Return
 
 #**
 #*
-#* Afficher les param√®tres retourn√©s par le Web service pour test uniquement
+#* Afficher les paramËtres retournÈs par le Web service pour test uniquement
 #*!
 $RESULTWS
 
@@ -83,7 +83,7 @@ Call ECR_TRACE("*******************",0) From GESECRAN
 Return
 
 $AV_WS
-# Table de log des web services d√©j√† ouverte
+# Table de log des web services dÈj‡ ouverte
 Local Integer ZZN : ZZN=-1
 ZZN+=1 : [F:YWL]ZPARINCOD(ZZN) = "TYP" : [F:YWL]ZPARINLIB(ZZN) = "Type web service" : [F:YWL]ZPARINVAL(ZZN)=num$([L]TYP)
 ZZN+=1 : [F:YWL]ZPARINCOD(ZZN) = "TABCRIT(0)" : [F:YWL]ZPARINLIB(ZZN) = "Code user budget" : [F:YWL]ZPARINVAL(ZZN)=num$([L]TABCRIT(0))
@@ -97,7 +97,7 @@ Return
 
 $AP_WS
 
-# Table de log des web services d√©j√† ouverte
+# Table de log des web services dÈj‡ ouverte
 Local Integer ZZN : ZZN=-1
 ZZN+=1 : [F:YWL]ZPAROUTCOD(ZZN) = "ALLSEL" : [F:YWL]ZPAROUTLIB(ZZN) = "" : [F:YWL]ZPAROUTVAL(ZZN)=num$([L]ALLSEL)
 ZZN+=1 : [F:YWL]ZPAROUTCOD(ZZN) = "NBSEL" : [F:YWL]ZPAROUTLIB(ZZN) = "" : [F:YWL]ZPAROUTVAL(ZZN)=num$([L]NBSEL)
@@ -114,16 +114,16 @@ Return
 
 #################
 Subprog SELDATA(TYP,NEXTT,TABCRIT,ALLSEL,NBSEL,TABNB,STARET,MESRET,NOREQ,TABVALCLB)
-Value    Char    TYP() : # typ de section demand√©e SEC ou NAT ou PARBUD
+Value    Char    TYP() : # typ de section demandÈe SEC ou NAT ou PARBUD
 Value    Integer NEXTT : # enregistrements suivants : 1=non, 2=oui
 Value    Char    TABCRIT()() : # TABCRIT(0) = code user X3
-Variable Integer ALLSEL : # 1: il reste encore des donn√©es √† r√©cuperer, 2 : tout a √©t√© selectionn√©
+Variable Integer ALLSEL : # 1: il reste encore des donnÈes ‡ rÈcuperer, 2 : tout a ÈtÈ selectionnÈ
 Variable Integer NBSEL  : # Nombre total de la selection
-Variable Integer TABNB : # nb de lignes dans le tableau retourn√© TABVALCLB
+Variable Integer TABNB : # nb de lignes dans le tableau retournÈ TABVALCLB
 Variable Integer STARET : # Statut de retour
 Variable Char    MESRET() : # message de retour
-Variable Integer NOREQ    : # No de requete retourn√©e quand NEXTT=2
-Variable Clbfile    TABVALCLB() : # tableau de valeurs retourn√©es alpha
+Variable Integer NOREQ    : # No de requete retournÈe quand NEXTT=2
+Variable Clbfile    TABVALCLB() : # tableau de valeurs retournÈes alpha
 
 
 Local Char TYPPRINC(100),NOMTRT(100)
@@ -190,7 +190,7 @@ Case NEXTT
  When 0,1
   NOREQ = 0
 
-  If CALCUL=1 : # le calcul a √©t√© fait avec lka fonction X3 et on doit retrouver un NOREQ dans la table
+  If CALCUL=1 : # le calcul a ÈtÈ fait avec lka fonction X3 et on doit retrouver un NOREQ dans la table
    Filter [YSE] Where PUBLI=[L]PUBLI & CREUSR=TABCRIT(0)
    Read [YSE]YSE2 Last
    Filter [YSE]
@@ -208,7 +208,7 @@ Case NEXTT
   Endif
   ALLSEL=1
  When 2
-  # rien √† faire le NOREQ est pass√© en param√®tre
+  # rien ‡ faire le NOREQ est passÈ en paramËtre
   ALLSEL=2
 Endcase
 

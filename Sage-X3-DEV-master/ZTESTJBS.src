@@ -1,0 +1,93 @@
+#<AdxTL>@(#)8.0.0.0 $Revision$
+#On va faire un test d'écriture dans la table ZZSTOCK
+Local Integer WDEB
+Local Integer WFIN
+Local Integer WNBBOUCLE : WNBBOUCLE = 400
+Local Integer WNUMLIG
+Local Integer WSTAT
+Local Char WSEQ(15)
+Local Integer WERR : WERR = 0
+
+#Ouverture de la table
+If clalev([F:ZZS])=0 : Local File ZZSTOCK [ZZS] : Endif
+If clalev([F:ZZHL])=0 : Local File ZZHISTOLIGNE [ZZHL] : Endif
+
+Trbegin [F:ZZS]
+#On commence par supprimer les enregistrement de la table
+Delete [F:ZZS] Where 1=1
+If(fstat<>0)Then
+  WERR = 1
+Endif
+
+#On va maintenant faire une boucle pour créer des enregistrements
+
+Local Integer INTERRUPT
+Local Decimal NOMBRE
+Local Char    TEXTE(50)
+NOMBRE=WNBBOUCLE
+INTERRUPT = 1
+TEXTE = "Ecriture des enregistrements en cours..."
+Call OUVRE_BOITE(TEXTE,NOMBRE) From GESECRAN
+
+
+#Call TEMPON("Veuillez patienter") From GESECRAN
+WDEB = time
+For WNUMLIG=1 To WNBBOUCLE
+  Raz[F:ZZS]
+  Call NUMERO("ZCTES","",date$,"",WSEQ,WSTAT) From SUBANM
+  If WSTAT=0
+    [F:ZZS]ZACTG      = 1
+    [F:ZZS]ZBPCORD    = "04166"
+    [F:ZZS]ZBPCORDF   = "04166"
+    [F:ZZS]ZCHAUFFEUR =  "Test chauffeur"
+    [F:ZZS]ZCODCLT    = "00001"
+    [F:ZZS]ZDATTRI    = [04/07/2019]
+    [F:ZZS]ZDATVAL    = [04/07/2019]
+    [F:ZZS]ZFCY       = "22"
+    [F:ZZS]ZGESTHS    = 2
+    [F:ZZS]ZGESTKC    = 2
+    [F:ZZS]ZGESTOK    = 2
+    [F:ZZS]ZITMREF    = "00LOTPALTRI"
+    [F:ZZS]ZORIGIN    = "EPC...."
+    [F:ZZS]ZPAYSISO   = "FR"
+    [F:ZZS]ZQTY       = 1
+    [F:ZZS]ZSEQ       = WSEQ
+    [F:ZZS]ZTRPINT    = 1
+    [F:ZZS]ZTYPAL     = 1
+#    [F:ZZS]ZSEQ       = num$(WNUMLIG)
+  Endif
+  Write[F:ZZS]
+  If(fstat<>0)Then
+    WERR = 1
+    Break
+  Else
+    #Chaque fois que je créé ou que je modifie un enregistrement de la table ZZSTOCK
+    #Je crée un enregistrement ensuite dans la table ZZHISTOLIGNE
+    #Les champs de la table sont les suivants :
+    [F:ZZHL]ZSEQ      = [F:ZZS]ZSEQ
+    [F:ZZHL]ZACTG     = [F:ZZS]ZACTG
+    [F:ZZHL]ZACTNUM   = "ACT1907-00001"
+    [F:ZZHL]ZDATACT   = date$
+    [F:ZZHL]ZHEUACT   = time$
+    [F:ZZHL]ZFCY      = [F:ZZS]ZFCY
+    [F:ZZHL]ZITMREF   = [F:ZZS]ZITMREF
+    [F:ZZHL]ZTYPAL    = [F:ZZS]ZTYPAL
+    [F:ZZHL]ZQTY      = [F:ZZS]ZQTY
+    Write[F:ZZHL]
+    If(fstat<>0)Then
+      WERR = 1
+      Break
+    Endif
+  Endif
+  Call AFF_BOITE(TEXTE + " " + num$(WNUMLIG) + "/" + num$(WNBBOUCLE),WNUMLIG,INTERRUPT) From GESECRAN
+Next
+If(WERR=0)Then
+  Commit
+Else
+  Rollback
+Endif
+WFIN = time
+#Call TEMPOFF From GESECRAN
+Call FERME_BOITE From GESECRAN
+Infbox "La création de " + num$(WNBBOUCLE) + " enregistrements a duré : " + num$(WFIN-WDEB) + " secondes"
+

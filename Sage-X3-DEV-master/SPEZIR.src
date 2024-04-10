@@ -1,0 +1,44 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### SPEZIR
+##################################################### créé le 13/01/2020
+##################################################### modifié le 13/01/2020
+
+$ACTION
+#infbox ACTION
+Case ACTION
+  When "OUVRE" : Gosub OUVRE
+  When "DEBUT" : Gosub DEBUT
+  When "OK"    : Gosub OK
+Endcase
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           LABELS                                                  #
+#---------------------------------------------------------------------------------------------------#
+
+######################################################################### OUVRE
+$OUVRE
+If clalev([F:SIV2])=0 : Local File SINVOICEV [F:SIV2] : Endif
+Return
+
+######################################################################### DEBUT
+$DEBUT
+#Read[F:SIV2]SIV0=PARAM(1)
+#If(fstat=0)Then
+#  [M:ZIR]INVREF = [F:SIV2]INVREF
+#Else
+#  [M:ZIR]INVREF = ""
+#Endif
+[M:ZIR]INVREF = [F:SIV]INVREF
+Affzo [M:ZIR]INVREF
+Return
+
+######################################################################### OK
+$OK
+#On va mettre à jour la référence de la commande
+[F:SIV]INVREF = [M:ZIR]INVREF
+Rewrite[F:SIV]
+[M:SIH0]INVREF = [M:ZIR]INVREF
+Affzo [M:SIH0]INVREF
+Return
+

@@ -1,0 +1,171 @@
+#<AdxTL>@(#)0.0.0.0 $Revision:   1.1  $
+ 
+#########################################################################
+## Publication d'un web-service associé à un sous-programme
+## Nom de Programme         : ZWSEPALISC
+## Nom de Sous-programme    : GET_DEPOT_EXIST
+## Nom de Publication       : GET_DEP_E
+## Timestamp de génération  : 20190911123218
+## Version de génération    : 6.30
+#########################################################################
+ 
+ 
+Local Integer WW_OK
+Local Char    WW_ZONE(30)
+Local Integer WW_STAT
+Local Integer WW_GRAVE(1..50)
+Local Char    WW_MESS(250)(1..50)
+Local Char WW_ACTION
+Local Char    WW_IDENT(250)
+Local Integer WW_NB
+Local Char    WW_HORDAT(14)
+Local Char    WW_TAB(20)
+Local Char    WW_PAR(80)(1..10)
+Local Clbfile WW_TRACE(1)
+WW_HORDAT="20190911123218"
+Local Char WDEPNUM(250)
+Local Integer RESULT
+ 
+ 
+Call OUVRE_TRACE("") From LECFIC
+ 
+Onerrgo ERREURWS
+Gosub INITWS From ZWSEPALISC
+Onerrgo
+ 
+Call GET_DEPOT_EXIST(WW_OK,WW_ZONE,WW_STAT,WW_GRAVE,WW_MESS,WW_ACTION,WW_IDENT,WW_NB,WW_HORDAT,WW_TAB,WW_PAR,WW_TRACE
+&            ,WDEPNUM,RESULT)
+ 
+Call ECR_TRACE(mess(218,123,1)+" : "+num$(WW_OK)-"("+mess(WW_OK+3,2940,1)+")",0) From GESECRAN
+Call ECR_TRACE(mess(219,123,1)+" : "+num$(WW_STAT),0) From GESECRAN
+Call ECR_TRACE("  ",0) From GESECRAN
+Call ECR_TRACE(mess(222,123,1),0) From GESECRAN
+Call ECR_TRACE("-------------------------------------------",0) From GESECRAN
+For indice=1 To WW_STAT
+  If WW_GRAVE(indice)=3
+    Call ECR_TRACE(num$(indice)-num$(WW_GRAVE(indice))+" ("+mess(WW_GRAVE(indice),2940,1)+") :"-WW_MESS(indice),1) From GESECRAN
+  Else
+    Call ECR_TRACE(num$(indice)-num$(WW_GRAVE(indice))+" ("+mess(WW_GRAVE(indice),2940,1)+") :"-WW_MESS(indice),0) From GESECRAN
+  Endif
+Next indice
+If WW_STAT=0 : Call ECR_TRACE("",0) From GESECRAN : Endif
+Call ECR_TRACE("-------------------------------------------",0) From GESECRAN
+Onerrgo ERREURWS
+Gosub RESULTWS From ZWSEPALISC
+Onerrgo
+ 
+Call FERME_TRACE From LECFIC
+Call LEC_TRACE From LECFIC
+End
+ 
+ 
+$ERREURWS
+Resume
+ 
+ 
+# --------------------------------------------------------------- 
+ 
+Subprog GET_DEPOT_EXIST(WW_OK,WW_ZONE,WW_STAT,WW_GRAVE,WW_MESS,WW_ACTION,WW_IDENT,WW_NB,WW_HORDAT,WW_TAB,WW_PAR,WW_TRACE
+&            ,WDEPNUM,RESULT)
+ 
+Variable Integer WW_OK
+Variable Char    WW_ZONE()
+Variable Integer WW_STAT
+Variable Integer WW_GRAVE(1..)
+Variable Char    WW_MESS()(1..)
+Value Char       WW_ACTION
+Value Char       WW_IDENT()
+Variable Integer WW_NB
+Variable Char    WW_HORDAT()
+Variable Char    WW_TAB()
+Variable Char    WW_PAR()(1..)
+Variable Clbfile WW_TRACE()
+Value Char WDEPNUM()
+Variable Integer RESULT
+ 
+ 
+WW_OK=0
+Gosub ISDBGON from AWEB
+If WW_OK<>0 : End : Endif
+Local Char HORDAT1(14)
+Local Integer WW_I
+Local Char HORDATG(14),VERGEN
+HORDATG="20190911123218"
+VERGEN="6.30"
+Call RECUPHDAT("GET_DEP_E",HORDAT1,WW_I) from AWEB
+Gosub ANLHORSPG From AWEB
+If WW_OK<>0 : Gosub SETTRACE : End : Endif
+GWEBSERV=1
+indice=0
+Raz GMESSAGE,GW_STAT,GW_MESS,GW_GRAVE
+ 
+ 
+Local Char ALIAS : ALIAS="GET_DEP_E"
+Local Char ACTION
+ACTION="AV_WS"
+GPE=0
+Onerrgo ERREURWS
+Gosub ACTION From SPEWS
+Onerrgo
+If GPE<>1
+Call GET_DEPOT_EXIST(WDEPNUM,RESULT) From ZWSEPALISC
+ 
+ 
+Gosub ANLSPGRES From AWEB
+Endif
+
+ACTION="AP_WS"
+Onerrgo ERREURWS
+Gosub ACTION From SPEWS
+Onerrgo
+GWEBSERV=0
+Gosub SETTRACE
+End
+
+
+
+$XT_SPG
+Local Integer WIND : WIND =2
+Local Char    PRG      :    PRG="ZWSEPALISC"
+Local Char    SUBPRG   :    SUBPRG="GET_DEPOT_EXIST"
+Local Integer RUBNBR   :    RUBNBR=WIND
+Local Char    RUBCOD        (GLONAVA+2)(0..WIND-1 )
+Local Char    RUBGRP        (GLONAPU)(0..WIND-1 )
+Local Integer RUBINTIT      (0..WIND-1 )
+Local Char    RUBTYP        (10)(0..WIND-1 )    :    # Internal type (example Char, Integer)
+Local Integer RUBADR        (0..WIND-1 )
+Local Integer RUBLON        (0..WIND-1 )
+Local Integer RUBMNL        (0..WIND-1 )
+Local Integer RUBDIM        (0..WIND-1 )
+ 
+RUBCOD(0)="WDEPNUM" : RUBGRP(0)="PARAMETRE" : RUBINTIT(0)=104287 : RUBTYP(0)="1" : RUBADR(0)=2 : RUBLON(0)=0 : RUBDIM(0)=1 : RUBMNL(0)=0
+RUBCOD(1)="RESULT" : RUBGRP(1)="RESULTAT" : RUBINTIT(1)=8098 : RUBTYP(1)="2" : RUBADR(1)=1 : RUBLON(1)=0 : RUBDIM(1)=1 : RUBMNL(1)=0
+Return
+ 
+ 
+$SETTRACE
+Local Char WPTRACE(200)(1..500)
+Local Integer IT
+Setlob WPTRACE(1..IT) With WW_TRACE
+If instr(1,WPTRACE(1),"adonix.trace.on=on")=0 : Return : Endif
+WPTRACE(1)="Engine version    : "+num$(ver$(0))+chr$(10)
+WPTRACE(2)="Wrapper timestamp : "+num$(HORDATG)+chr$(10)
+WPTRACE(3)="Wrapper version   : "+num$(VERGEN)+chr$(10)
+WPTRACE(4)="Duration time     : "+num$(time-val(TSTART))+chr$(10)
+WPTRACE(5)="WW_OK     : "+num$(WW_OK)+chr$(10)
+WPTRACE(6)="WW_ZONE   : "+num$(WW_ZONE)+chr$(10)
+WPTRACE(7)="WW_STAT   : "+num$(WW_STAT)+chr$(10)
+IT=8
+For indice=1 To WW_STAT
+  WPTRACE(IT)="WW_GRAVE("+num$(indice)+")  : "+num$(WW_GRAVE(indice))+chr$(10)
+  IT+=1 : WPTRACE(IT)="WW_MESS("+num$(indice)+")   : "+num$(WW_MESS(indice))+chr$(10)
+  IT+=1
+Next indice
+IT+=1 : WPTRACE(IT)="WW_ACTION : "+num$(WW_ACTION)+chr$(10)
+IT+=1 : WPTRACE(IT)="WW_IDENT  : "+num$(WW_IDENT)+chr$(10)
+IT+=1 : WPTRACE(IT)="WW_NB     : "+num$(WW_NB)+chr$(10)
+IT+=1 : WPTRACE(IT)="WW_HORDAT : "+num$(WW_HORDAT)+chr$(10)
+IT+=1 : WPTRACE(IT)="WW_TAB    : "+num$(WW_TAB)+chr$(10)
+IT+=1 : WPTRACE(IT)="WW_PAR    : "+num$(WW_PAR)+chr$(10)
+Setlob WW_TRACE With WPTRACE(1..IT)
+Return   

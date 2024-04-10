@@ -1,0 +1,519 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### SPEZTMC
+##################################################### créé le 11/09/2019
+##################################################### modifié le 11/09/2019
+
+$ACTION
+#Infbox ACTION
+Case ACTION
+  When "OUVRE" : Gosub OUVRE
+  When "DEBUT" : Gosub DEBUT
+  When "OK"    : Gosub OK
+  When "FIN"   : Gosub FIN
+Endcase
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           LABELS                                                  #
+#---------------------------------------------------------------------------------------------------#
+
+######################################################################### OUVRE
+$OUVRE
+If clalev([F:ZATV])=0   : Local File ZARTTRIV    [ZATV]  : Endif
+If clalev([F:ZATCV])=0  : Local File ZARTTRICCV  [ZATCV] : Endif
+#----------------------------------------------------------------------------------------------------------------------
+#On va définir ici le nombre d'articles de tri maximum au dela duquel la zone de recherche d'article sera visible
+Global Integer WMAXLIG : WMAXLIG = 15
+#----------------------------------------------------------------------------------------------------------------------
+Return
+
+######################################################################### DEBUT
+$DEBUT
+#Infbox PARAM(1) + "---" + PARAM(2) + "---" + PARAM(3) + "---" + PARAM(4) + "---" + PARAM(5) + "---" + PARAM(6)
+[M:ZTMC0]ZCMCNUM   = PARAM(1)
+[M:ZTMC0]ZCMCLIN   = val(PARAM(2))
+[M:ZTMC0]QTERECEP  = val(PARAM(3))
+[M:ZTMC0]ZCODCHARG = PARAM(4)
+[M:ZTMC0]ZNOL      = val(PARAM(5))
+[M:ZTMC0]TRIAFAIRE = val(PARAM(6))
+[M:ZTMC0]DATETRI   = [M:ZCMC2]DATETRI([M:ZTMC0]ZNOL)
+Effzo [M:ZTMC0]20
+Raz [M:ZTMC0]NBLIG
+Effzo [M:ZTMC0]15
+Raz [M:ZTMC0]NBLIGE
+[M:ZTMC0]ITMREFTRI=""
+Affzo [M:ZTMC0]ITMREFTRI
+Local Integer WENREXIST : WENREXIST = 0
+Local Integer WNUMLIG : WNUMLIG = 0
+Local Integer WNUMLIG2 : WNUMLIG2 = 0
+Default Mask "[M:ZTMC0]"
+If([M:ZCMC0]DATESOLDE<>[0/0/0])Then
+  FIN = 1
+  Return
+Endif
+#Si la ligne du chargeur n'est pas en tri systématique, on sort de suite de la fenêtre
+If([M:ZTMC0]TRIAFAIRE=2 and [M:ZCMC0]DATEVAL<>[0/0/0])Then
+  #On commence par récupérer tous les articles de tris du chargeur et du client chargeur dans la vue [F:ZATCV]
+  For[F:ZATCV]ZATV Where [F:ZATCV]ZCODCHARG=[M:ZTMC0]ZCODCHARG and [F:ZATCV]ZCODCLTCHARG=[M:ZCMC2]YZCODCLT([M:ZTMC0]ZNOL) and [F:ZATCV]ZVISIBLE=2
+    WENREXIST = 1
+    [M:ZTMC0]NUMLIG([M:ZTMC0]NBLIG)   = -1
+    [M:ZTMC0]YZCMCNUM([M:ZTMC0]NBLIG) = [M:ZTMC0]ZCMCNUM
+    [M:ZTMC0]YZCMCLIN([M:ZTMC0]NBLIG) = [M:ZTMC0]ZCMCLIN
+    [M:ZTMC0]ITMREF([M:ZTMC0]NBLIG)   = [F:ZATCV]ITMREF
+    [M:ZTMC0]QTY([M:ZTMC0]NBLIG)      = 0
+    [M:ZTMC0]NBLIG += 1
+  Next
+  If(WENREXIST=0)Then
+    #Le client chargeur n'a pas d'article de tri spécifiques, on va donc récupérer les article de tri du chargeur dans la vue [F:ZATV]
+    For[F:ZATV]ZATV Where [F:ZATV]ZCODCHARG=[M:ZTMC0]ZCODCHARG and [F:ZATV]ZCODCLTCHARG="" and [F:ZATV]ITMREF<>"" and [F:ZATV]ZVISIBLE=2
+      WENREXIST = 1
+      [M:ZTMC0]NUMLIG([M:ZTMC0]NBLIG)   = -1
+      [M:ZTMC0]YZCMCNUM([M:ZTMC0]NBLIG) = [M:ZTMC0]ZCMCNUM
+      [M:ZTMC0]YZCMCLIN([M:ZTMC0]NBLIG) = [M:ZTMC0]ZCMCLIN
+      [M:ZTMC0]ITMREF([M:ZTMC0]NBLIG)   = [F:ZATV]ITMREF
+      [M:ZTMC0]QTY([M:ZTMC0]NBLIG)      = 0
+      [M:ZTMC0]NBLIG += 1
+    Next
+  Endif
+  #On va maintenant parcourir le tableau des tri dans la multi-chargeur pour mettre à jour l'écran
+  For WNUMLIG=0 To [M:ZTMC0]NBLIG-1
+    For WNUMLIG2=0 To [M:ZCMC2]NBLIG-1
+      If([M:ZCMC2]ZCODCHARG(WNUMLIG2)=[M:ZCMC2]YZCODCHARG([M:ZTMC0]ZNOL) and [M:ZCMC2]ZCODCLT(WNUMLIG2)=[M:ZCMC2]YZCODCLT([M:ZTMC0]ZNOL) and [M:ZCMC2]ITMREF(WNUMLIG2)=[M:ZTMC0]ITMREF(WNUMLIG))Then
+        #On est sur une ligne de tri qui nous interesse, on va mettre à jour notre tableau
+        [M:ZTMC0]NUMLIG(WNUMLIG) = WNUMLIG2
+        [M:ZTMC0]QTYOK(WNUMLIG) = [M:ZCMC2]QTEOK(WNUMLIG2)
+        [M:ZTMC0]QTYKC(WNUMLIG) = [M:ZCMC2]QTEKC(WNUMLIG2)
+        [M:ZTMC0]QTYHS(WNUMLIG) = [M:ZCMC2]QTEHS(WNUMLIG2)
+        [M:ZTMC0]QTY(WNUMLIG) = ([M:ZCMC2]QTEOK(WNUMLIG2)+[M:ZCMC2]QTEKC(WNUMLIG2)+[M:ZCMC2]QTEHS(WNUMLIG2))
+      Endif
+    Next WNUMLIG2
+  Next WNUMLIG
+  #On va maintenant parcourir le tableau des tri dans la multi-chargeur pour mettre à jour l'écran
+  For WNUMLIG=0 To [M:ZTMC0]NBLIG-1
+      [M:ZTMC0]EZCMCNUM([M:ZTMC0]NBLIGE) = [M:ZTMC0]ZCMCNUM
+      [M:ZTMC0]EZCMCLIN([M:ZTMC0]NBLIGE) = [M:ZTMC0]ZCMCLIN
+      [M:ZTMC0]EITMREF([M:ZTMC0]NBLIGE)  = [M:ZTMC0]ITMREF(WNUMLIG)
+      [M:ZTMC0]EQTYOK([M:ZTMC0]NBLIGE)   = [M:ZTMC0]QTYOK(WNUMLIG)
+      [M:ZTMC0]EQTYKC([M:ZTMC0]NBLIGE)   = [M:ZTMC0]QTYKC(WNUMLIG)
+      [M:ZTMC0]EQTYHS([M:ZTMC0]NBLIGE)   = [M:ZTMC0]QTYHS(WNUMLIG)
+      [M:ZTMC0]EQTY([M:ZTMC0]NBLIGE)     = [M:ZTMC0]QTY(WNUMLIG)
+      [M:ZTMC0]ENUMLIG([M:ZTMC0]NBLIGE)  = [M:ZTMC0]NUMLIG(WNUMLIG)
+      [M:ZTMC0]EUPDFLG([M:ZTMC0]NBLIGE)  = [M:ZTMC0]UPDFLG(WNUMLIG)
+      [M:ZTMC0]NBLIGE += 1
+  Next WNUMLIG
+  Call SPE_CALC_DIFF()
+  Affzo [M:ZTMC0]
+  #On va maintenant regarder le nombre de ligne
+  #Si le chargeur à plus de 3 articles de réception possibles alors on affiche
+  #le champ de recherche des articles sinon on le masque
+  If([M:ZTMC0]NBLIGE>WMAXLIG)Then
+    Chgfmt [M:ZTMC0]ITMREFTRI With "K:30X"
+    Chgfmt [M:ZTMC0]BTSEARCH With "K:30X"
+  Else
+    Chgfmt [M:ZTMC0]ITMREFTRI With "-K:30X"
+    Chgfmt [M:ZTMC0]BTSEARCH With "-K:30X"
+  Endif
+Else
+  FIN = 1
+Endif
+Affzo [M:ZTMC0]
+Return
+
+######################################################################### OK
+$OK
+Local Integer WNUMLIG
+#Il faut absolument renseigner la date de tri
+If([M:ZTMC0]DATETRI<>[0/0/0])Then
+  #On enregistre le tri uniquement si la qté triée est égale à la qté réceptionnée
+  If([M:ZTMC0]DIFFRECTRI=0)Then
+    #On enregistre les modification uniquement si le tri n'est pas validé
+    If([M:ZCMC2]DATEVALTRI([M:ZTMC0]ZNOL)=[0/0/0])Then
+      #On va parcourir le tableau des tris renseigné par l'utilisateur
+      For WNUMLIG=0 To [M:ZTMC0]NBLIG-1
+        #On ne regarde que les lignes qui ont été modifiées
+        If([M:ZTMC0]UPDFLG(WNUMLIG)=1)Then
+          [M:ZCMC2]SEMATRI([M:ZTMC0]ZNOL) = 2
+          Affzo [M:ZCMC2]SEMATRI([M:ZTMC0]ZNOL)
+          #Le tri est vérrouillé par X3
+          [M:ZCMC2]STATUTTRI([M:ZTMC0]ZNOL)="128"
+          Affzo[M:ZCMC2]STATUTTRI([M:ZTMC0]ZNOL)
+          If([M:ZTMC0]QTY(WNUMLIG)=0)Then
+            #On n'est dans le cas où il faut supprimer la ligne
+            Dela [M:ZTMC0]NUMLIG(WNUMLIG),1 [M:ZCMC2]NBLIG
+            [M:ZCMC2]NBLIG -= 1
+          Else
+            If([M:ZTMC0]NUMLIG(WNUMLIG)>=0)Then
+              #On est dans le cas d'une modification de ligne
+              [M:ZCMC2]UPDFLG([M:ZTMC0]NUMLIG(WNUMLIG))   = 1
+              [M:ZCMC2]QTEOK([M:ZTMC0]NUMLIG(WNUMLIG))    = [M:ZTMC0]QTYOK(WNUMLIG)
+              [M:ZCMC2]QTEKC([M:ZTMC0]NUMLIG(WNUMLIG))    = [M:ZTMC0]QTYKC(WNUMLIG)
+              [M:ZCMC2]QTEHS([M:ZTMC0]NUMLIG(WNUMLIG))    = [M:ZTMC0]QTYHS(WNUMLIG)
+              [M:ZCMC2]SYNCHEPI([M:ZTMC0]NUMLIG(WNUMLIG)) = 2
+              [M:ZCMC2]TRIASYNCH([M:ZTMC0]NUMLIG(WNUMLIG)) = 1
+              If([M:ZCMC2]SYNCHEPI([M:ZTMC0]NUMLIG(WNUMLIG))<>2)Then
+                [M:ZCMC2]TRIASYNCH([M:ZTMC0]NUMLIG(WNUMLIG)) = 2
+              Endif
+              nolign = [M:ZTMC0]NUMLIG(WNUMLIG)+1
+            Else
+              #On est dans le cas d'un ajout de ligne
+              #ZCMCLIN
+              #UPDFLG
+              #CREFLG
+              nolign = [M:ZCMC2]NBLIG+1
+              [M:ZCMC2]ZCODCHARG([M:ZCMC2]NBLIG) = [M:ZCMC2]YZCODCHARG([M:ZTMC0]ZNOL)
+              Call AM_ZCODCHARG([M:ZCMC2]ZCODCHARG([M:ZCMC2]NBLIG)) From SPEZCMC
+              [M:ZCMC2]ZCODCLT([M:ZCMC2]NBLIG)   = [M:ZCMC2]YZCODCLT([M:ZTMC0]ZNOL)
+              Call AM_ZCODCLT([M:ZCMC2]ZCODCLT([M:ZCMC2]NBLIG)) From SPEZCMC
+              [M:ZCMC2]ITMREF([M:ZCMC2]NBLIG)    = [M:ZTMC0]ITMREF(WNUMLIG)
+              Call AM_ITMREF([M:ZCMC2]ITMREF([M:ZCMC2]NBLIG)) From SPEZCMC
+              [M:ZCMC2]QTEOK([M:ZCMC2]NBLIG)     = [M:ZTMC0]QTYOK(WNUMLIG)
+              [M:ZCMC2]QTEKC([M:ZCMC2]NBLIG)     = [M:ZTMC0]QTYKC(WNUMLIG)
+              [M:ZCMC2]QTEHS([M:ZCMC2]NBLIG)     = [M:ZTMC0]QTYHS(WNUMLIG)
+              [M:ZCMC2]USR([M:ZCMC2]NBLIG)       = [M:ZTMC0]USR
+              [M:ZCMC2]DATEOPE([M:ZCMC2]NBLIG)   = date$
+              [M:ZCMC2]HEUREOPE([M:ZCMC2]NBLIG)  = time$
+              [M:ZCMC2]SYNCHEPI([M:ZCMC2]NBLIG)  = 2
+              [M:ZCMC2]TRIASYNCH([M:ZCMC2]NBLIG) = 1
+              If([M:ZCMC2]SYNCHEPI([M:ZCMC2]NBLIG)<>2)Then
+                [M:ZCMC2]TRIASYNCH([M:ZCMC2]NBLIG) = 2
+              Endif
+              [M:ZCMC2]NBLIG += 1
+              Default Mask "[M:ZCMC0],[M:ZCMC1],[M:ZCMC2]"
+              nolign = [M:ZCMC2]NBLIG+1
+              #---------------------------------------------------------
+              Local Decimal BASPAG
+              ## Action DIVLINCONT
+              Call INSERE("ZCMCLIN") From TABLEAUX
+              If mkstat : GERR = 1 : GZONE = "NBLIG" : GZNUM = 0 : Endif
+              If !mkstat
+               ## Action SPE
+               Call C_NBLIG From SPEZCMC
+               If mkstat : GERR = 1 : GZONE = "NBLIG" : GZNUM = 0 : Endif
+              Endif
+              #---------------------------------------------------------
+              Local Decimal BASPAG
+              ## Action DIVLINNUM
+              Call LINNUM("ZCMCLIN") From TABLEAUX
+              If mkstat : End : Endif
+              #---------------------------------------------------------
+            Endif
+          Endif
+          ## Action SPE
+          Call APRES_NBLIG From SPEZCMC
+          Affzo [M:ZCMC2]10
+        Endif
+      Next WNUMLIG
+      [M:ZCMC2]DATETRI([M:ZTMC0]ZNOL) = [M:ZTMC0]DATETRI
+      Affzo [M:ZCMC2]DATETRI([M:ZTMC0]ZNOL)
+      mkstat = 4
+    Else
+      #Call ERREUR("ATTENTION ! Aucune modification ne sera prise en compte car le tri a déjà été validé.") From GESECRAN
+    Endif
+  Else
+    Call ERREUR("Impossible ! La quantité triée doit être égale à la quantité réceptionnée.") From GESECRAN
+    FIN = 0
+  Endif
+Else
+  Call ERREUR("Impossible ! Vous devez d'abord renseigner la date de tri.") From GESECRAN
+  FIN = 0
+Endif
+Return
+
+######################################################################### FIN
+$FIN
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           SUBPROGS                                                #
+#---------------------------------------------------------------------------------------------------#
+
+Subprog AS_QTYOK(VALEUR)
+Variable Decimal VALEUR
+#Si la réception de la collecte multi-chargeur est validée alors on ne peut plus rien saisir
+If([M:ZCMC2]DATEVALTRI([M:ZTMC0]ZNOL)<>[0/0/0] or [M:ZCMC2]SEMATRI([M:ZTMC0]ZNOL)=3)Then
+  mkstat=2
+Endif
+End
+
+Subprog C_QTYOK(VALEUR)
+Variable Decimal VALEUR
+If(VALEUR<0)Then
+  mkstat = 2
+  GMESSAGE = "La valeur sasie doit être suérieure à 0."
+Endif
+End
+
+Subprog AS_QTYKC(VALEUR)
+Variable Decimal VALEUR
+#Si la réception de la collecte multi-chargeur est validée alors on ne peut plus rien saisir
+If([M:ZCMC2]DATEVALTRI([M:ZTMC0]ZNOL)<>[0/0/0] or [M:ZCMC2]SEMATRI([M:ZTMC0]ZNOL)=3)Then
+  mkstat=2
+Endif
+End
+
+Subprog C_QTYKC(VALEUR)
+Variable Decimal VALEUR
+If(VALEUR<0)Then
+  mkstat = 2
+  GMESSAGE = "La valeur sasie doit être suérieure à 0."
+Endif
+End
+
+Subprog AS_QTYHS(VALEUR)
+Variable Decimal VALEUR
+#Si la réception de la collecte multi-chargeur est validée alors on ne peut plus rien saisir
+If([M:ZCMC2]DATEVALTRI([M:ZTMC0]ZNOL)<>[0/0/0] or [M:ZCMC2]SEMATRI([M:ZTMC0]ZNOL)=3)Then
+  mkstat=2
+Endif
+End
+
+Subprog C_QTYHS(VALEUR)
+Variable Decimal VALEUR
+If(VALEUR<0)Then
+  mkstat = 2
+  GMESSAGE = "La valeur sasie doit être suérieure à 0."
+Endif
+End
+
+Subprog SPE_CALC_DIFF()
+Local Integer WNUMLIG : WNUMLIG = 0
+Local Decimal WTOTQTE : WTOTQTE = 0
+For WNUMLIG=0 To [M:ZTMC0]NBLIG-1
+  WTOTQTE += [M:ZTMC0]QTY(WNUMLIG)
+Next WNUMLIG
+[M:ZTMC0]DIFFRECTRI = WTOTQTE-[M:ZTMC0]QTERECEP
+If([M:ZTMC0]DIFFRECTRI>=0)Then
+  Chgstl [M:ZTMC0]DIFFRECTRI With "ZDIFFTRIPO"
+Else
+  Chgstl [M:ZTMC0]DIFFRECTRI With "ZDIFFTRINE"
+Endif
+Affzo [M:ZTMC0]DIFFRECTRI
+
+#Affzo [M:ZTMC0]
+##Gosub CHG_STY From W1ZTMC0
+##Chgstl [M:ZTMC0]NBLIGE With ""
+#For nolign=1 To [M:ZTMC0]NBLIGE
+# If EQTYOK(nolign-1)>0
+#  Chgstl [M:ZTMC0]EQTYOK(nolign-1) With "ZOKDIS"
+# Else
+#  Chgstl [M:ZTMC0]EQTYOK(nolign-1) With ""
+# Endif
+# If EQTYKC(nolign-1)>0
+#  Chgstl [M:ZTMC0]EQTYKC(nolign-1) With "ZKCDIS"
+# Else
+#  Chgstl [M:ZTMC0]EQTYKC(nolign-1) With ""
+# Endif
+# If EQTYHS(nolign-1)>0
+#  Chgstl [M:ZTMC0]EQTYHS(nolign-1) With "ZHSDIS"
+# Else
+#  Chgstl [M:ZTMC0]EQTYHS(nolign-1) With ""
+# Endif
+# If QTY(nolign-1)>0
+#  Chgstl [M:ZTMC0]EQTY(nolign-1) With "ZTOTPAL"
+# Else
+#  Chgstl [M:ZTMC0]EQTY(nolign-1) With ""
+# Endif
+#Next nolign
+End
+
+Subprog AM_QTYOK(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL = nolign-1
+[M:ZTMC0]QTY(WNOL) = (VALEUR+[M:ZTMC0]QTYKC(WNOL)+[M:ZTMC0]QTYHS(WNOL))
+Affzo [M:ZTMC0]QTY(WNOL)
+#Call SPE_CALC_DIFF()
+[M:ZTMC0]UPDFLG(WNOL) = 1
+Affzo [M:ZTMC0]UPDFLG(WNOL)
+End
+
+Subprog AM_QTYKC(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL = nolign-1
+[M:ZTMC0]QTY(WNOL) = ([M:ZTMC0]QTYOK(WNOL)+VALEUR+[M:ZTMC0]QTYHS(WNOL))
+Affzo [M:ZTMC0]QTY(WNOL)
+#Call SPE_CALC_DIFF()
+[M:ZTMC0]UPDFLG(WNOL) = 1
+Affzo [M:ZTMC0]UPDFLG(WNOL)
+End
+
+Subprog AM_QTYHS(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL = nolign-1
+[M:ZTMC0]QTY(WNOL) = ([M:ZTMC0]QTYOK(WNOL)+[M:ZTMC0]QTYKC(WNOL)+VALEUR)
+Affzo [M:ZTMC0]QTY(WNOL)
+#Call SPE_CALC_DIFF()
+[M:ZTMC0]UPDFLG(WNOL) = 1
+Affzo [M:ZTMC0]UPDFLG(WNOL)
+End
+
+Subprog AS_DATETRI(VALEUR)
+Variable Date    VALEUR
+#Si la réception de la collecte multi-chargeur est validée alors on ne peut plus rien saisir
+If([M:ZCMC2]DATEVALTRI([M:ZTMC0]ZNOL)<>[0/0/0] or [M:ZCMC2]SEMATRI([M:ZTMC0]ZNOL)=3)Then
+  mkstat=2
+Endif
+End
+
+Subprog AS_USR(VALEUR)
+Variable Char    VALEUR()
+#Si la réception de la collecte multi-chargeur est validée alors on ne peut plus rien saisir
+If([M:ZCMC2]DATEVALTRI([M:ZTMC0]ZNOL)<>[0/0/0] or [M:ZCMC2]SEMATRI([M:ZTMC0]ZNOL)=3)Then
+  mkstat=2
+Endif
+End
+
+Subprog AS_EQTYOK(VALEUR)
+Variable Decimal VALEUR
+#Si la réception de la collecte multi-chargeur est validée alors on ne peut plus rien saisir
+If([M:ZCMC2]DATEVALTRI([M:ZTMC0]ZNOL)<>[0/0/0] or [M:ZCMC2]SEMATRI([M:ZTMC0]ZNOL)=3)Then
+  mkstat=2
+Endif
+Gosub CHG_STY From W1ZTMC0
+End
+
+Subprog C_EQTYOK(VALEUR)
+Variable Decimal VALEUR
+If(VALEUR<0)Then
+  mkstat = 2
+  GMESSAGE = "La valeur sasie doit être suérieure à 0."
+Endif
+End
+
+Subprog AM_EQTYOK(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL = nolign-1
+[M:ZTMC0]EQTY(WNOL) = (VALEUR+[M:ZTMC0]EQTYKC(WNOL)+[M:ZTMC0]EQTYHS(WNOL))
+Affzo [M:ZTMC0]EQTY(WNOL)
+Local Integer WNUMLIG
+#On va mettre à jour la nouvelle valeur dans le premier tableau caché
+For WNUMLIG=0 To [M:ZTMC0]NBLIG-1
+  If([M:ZTMC0]ITMREF(WNUMLIG)=[M:ZTMC0]EITMREF(WNOL))Then
+    [M:ZTMC0]QTYOK(WNUMLIG) = VALEUR
+    Affzo [M:ZTMC0]QTYOK(WNUMLIG)
+    nolign = WNUMLIG+1
+    Call AM_QTYOK([M:ZTMC0]QTYOK(WNUMLIG))
+    Break
+  Endif
+Next
+Call SPE_CALC_DIFF()
+[M:ZTMC0]EUPDFLG(WNOL) = 1
+Affzo [M:ZTMC0]EUPDFLG(WNOL)
+End
+
+Subprog AS_EQTYKC(VALEUR)
+Variable Decimal VALEUR
+#Si la réception de la collecte multi-chargeur est validée alors on ne peut plus rien saisir
+If([M:ZCMC2]DATEVALTRI([M:ZTMC0]ZNOL)<>[0/0/0] or [M:ZCMC2]SEMATRI([M:ZTMC0]ZNOL)=3)Then
+  mkstat=2
+Endif
+Gosub CHG_STY From W1ZTMC0
+End
+
+Subprog C_EQTYKC(VALEUR)
+Variable Decimal VALEUR
+If(VALEUR<0)Then
+  mkstat = 2
+  GMESSAGE = "La valeur sasie doit être suérieure à 0."
+Endif
+End
+
+Subprog AM_EQTYKC(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL = nolign-1
+[M:ZTMC0]EQTY(WNOL) = ([M:ZTMC0]EQTYOK(WNOL)+VALEUR+[M:ZTMC0]EQTYHS(WNOL))
+Affzo [M:ZTMC0]EQTY(WNOL)
+Local Integer WNUMLIG
+#On va mettre à jour la nouvelle valeur dans le premier tableau caché
+For WNUMLIG=0 To [M:ZTMC0]NBLIG-1
+  If([M:ZTMC0]ITMREF(WNUMLIG)=[M:ZTMC0]EITMREF(WNOL))Then
+    [M:ZTMC0]QTYKC(WNUMLIG) = VALEUR
+    Affzo [M:ZTMC0]QTYKC(WNUMLIG)
+    nolign = WNUMLIG+1
+    Call AM_QTYKC([M:ZTMC0]QTYKC(WNUMLIG))
+    Break
+  Endif
+Next
+Call SPE_CALC_DIFF()
+[M:ZTMC0]EUPDFLG(WNOL) = 1
+Affzo [M:ZTMC0]EUPDFLG(WNOL)
+End
+
+Subprog AS_EQTYHS(VALEUR)
+Variable Decimal VALEUR
+#Si la réception de la collecte multi-chargeur est validée alors on ne peut plus rien saisir
+If([M:ZCMC2]DATEVALTRI([M:ZTMC0]ZNOL)<>[0/0/0] or [M:ZCMC2]SEMATRI([M:ZTMC0]ZNOL)=3)Then
+  mkstat=2
+Endif
+Gosub CHG_STY From W1ZTMC0
+End
+
+Subprog C_EQTYHS(VALEUR)
+Variable Decimal VALEUR
+If(VALEUR<0)Then
+  mkstat = 2
+  GMESSAGE = "La valeur sasie doit être suérieure à 0."
+Endif
+End
+
+Subprog AM_EQTYHS(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL = nolign-1
+[M:ZTMC0]EQTY(WNOL) = ([M:ZTMC0]EQTYOK(WNOL)+[M:ZTMC0]EQTYKC(WNOL)+VALEUR)
+Affzo [M:ZTMC0]EQTY(WNOL)
+Local Integer WNUMLIG
+#On va mettre à jour la nouvelle valeur dans le premier tableau caché
+For WNUMLIG=0 To [M:ZTMC0]NBLIG-1
+  If([M:ZTMC0]ITMREF(WNUMLIG)=[M:ZTMC0]EITMREF(WNOL))Then
+    [M:ZTMC0]QTYHS(WNUMLIG) = VALEUR
+    Affzo [M:ZTMC0]QTYHS(WNUMLIG)
+    nolign = WNUMLIG+1
+    Call AM_QTYHS([M:ZTMC0]QTYHS(WNUMLIG))
+    Break
+  Endif
+Next
+Call SPE_CALC_DIFF()
+[M:ZTMC0]EUPDFLG(WNOL) = 1
+Affzo [M:ZTMC0]EUPDFLG(WNOL)
+End
+
+Subprog AM_ITMREFTRI(VALEUR)
+Variable Char    VALEUR()
+  Call SPE_MAJ_EMB(toupper(VALEUR))
+  Gosub CHG_STY From W1ZTMC0
+End
+
+Subprog CL_BTSEARCH(VALEUR)
+Variable Char    VALEUR()
+  Call SPE_MAJ_EMB(toupper([M:ZTMC0]ITMREFTRI))
+  Gosub CHG_STY From W1ZTMC0
+End
+
+Subprog SPE_MAJ_EMB(WEMB)
+Value Char WEMB
+Local Integer WNUMLIG : WNUMLIG = 0
+Effzo [M:ZTMC0]15
+Raz [M:ZTMC0]NBLIGE
+For WNUMLIG=0 To [M:ZTMC0]NBLIG-1
+  If(instr(1,[M:ZTMC0]ITMREF(WNUMLIG),WEMB)>0 or WEMB="")Then
+    [M:ZTMC0]EZCMCNUM([M:ZTMC0]NBLIGE) = [M:ZTMC0]YZCMCNUM(WNUMLIG)
+    [M:ZTMC0]EZCMCLIN([M:ZTMC0]NBLIGE) = [M:ZTMC0]YZCMCLIN(WNUMLIG)
+    [M:ZTMC0]EITMREF([M:ZTMC0]NBLIGE)  = [M:ZTMC0]ITMREF(WNUMLIG)
+    [M:ZTMC0]EQTYOK([M:ZTMC0]NBLIGE)   = [M:ZTMC0]QTYOK(WNUMLIG)
+    [M:ZTMC0]EQTYKC([M:ZTMC0]NBLIGE)   = [M:ZTMC0]QTYKC(WNUMLIG)
+    [M:ZTMC0]EQTYHS([M:ZTMC0]NBLIGE)   = [M:ZTMC0]QTYHS(WNUMLIG)
+    [M:ZTMC0]EQTY([M:ZTMC0]NBLIGE)     = [M:ZTMC0]QTY(WNUMLIG)
+    [M:ZTMC0]ENUMLIG([M:ZTMC0]NBLIGE)  = [M:ZTMC0]NUMLIG(WNUMLIG)
+    [M:ZTMC0]EUPDFLG([M:ZTMC0]NBLIGE)  = [M:ZTMC0]UPDFLG(WNUMLIG)
+    [M:ZTMC0]NBLIGE += 1
+  Endif
+Next
+Affzo [M:ZTMC0]15
+End
+
+Subprog CL_BTEFFACE(VALEUR)
+Variable Char    VALEUR()
+#  [M:ZTMC0]ITMREFTRI = ""
+#  Affzo[M:ZTMC0]ITMREFTRI
+#  Call SPE_MAJ_EMB("")
+#  Gosub CHG_STY From W1ZTMC0
+End

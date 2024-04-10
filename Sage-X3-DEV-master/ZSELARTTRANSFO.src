@@ -1,0 +1,66 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### ZSELCRY
+##################################################### créé le 01/10/2019
+##################################################### modifié le 01/10/2019
+
+###################################################################################### ACTION
+$ACTION
+#Infbox ACTION
+Case ACTION
+ When "SEL_TABLE" : Gosub SEL_TABLE
+ When Default
+Endcase
+Return
+
+###################################################################################### SEL_TABLE
+$SEL_TABLE
+#  Infbox PARAM(1)
+  If clalev([F:ZAAT])=0 : Local File ZARTTRANSFO [F:ZAAT] : Endif
+  Raz CRITERE
+  #On défini la table par défaut, celle qui va servir pour la sélection
+  Default File [F:ZAAT]
+  #On défini le nombre de colonne de la fenêtre de sélection
+  If(PARAM(2)="")Then
+    NBCOL = 2
+  Else
+    NBCOL = 3
+  Endif
+  #On défini le nom de chaque colonne
+  If(PARAM(2)="")Then
+    TIT(1) = "Palette d'origine"
+    TIT(2) = "Désignation"
+  Else
+    TIT(1) = "Palette transformée"
+    TIT(2) = "Designation"
+    TIT(3) = "Coeff de transformation"
+  Endif
+  #On défini les champs à afficher
+  If(PARAM(2)="")Then
+    COL(1) = "ZITMREFORI"
+    COL(2) = "ZITMDESORI"
+  Else
+    COL(1) = "ZITMREFDEST"
+    COL(2) = "ZITMDESDEST"
+    COL(3) = "ZCOEFTRANS"
+  Endif
+  #On indique le titre de la sélection
+  TIT(0) = "Sélection des palettes transformables/transformées"
+  If(PARAM(2)="")Then
+    START = "ZITMREFORI"
+  Else
+    START = "ZITMREFDEST"
+  Endif
+  #On indique au système de gérer les pages
+  DEFPAG = 1
+  #Critère de sélection
+  If(PARAM(2)="")Then
+    CRITERE = " [F:ZAAT]ZCODCHG='" + PARAM(1) + "'"
+  Else
+    CRITERE = " [F:ZAAT]ZCODCHG='" + PARAM(1) + "' and [F:ZAAT]ZITMREFORI='" + PARAM(2) + "'"
+  Endif
+  #Trier
+  ORDRE = "ZITMREFORI"
+  #Ordre Décroissant
+  #SENS = 2
+Return
+

@@ -1,0 +1,930 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+# Superviseur
+# Request ZTPLA (Test planning) 2019-12-03T14:24:04
+
+#
+# Miscellaneous subprograms
+#
+
+# Get translatable texts and transcode backshlashes and double quotes
+# Code embedded in the program in order to gain in performance (maybe not useful)
+
+# Gets the message from APLSTD
+Funprog M(LANGUE,NUMCHAP,NUMES)
+Value Char LANGUE()
+Value Integer NUMCHAP,NUMES
+
+  Local File APLSTD
+
+  Read [AST]LAN=LANGUE;NUMCHAP;NUMES
+  If fstat : End "" : Endif
+  End escjson([AST]LANMES)
+
+# Gets the message from ATEXTE
+Funprog A(LANGUE,NUMERO)
+Value Char LANGUE()
+Value Integer NUMERO
+
+  Local File ATEXTE
+
+  Read [ATX]NUMERO=LANGUE;NUMERO
+  If fstat : End "" : Endif
+  End escjson([ATX]TEXTE)
+
+# Gets the title of an entity in the dictionary
+Funprog E(LANGUE,TABLE)
+Value Char LANGUE(),TABLE()
+
+  Local File ATABIND
+  Local File ATABZON
+  Local File ATABLE
+  Read [ATB]CODFIC=TABLE
+  If fstat : End '' : Endif
+  Read [ATI]NUMLIG(2)=TABLE;1
+  If fstat : End '' : Endif
+  Read [ATZ]CODZONE=TABLE;vireblc(ctrans([ATI]DESCRIPT,'+-','  '),3)
+  If fstat : End '' : Endif
+  End func A(LANGUE,[ATZ]NOCOURT)
+
+
+# Language and user variables declaration and assignment
+$DECL_USR_LAN
+Local Char USER(20),LANGUE(20)
+
+# Set the language code
+  USER=ACTX.USER
+  LANGUE=ACTX.LAN
+  If LANGUE='' : LANGUE=GACTX.LAN : Endif
+  If USER='' : USER=GACTX.USER : Endif
+  If LANGUE='' : LANGUE='ENG' : Endif
+Return
+
+Subprog FIELDS(FIELDS,NBFIELDS)
+Variable Char FIELDS()(1..)
+Variable Integer NBFIELDS
+  FIELDS(1)='CODE'
+  FIELDS(2)='DATEEPM'
+  FIELDS(3)='SITE'
+  NBFIELDS=3
+End
+
+Subprog HEAD_RQT(ACTX,VALBEG,VALEND,STRICTBEG,STRICTEND,REQUID,UUIREQ)
+Variable INSTANCE  ACTX Using C_WMACONTEXT
+Value Char VALBEG()(1..),VALEND()(1..)
+Value Libelle STRICTBEG(1..),STRICTEND(1..)
+Variable Char REQUID()
+Value Char UUIREQ()
+
+# Miscellaneous variables needed for header generation
+Local Char CRITERE(250)(1..100)
+Local Integer NBCRIT
+Local Char HEADER(250)
+Local Integer I,J,LINE_SEEK
+
+# Users and language assignment
+  Gosub DECL_USR_LAN
+
+# Call the common header generator subroutine
+  Gosub HEADRQT
+
+# Close the data file
+  Openo Using [LEV1]
+
+End
+
+# Header files generator (data only)
+$HEADRQT
+
+# Build the CRITERE array by analysing VALBEG/VALEND/STRICTBEG/STRICTEND array
+  Gosub EVAL_CRIT
+
+# Assign the request ID if not forced
+  If UUIREQ<>''
+    REQUID=UUIREQ
+  Else
+    REQUID=num$(uuid$)
+  Endif
+
+# Open the data file
+  Openo filpath('RQT','ZTPLA_'+USER+'_1','req'),0 Using [LEV1]
+  Iomode adxifs '' Using [LEV1]
+  Iomode adxirs chr$(10) Using [LEV1]
+  Iomode adxium 0 Using [LEV1] : # Corresponds to UTF8 format
+
+  HEADER=USER-func AJSONLIB.DATEWEB(val(timestamp$))
+
+# Write the data file headers
+  I=0 : Repeat I+=1 Until I>dim(CRITERE) or CRITERE(I)=""
+
+  Wrseq "Request ZTPLA Level 01" Using [LEV1]
+  Wrseq HEADER Using [LEV1]
+  LINE_SEEK=adxseek("LEV1")
+  Wrseq "00000000"-REQUID-format$("N0:8#",adxuid(1))-"00000000.000 00000000.000 00000000 00000000" Using [LEV1]
+  Wrseq num$(I-1) Using [LEV1]
+  For J=1 To I-1
+    Wrseq CRITERE(J) using [LEV1]
+  Next J
+
+Return
+
+$RQT_ERROR
+Local Integer ERROR
+Local Char MESSAGE(250)
+  MESSAGE = errmes$(errn) - "(error n°"-num$(errn) -") in script WFZTPLA ("+num$(errl)+")"
+  ERROR = fmet ACTX.ASETERROR("",MESSAGE,[V]CST_AERROR)
+End
+
+Subprog EXEC_RQT(ACTX,VALBEG,VALEND,STRICTBEG,STRICTEND,LIMITS,NBLIG,REQUID,UUIREQ)
+Variable INSTANCE  ACTX Using C_WMACONTEXT
+Value Char VALBEG()(1..),VALEND()(1..)
+Value Libelle STRICTBEG(1..),STRICTEND(1..)
+Variable Integer NBLIG(1..)
+Value    Integer LIMITS(1..)
+Variable Char REQUID()
+Value Char UUIREQ()
+
+# Criteria array ([ALH]SEL fields) 
+Local Char    CRITERE(250)(1..100)
+Local Char    CRITSUP(250)(1..5)
+# Handle execution errors
+  Onerrgo RQT_ERROR
+
+Local Char USER(20),LANGUE(20)
+
+# Time and line limit values (set to 0 if not reached)
+Local Integer LIM(1..2)
+  LIM(1)=LIMITS(1) : LIM(2)=LIMITS(2)
+
+# Other variables
+Local Integer NBHEAD : NBHEAD=1000
+Local Integer PAGES1(1..NBHEAD)
+Local Integer RECORD1
+Local Integer ZM1
+Local Integer SIZHEA
+Local Char HEADER(250)
+Local Clbfile WRBUF(4)
+Local Char    TRUFAL(10),SQ(1),DQ(1)
+Local Integer I,J,LINE_SEEK
+Local Decimal TIME0,TIME1,TIME2
+Local Integer TESTLIM
+
+SQ=chr$(39) : DQ=chr$(34)
+
+# Set the language code
+  Gosub DECL_USR_LAN
+
+# Set enough opened channels for the data files
+Local Integer SVG_MSO
+  SVG_MSO=adxmso : adxmso=11
+
+# Open the tables
+  Local File ZTESTPLA [ZTPLA]
+  Local File ALISTEH [ALH]
+
+# Default files
+  Default File "[ZTPLA]"
+
+# Open the data file and fill them with the right header
+  Gosub HEADRQT
+
+  # Create a .lock file with UUID
+  Openo filpath('RQT',REQUID,'lck') Using [LCK] : Openo Using [LCK]
+
+# Entry point
+Local Char RQT_CODE(20)
+
+  RQT_CODE='ZTPLA'
+  Gosub EXERQT From SUBALH11
+
+# Now let's declare the request (Link) and the fields expected (Columns)
+  Link [ZTPLA] With 
+&       [ALH]ALH0="ZTPLA"
+& As [LNK]
+& Where evalue(CRITERE)
+& Order by Key CLE = [F:ZTPLA]CODE
+
+  Columns [LNK] ([F:ZTPLA]CODE,[F:ZTPLA]DATEEPM,[F:ZTPLA]SITE)
+
+# Fields buffers
+  Local Clbfile BUF1_1(1), BUF2_1(1), BUF3_1(1)
+
+# Miscellaneous initializations
+  TIME0=val(timestamp$)
+  Raz PAGES1
+  Raz RECORD1
+
+  Raz ZM1
+# Level 1 of grouping
+  For [LNK]CLE
+
+#   Record counts
+    ZM1+=1
+
+
+#  Manage time computation
+    If RECORD1=0 : TIME1=val(timestamp$) : Endif
+
+#   Manage time (every 1,000 lines) and line limits
+    If LIM(1)+LIM(2)
+      TESTLIM=1
+      Break (LIM(1)>0)*(LIM(1)<RECORD1)*1
+      If LIM(2)>0 and MOD(RECORD1+1,1000)=0
+        TESTLIM=2
+        Break (val(timestamp$)-TIME1>(LIM(2)*1000))*1
+      Endif
+      TESTLIM=0
+    Endif
+
+#   Buffer the fields for the accumulated record
+    BUF1_1='"CODE":"'+escjson([F:ZTPLA]CODE)+'"'
+    BUF2_1='"DATEEPM":"'+format$('D:YYYY[-]MM[-]DD',[F:ZTPLA]DATEEPM)+'"'
+    BUF3_1='"SITE":"'+escjson([F:ZTPLA]SITE)+'"'
+
+#   Pointers computation
+    If mod(RECORD1,NBHEAD)=0 and RECORD1>0
+      Openo Using [LEV1]
+      Openo filpath('RQT','ZTPLA_'+USER+'_1','idx'),(RECORD1<=NBHEAD)-1 Using [IDX1]
+      Putseq NBHEAD,PAGES1 Using [IDX1]
+      Raz PAGES1
+      Openo Using [IDX1]
+      Openo filpath('RQT','ZTPLA_'+USER+'_1','req'),-1 Using [LEV1]
+      Iomode adxifs '' Using [LEV1]
+      Iomode adxirs chr$(10) Using [LEV1]
+      Iomode adxium 0 Using [LEV1] : # Corresponds to UTF8 format
+    Endif
+
+    RECORD1+=1
+
+#   Update the record
+    WRBUF='{'
+    Append WRBUF,'"$uuid":"'+num$(uuid$)+'"'
+    Append WRBUF,',"line_no":'+num$(RECORD1)
+    Append WRBUF,','+BUF1_1
+    Append WRBUF,string$(instr(5,BUF2_1,'"    -  -  "')=0,','+BUF2_1)
+    Append WRBUF,','+BUF3_1
+    Wrseq WRBUF+'}' Using [LEV1]
+
+#   Pointers update
+    PAGES1(mod(RECORD1-1,NBHEAD)+1)=adxseek("LEV1")
+
+  Next
+
+# Set the "break on exit" variables
+  If TESTLIM<>1
+    LIM(1)=0
+  Endif
+  If TESTLIM<>2
+    LIM(2)=0
+  Endif
+
+# Perform the final flush of the header, then close the file
+  TIME2=val(timestamp$)
+  HEADER=format$("N0:8",int((TIME1-TIME0)/1000))+"."+format$("N0:3",mod(TIME1-TIME0,1000))
+&       -format$("N0:8",int((TIME2-TIME1)/1000))+"."+format$("N0:3",mod(TIME2-TIME1,1000))
+&       -format$("N0:8",LIM(1))-format$("N0:8",LIM(2))
+
+# Update the last header, write the number of lines, and close file for level 1
+  Openo Using [LEV1]
+  Openio filpath('RQT','ZTPLA_'+USER+'_1','req') Using [LEV1]
+  Iomode adxifs '' Using [LEV1]
+  Iomode adxirs chr$(10) Using [LEV1]
+  Iomode adxium 0 Using [LEV1] : # Corresponds to UTF8 format
+  Seek First+LINE_SEEK Using [LEV1]
+  Wrseq format$('N0:8#',RECORD1)-REQUID-format$('N0:8#',0)-HEADER Using [LEV1]
+  Openo Using [LEV1]
+  Openo filpath('RQT','ZTPLA_'+USER+'_1','idx'),(RECORD1<=NBHEAD)-1 Using [IDX1]
+  Putseq NBHEAD,PAGES1 Using [IDX1]
+  Openo Using [IDX1]
+
+  I=Delfile(filpath('RQT',REQUID,'lck'))
+
+# Return the number of computed lines
+  NBLIG(1)=RECORD1
+
+# Restore the initial value of adxmso
+  adxmso=SVG_MSO
+
+End
+
+# Subprogram to compute the criteria according to VALBEG/VALEND/STRICTBEG/STRICTEND arrays
+$EVAL_CRIT
+Local Integer K
+  Raz CRITERE
+  K=1
+  If K=1 : CRITERE(1)='(1=1)' : K+=1 : Endif
+Return
+
+# Writes the criteria in the batch parameter table
+# Returns 0 if OK, fstat value otherwise
+$WRITE_ABL
+  NUMPAR+=1
+  [ABL]NUM=NUMPAR
+  [ABL]NUMREQ=[ABR]NUMREQ
+  [ABL]CREUSR=GACTX.USER
+  [ABL]UPDUSR=''
+  [ABL]CREDATTIM=datetime$
+  Write [ABL]
+Return
+
+Funprog WR_CRIT(STRICTBEG,STRICTEND,VALBEG,VALEND,UUIREQ)
+Value Char VALBEG()(1..)  : # The first value of range
+Value Char VALEND()(1..)  : # The last value of range
+Value Libelle STRICTBEG(1..),STRICTEND(1..):# Strict=2, or equal=1, no value=0
+Value Char UUIREQ()       :# Unique ID for request
+
+  Local Integer NUMPAR
+
+  [ABL]PARAM='TRTNAM'
+  [ABL]VALEUR='WFZTPLA'
+  Gosub WRITE_ABL
+  If fstat : End fstat : Endif
+
+  If UUIREQ<>''
+    [ABL]PARAM='UUIREQ'-left$(UUIREQ,6)
+    [ABL]VALEUR=right$(UUIREQ,7)
+    Gosub WRITE_ABL
+    If fstat : End fstat : Endif
+  Endif
+
+End 0
+
+# Reads the criteria in the batch parameter table
+# Returns the number of values found
+Funprog RD_CRIT(STRICTBEG,STRICTEND,VALBEG,VALEND,UUIREQ)
+Variable Char VALBEG()(1..)  : # The first value of range
+Variable Char VALEND()(1..)  : # The last value of range
+Variable Libelle STRICTBEG(1..),STRICTEND(1..):# Strict=2, or equal=1, no value=0
+Value Char UUIREQ()       :# Unique ID for request
+
+
+  For [ABL]NUMREQ Where NUMREQ=[ABR]NUMREQ
+    Case [ABL]PARAM
+      When Default : If left$([ABL]PARAM,7)='UUIREQ '
+                       UUIREQ=right$([ABL]PARAM,8)+[ABL]VALEUR
+                     Endif
+    Endcase
+  Next
+End [ABL]NUM
+
+# Returns the last line for a given level
+# If 0 is returned, the last line is not yet known (execution in progress)
+Funprog GET_LAST(ACTX,LEVEL)
+Variable INSTANCE  ACTX Using C_WMACONTEXT
+Value Integer LEVEL
+Local Clbfile BUFFER(3)
+  Openi filpath("RQT","ZTPLA_"+ACTX.USER+"_"+num$(LEVEL),"req"),0 Using [LEV]
+  Iomode adxifs "" Using [LEV]
+  Iomode adxirs chr$(10) Using [LEV]
+  Iomode adxium 0 Using [LEV] : # Corresponds to UTF8 format
+  Rdseq BUFFER Using [LEV]
+  Rdseq HEADER Using [LEV]
+  Openo Using [LEV]
+End val(right$(BUFFER,8))
+
+# The main function that gets the data from an already computed request
+# Parameters are sent but ignored if REQUID corresponds to the unique ID assigned during computation
+# A hack has been done : IFLINE can now have a second index if IFLINE(2)=1, noHeader parameter has been used
+Subprog GET_CAL(ACTX,LEVEL,REQUID,QWHERE,VALBEG,VALEND,STRICTBEG,STRICTEND,FIRSTLINE,NBLINES,COMPDATETIME,IFLINE,IFBULK,IFCUBE,STARTIND,ASND,CALEND,PORTVIEW,FRQ,OK)
+Variable Instance ACTX Using C_WMACONTEXT
+Value Integer LEVEL       : # The level of inquiry
+Value Char    REQUID()    : # If not empty, corresponds to the current request uuid
+Variable Clbfile QWHERE   : # Where clause in SDATA format
+Value Char VALBEG()(1..)  : # The first value of range
+Value Char VALEND()(1..)  : # The last value of range
+Value Libelle STRICTBEG(1..),STRICTEND(1..):# Strict=2, or equal=1, no value=0 
+Value Integer FIRSTLINE   : # The number of first line (1 by default)
+Value Integer NBLINES     : # Number of lines required (20 by default)
+Variable Decimal COMPDATETIME    : # Expected computation datetime
+Variable Libelle IFLINE(1..): # True if line number must be displayed
+Variable Libelle IFBULK   : # True if bulk mode is activated
+Variable Integer IFCUBE   : # Not null if cube mode is activated
+Value Integer STARTIND    : # Shift page value
+Variable Instance ASND Using C_ASYRSND : # Sending structure
+Value Char PORTVIEW()     : # The portal view to be sent back for refresh link
+Value Integer FRQ
+Variable Integer OK       : # Returns 0 if OK, error codes otherwise
+Value Clbfile CALEND      : # Calendar (hack)
+Goto CALEND
+
+Subprog GET_RQT(ACTX,LEVEL,REQUID,QWHERE,VALBEG,VALEND,STRICTBEG,STRICTEND,FIRSTLINE,NBLINES,COMPDATETIME,IFLINE,IFBULK,IFCUBE,STARTIND,ASND,PORTVIEW,FRQ,OK)
+Variable Instance  ACTX Using C_WMACONTEXT
+Value Integer LEVEL       : # The level of inquiry
+Value Char    REQUID()    : # If not empty, corresponds to the current request uuid
+Variable Clbfile QWHERE   : # Where clause in SDATA format
+Value Char VALBEG()(1..)  : # The first value of range
+Value Char VALEND()(1..)  : # The last value of range
+Value Libelle STRICTBEG(1..),STRICTEND(1..):# Strict=2, or equal=1, no value=0 
+Value Integer FIRSTLINE   : # The number of first line (1 by default)
+Value Integer NBLINES     : # Number of lines required (20 by default)
+Variable Decimal COMPDATETIME    : # Expected computation datetime
+Variable Libelle IFLINE(1..): # True if line number must be displayed
+Variable Libelle IFBULK   : # True if bulk mode is activated
+Variable Integer IFCUBE   : # Not null if cube mode is activated
+Value Integer STARTIND    : # Shift page value
+Variable Instance ASND Using C_ASYRSND : # Sending structure
+Value Char PORTVIEW()     : # The portal view to be sent back for refresh link
+Value Integer FRQ: # Frequency
+Variable Integer OK       : # Returns 0 if OK, error codes otherwise
+
+Local Clbfile CALEND      : # Hack for calendar
+$CALEND
+
+# Local variables
+Local Integer PR,NX,LS : # /Next / Last index computed for links (0 if no such link)
+Local Integer MAXLEVEL,MAXLINES
+Local Char CHEMIDX(250),CHEMIDXPRE(250),CHEMDATA(250),CHEMDATAPRE(250)
+Local Integer NOACCESS
+Local Integer NBHEAD : NBHEAD=1000
+Local Clbfile BUFFER(3)
+Local Char CRITERE(250)(1..100)
+Local Integer I,J,K
+Local Clbfile BUF(3)
+Local Date COMPDATE
+Local Char LISTE(20)      : # The Request code
+Local Char USER(20)       : # User code
+Local Char LAN(10)        : # User code
+Local Decimal TIME1,TIME2 : # Timing information
+Local Char COMPTIME(10)
+Local Integer PAGE, NBDET
+Local Integer LIM(1..2)
+Local Integer PROCESS_ID
+Local Integer FIRST_RECORD, LAST_RECORD: # First and last record in the structure
+Local Integer START_SEEK,FIRST_SEEK
+Local Date BUF_DATE
+
+# Get the maximum level
+  MAXLEVEL=1
+  LEVEL=min(LEVEL,MAXLEVEL) : # Avoid a message if level is too big
+  LISTE="ZTPLA"
+  IF FRQ=0 : FRQ=6 : Endif
+
+# Generation timestamp to force the reexecution
+Local Decimal TIME_UPD
+  TIME_UPD=1575379444277
+
+  USER=ACTX.USER
+  LAN=ACTX.LAN : If LAN='' : LAN=ACTX.LAN : If LAN='' : LAN='ENG' : Endif : Endif
+
+# Check if a data files exist
+# Check elso if index files exist, and if at least a header is inside
+  CHEMDATA=filpath('RQT',LISTE+'_'+string$(USER<>'',USER+'_')+num$(LEVEL),'req')
+  If filinfo(CHEMDATA,7)<0
+    OK=3 : End : # No result available
+  Endif
+  CHEMIDX=filpath('RQT',LISTE+'_'+string$(USER<>'',USER+'_')+num$(LEVEL),'idx')
+  If filinfo(CHEMIDX,7)<2*NBHEAD
+    OK=3 : End : # No result available
+  Endif
+
+# Open the files
+  Onerrgo NOACCESS
+  Openi CHEMIDX,0 Using [STI]
+  If NOACCESS : OK=4 : End : Endif : # Access error
+  Openi CHEMDATA Using [STA]
+  If NOACCESS : OK=4 : Openi Using [STI] : End : Endif : # Access error
+  Onerrgo
+
+# Set the right separators for reading the data
+  Iomode adxifs '' Using [STA]
+  Iomode adxirs chr$(10) Using [STA]
+  Iomode adxium 0 Using [STA] : # Corresponds to UTF8 format
+
+# Read the header
+  Rdseq BUFFER Using [STA]
+  Rdseq BUFFER Using [STA]
+  BUFFER=right$(BUFFER,2+len(vireblc(BUFFER,3)))
+
+# Date and time of computation
+  COMPDATE=gdat$(val(mid$(BUFFER,6,2)),find(mid$(BUFFER,9,3),"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"),val(mid$(BUFFER,13,4)))
+  COMPTIME=mid$(BUFFER,18,8)
+
+# COMPDATETIME is now always set at minimum with the timestamp of validation
+# Return an error if computation must be reexecuted
+  COMPDATETIME=max(COMPDATETIME,TIME_UPD)
+  If ((((((COMPDATE-[1/1/1970])*24+val(mid$(COMPTIME,1,2)))*60)+val(mid$(COMPTIME,4,2)))*60)+val(mid$(COMPTIME,7,2)))*1000 < COMPDATETIME
+    OK=3 : # No result available
+    Gosub CLOSE_FILES
+    End
+  Endif
+
+# Check the criteria value
+  Rdseq BUFFER Using [STA]
+
+# Compute the number of lines of the level
+  MAXLINES=val(left$(BUFFER,8))
+
+# Get the timing information
+  TIME1=val(mid$(BUFFER,56,12))
+  TIME2=val(mid$(BUFFER,69,12))
+
+# Get the limit information
+  LIM(1)=val(mid$(BUFFER,82,8))
+  LIM(2)=val(mid$(BUFFER,90,8))
+
+# Get the process id (if not null, the request is still running)
+  PROCESS_ID=val(mid$(BUFFER,47,8))
+
+# Check the parameter values
+  If REQUID<>""
+    If REQUID<>mid$(BUFFER,10,36)
+      Gosub CLOSE_FILES
+      OK=6 : End : # The last request was required, but it has been recomputed since the last time
+    Else
+      Rdseq BUFFER Using [STA]
+      K=val(BUFFER)
+      For I=1 To K : Rdseq BUFFER Using  [STA] : Next I
+    Endif
+  Else
+    REQUID=mid$(BUFFER,10,36)
+    Gosub EVAL_CRIT
+    Rdseq BUFFER Using [STA]
+    # If the number of lines of criteria value does not fit, stop
+    If val(BUFFER)<>K-1
+      Gosub CLOSE_FILES
+      OK=5 : End : # The criteria don't fit, see later how to bring the right error message
+    Endif
+    For I=1 To K-1
+      Rdseq BUFFER Using [STA]
+      If BUFFER<>CRITERE(I)
+      Gosub CLOSE_FILES
+        OK=5 : End : # The criteria don't fit, see later how to bring the right error message
+      Endif
+    Next I
+  Endif
+
+  FIRST_SEEK=adxseek("STA")
+  FIRSTLINE=max(FIRSTLINE,1)
+  If FIRSTLINE>1
+    Getseq 1,PAGE Using [STI]
+    If FIRSTLINE>2
+      Seek Curr + (FIRSTLINE-3)*adxseek("STI") Using [STI]
+      Getseq 1,PAGE Using [STI]
+    Endif
+    Seek First+PAGE Using [STA]
+  Endif
+
+  FIRST_RECORD=1 : LAST_RECORD=MAXLINES
+# Can a previous page be found ?
+  PR=(FIRSTLINE>FIRST_RECORD)*max(FIRST_RECORD,FIRSTLINE-NBLINES)
+
+# Can a next page be found ?
+  NX=(FIRSTLINE+NBLINES<=LAST_RECORD)*(FIRSTLINE+NBLINES)
+
+# Pointer on the last page
+  LS=FIRST_RECORD+NBLINES*int((LAST_RECORD-FIRST_RECORD)/NBLINES)
+  LS*=(LS>FIRSTLINE)
+
+# Complement the prototype and expose parameter values
+  ASND.DATA='{"recordsPerPage":'+num$(NBLINES)+','
+  If PROCESS_ID
+    If filinfo(filpath("RQT",REQUID,"lck"),7)>0
+      BUFFER=func AFNC.MES2(func M(LAN,146,25),LISTE,num$(PROCESS_ID))
+    Else
+      BUFFER=func AFNC.MES1(func M(LAN,146,26),LISTE)
+    Endif
+  Else
+    BUFFER=func AFNC.MES5(func M(LAN,146,3),LISTE,format$("D:YYYY[-]MM[-]DD",COMPDATE),COMPTIME,
+&   num$(MAXLINES),num$(TIME1+TIME2)-"("+num$(TIME1)+"+"+num$(TIME2)+")")
+    If LIM(1)
+      BUFFER+=", "+func AFNC.MES1(func M(LAN,146,22),num$(LIM(1)))
+    Endif
+    If LIM(2)
+      BUFFER+=", "+func AFNC.MES1(func M(LAN,146,23),num$(LIM(2)))
+    Endif
+  Endif
+
+  If dim(IFLINE)>1 and IFLINE(2)=1 : BUFFER="" : Endif
+  Append ASND.DATA,'"headerMessage":"'+BUFFER+'",'
+  Append ASND.DATA,'"refreshLink":"'+func M(LAN,100,52)+'",'
+
+  BUFFER=num$(LEVEL)+' / 1'
+  Append ASND.DATA,'"levelMessage":"'+escJson(BUFFER)+'",'
+  Append ASND.DATA,'"$properties":{"$resources":{"$item":{"$properties":{'
+
+# Hide the line_no field according to the options
+  If IFLINE=0
+    Append ASND.DATA,'"line_no":{"$isHidden":true}'
+  Else
+    Append ASND.DATA,'"line_no":{"$isHidden":false}'
+  Endif
+
+  Append ASND.DATA,'}'
+  Append ASND.DATA,"}}},"
+
+# Set the values used for links
+  Append ASND.DATA,'"$clink":"'+string$(CALEND<>'','calendar')+'",'
+  Append ASND.DATA,'"$portview":"'+PORTVIEW+'",'
+  Append ASND.DATA,'"$where":"' :  Append ASND.DATA, QWHERE : Append ASND.DATA,'",'
+  Append ASND.DATA,'"req_id":"'+REQUID+'",'
+  Append ASND.DATA,'"level_p":'+num$(min(LEVEL+1,1))+','
+  Append ASND.DATA,'"level_c":'+num$(LEVEL)+','
+  Append ASND.DATA,'"level_m":'+num$(max(LEVEL-1,0))+','
+  Append ASND.DATA,'"first_record":'+num$(FIRST_RECORD)+','
+  If IFLINE
+    Append ASND.DATA,'"displayLineNum":true,'
+  Else
+    Append ASND.DATA,'"displayLineNum":false,'
+  Endif
+  If IFCUBE
+    Append ASND.DATA,'"ifCube":true,'
+  Else
+    Append ASND.DATA,'"ifCube":false,'
+  Endif
+
+# Add the calendar prototype if needed
+  If CALEND<>"" : Append ASND.DATA,'"$calendar":{'+CALEND+'},' : Endif
+
+# Now read the lines
+  Append ASND.DATA,'"$resources":['
+  If FIRSTLINE<=LAST_RECORD
+    If IFBULK=1
+      For J=1 To min(NBLINES,LAST_RECORD-FIRSTLINE+1)
+        Rdseq BUF Using [STA]
+        Break (fstat<>0)
+        Append ASND.DATA,string$(J>1,",")+chr$(10)
+        Append ASND.DATA,BUF
+        If mod(J,2000)=1 and J>1
+          If ASND.MODE=0 : ASND.MODE=1 :Endif
+          Call SYRSND(ASND) From ASYRCOM
+        Endif
+      Next J
+    Else
+      For J=1 To min(NBLINES,LAST_RECORD-FIRSTLINE+1)
+        Rdseq BUF Using [STA]
+        Break (fstat<>0)
+        Append ASND.DATA,string$(J>1,",")+chr$(10)
+        Append ASND.DATA,BUF
+      Next J
+    Endif
+  Endif
+  Append ASND.DATA,"],"
+
+# Add information for pager
+  Append ASND.DATA,'"$totalResults":'+num$(LAST_RECORD-FIRST_RECORD+1)+","
+  Append ASND.DATA,'"$itemsPerPage":'+num$(NBLINES)+","
+  Append ASND.DATA,'"$startIndex":'+num$(FIRSTLINE-FIRST_RECORD+1)+","
+
+# Add the navigation link section according to the lines got
+  Append ASND.DATA,chr$(10)+'"$links":{'
+  J=0
+  If CALEND<>"" : Append ASND.DATA,'"Excel":{"$isHidden":true}': J=1 : Endif
+  If NX
+    Append ASND.DATA,string$(J<>0,',')+chr$(10)+'"$next":{"$url":"{$baseUrl}/QUERY'+"('ZTPLA')"
+    J=NX
+    Append ASND.DATA,'?representation=QUERY~ZTPLA~'+num$(LEVEL)+'.$query&startRecord='+num$(J)
+    Append ASND.DATA,'&count='+num$(NBLINES)+'&requestID='+"'"+REQUID+"'"
+    Append ASND.DATA,'&displayLineNum='+string$(IFLINE<>0,'true')+string$(IFLINE=0,'false')
+    Append ASND.DATA,'&cube='+string$(IFCUBE<>0,'true')+string$(IFCUBE=0,'false')
+    Append ASND.DATA,'&level='+num$(LEVEL)
+    Append ASND.DATA,'&frequency='+num$(FRQ)
+    Append ASND.DATA,'","$type":"application/json;vnd.sage=syracuse"}'
+  Endif
+  If PR
+    Append ASND.DATA,string$(J<>0,',')+chr$(10)+'"$previous":{"$url":"{$baseUrl}/QUERY'+"('ZTPLA')"
+    J=PR
+    Append ASND.DATA,'?representation=QUERY~ZTPLA~'+num$(LEVEL)+'.$query&startRecord='+num$(J)
+    Append ASND.DATA,'&count='+num$(NBLINES)+'&requestID='+"'"+REQUID+"'"
+    Append ASND.DATA,'&displayLineNum='+string$(IFLINE<>0,'true')+string$(IFLINE=0,'false')
+    Append ASND.DATA,'&cube='+string$(IFCUBE<>0,'true')+string$(IFCUBE=0,'false')
+    Append ASND.DATA,'&level='+num$(LEVEL)
+    Append ASND.DATA,'&frequency='+num$(FRQ)
+    Append ASND.DATA,'","$type":"application/json;vnd.sage=syracuse"}'
+  Endif
+  If LS
+    Append ASND.DATA,string$(J<>0,',')+chr$(10)+'"$last":{"$url":"{$baseUrl}/QUERY'+"('ZTPLA')"
+    J=LS
+    Append ASND.DATA,'?representation=QUERY~ZTPLA~'+num$(LEVEL)+'.$query&startRecord='+num$(J)
+    Append ASND.DATA,'&count='+num$(NBLINES)+'&requestID='+"'"+REQUID+"'"
+    Append ASND.DATA,'&displayLineNum='+string$(IFLINE<>0,'true')+string$(IFLINE=0,'false')
+    Append ASND.DATA,'&cube='+string$(IFCUBE<>0,'true')+string$(IFCUBE=0,'false')
+    Append ASND.DATA,'&level='+num$(LEVEL)
+    Append ASND.DATA,'&frequency='+num$(FRQ)
+    Append ASND.DATA,'","$type":"application/json;vnd.sage=syracuse"}'
+  Endif
+  If FIRSTLINE>FIRST_RECORD
+    Append ASND.DATA,string$(J<>0,',')+chr$(10)+'"$first":{"$url":"{$baseUrl}/QUERY'+"('ZTPLA')"
+    J=FIRST_RECORD
+    Append ASND.DATA,'?representation=QUERY~ZTPLA~'+num$(LEVEL)+'.$query&startRecord='+num$(J)
+    Append ASND.DATA,'&count='+num$(NBLINES)+'&requestID='+"'"+REQUID+"'"
+    Append ASND.DATA,'&displayLineNum='+string$(IFLINE<>0,'true')+string$(IFLINE=0,'false')
+    Append ASND.DATA,'&cube='+string$(IFCUBE<>0,'true')+string$(IFCUBE=0,'false')
+    Append ASND.DATA,'&level='+num$(LEVEL)
+    Append ASND.DATA,'&frequency='+num$(FRQ)
+    Append ASND.DATA,'","$type":"application/json;vnd.sage=syracuse"}'
+  Endif
+  Append ASND.DATA,'}}'
+  Gosub CLOSE_FILES
+
+  If ASND.MODE=2 : ASND.MODE=3 : Endif
+End
+
+$NOACCESS:NOACCESS=1:Resume
+
+# Close the files
+$CLOSE_FILES
+  Openi Using [STI]
+  Openi Using [STA]
+Return
+
+#
+# Sends the JSON prototype
+#
+Subprog PROTO_JSON(ACTX,PSYR,WCLOB,TIME_UPD,LEVEL_NUM,TYPE_REPRES)
+Variable INSTANCE  ACTX Using C_WMACONTEXT
+Variable INSTANCE  PSYR     Using C_ASYR
+Variable Clbfile   WCLOB
+Variable Decimal   TIME_UPD
+Value    Char      LEVEL_NUM()
+Value    Char      TYPE_REPRES()
+
+# Open ATEXTRA and APLSTD
+  Local File ATEXTRA [ATX]
+  Local File APLSTD [AST]
+
+# The timestamp value corresponds to the generation time
+  TIME_UPD=1575379444277
+
+# Miscellaneous declarations
+Local Char LISTE1(20) : LISTE1="ZTPLA"
+Local Char LISTE2(20) : LISTE2="'ZTPLA'"
+Local Char L(10) : L=ACTX.LAN : L+=string$(L='',GACTX.LAN) : L+=string$(L='','ENG')
+Local Char DOL_KEY(10)(1..2) : DOL_KEY(1)="'{" : DOL_KEY(2)="}'"
+Local Integer NB_FLD, NUMLEVEL, IML
+Local Char SEPRES(1)
+
+  NUMLEVEL=min(val(LEVEL_NUM),1)
+
+# Fixing a bug related to base url for classic page Sept 22, 2014
+Local Char TRANSURL(250)
+Local Integer I
+  I=instr(1,PSYR.PREFIX,"/sdata/")
+  If I
+    TRANSURL=left$(PSYR.PREFIX,I-1)+"/trans/"+right$(PSYR.PREFIX,8)
+  Else
+    TRANSURL=PSYR.PREFIX : # What else ?
+  Endif
+
+ Append WCLOB,'{"$baseUrl":"'+baseUrl+'","$baseTrans":"'+TRANSURL+'","$url":"'+"{$baseUrl}/QUERY("+toupper(LISTE2)+")?representation=QUERY~"+LISTE1+".$query&role={$role}"+'",'
+ Append WCLOB,'"$title":"'+func ASYRREQ.T(L,"ALISTEH","ZTPLA","INTIT",0)+'",'
+ Append WCLOB,'"$type":"'+"application/json; vnd.sage=syracuse.representation={$baseUrl}/QUERY("+toupper(LISTE1)+")"+'",'
+ Append WCLOB,'"$methods":"GET","codeRequest":"ZTPLA","$links":{"Excel":{"$title":"Excel",'
+ Append WCLOB,'"$type":"application/syracuse-excel-worksheet",'
+ Append WCLOB,'"$confirm":"Avez-vous installé le SyracuseAddins pour Office ?",'
+ Append WCLOB,'"$officeAddinSetup":"/msoffice/lib/general/addIn/SyracuseOfficeAddinsSetup.EXE",'
+ If NUMLEVEL
+   Append WCLOB,'"$url":"'+"{$baseUrl}/QUERY("+toupper(LISTE2)+")?representation=QUERY~"+LISTE1+"~"+num$(NUMLEVEL)+".$bulk&level="+num$(NUMLEVEL)+"&role={$role}&cube={ifCube}&startRecord={first_record}&excelReportMode={excelReportMode}"+'",'
+ Else
+   Append WCLOB,'"$url":"'+"{$baseUrl}/QUERY("+toupper(LISTE2)+")?representation=QUERY~"+LISTE1+".$bulk&role={$role}&cube={ifCube}&startRecord={first_record}&excelReportMode={excelReportMode}"+'",'
+ Endif
+   Append WCLOB,'"$parameters":{"$url":"'+collaborationBaseUrl+"/msoExcelReportModes/$template/$workingCopies?representation=msoExcelReportMode.$query&role={$role}&where={$where}&filter={$filter}&excelReportMode={excelReportMode}&doc_uuid={document}"+'","$method":"POST","$properties":{"$title":"dummy","$type":"application/x-string"}}},'
+ Append WCLOB,'"$refresh":{'
+ Append WCLOB,'"$url":"'
+ Append WCLOB,'{$baseUrl}/QUERY('+toupper(LISTE2)+')?representation=QUERY~'+LISTE1+'~{level_c}.$query'
+ Append WCLOB,'&level={level_c}&role={$role}&cube={ifCube}&startRecord={first_record}&view={$clink}&portview={$portview}&recordsPerPage={$itemsPerPage}&forcedExecution=true&where={$where}'
+ Append WCLOB,'",'
+ Append WCLOB,'"$title":"","$type":"application/json;vnd.sage=syracuse"}},'
+ Append WCLOB,'"$properties":{"$criteria":{"$type":"application/x-filter","$item":{"$properties":{'
+ Append WCLOB,'"displayLineNum":{}'
+ Append WCLOB,',"recordsPerPage":{}'
+ Append WCLOB,',"req_id":{}'
+ Append WCLOB,',"ifCube":{}'
+ Append WCLOB,'}},'
+ Append WCLOB,'"$isExcluded":true},'
+ Append WCLOB,'"headerMessage":{"$type":"application/x-string","$title":"'+func M(L,146,4)+'","$isAdvanced":true},'
+ Append WCLOB,'"levelMessage":{"$type":"application/x-string","$title":"'+func M(L,146,29)+'","$isAdvanced":true},'
+ Append WCLOB,'"displayLineNum":{"$type":"application/x-boolean","$isExcluded":true},'
+ Append WCLOB,'"recordsPerPage":{"$type":"application/x-integer","$isExcluded":true},'
+ Append WCLOB,'"req_id":{"$type":"application/x-string","$isExcluded":true},'
+ Append WCLOB,'"first_record":{"$type":"application/x-integer","$isExcluded":true},'
+ Append WCLOB,'"ifCube":{"$type":"application/x-boolean","$isExcluded":true},'
+ Append WCLOB,'"level_p":{"$type":"application/x-string","$isExcluded":true},'
+ Append WCLOB,'"level_c":{"$type":"application/x-string","$isExcluded":true},'
+ Append WCLOB,'"level_m":{"$type":"application/x-string","$isExcluded":true},'
+ Append WCLOB,'"$portview":{"$type":"application/x-string","$isExcluded":true},'
+ Append WCLOB,'"$calendar":{"$type":"application/x-string","$isExcluded":true},'
+ Append WCLOB,'"$clink":{"$type":"application/x-string","$isExcluded":true},'
+ Append WCLOB,'"$resources":{"$type":"application/x-array","$item":{"$properties":{'
+ If TYPE_REPRES<>"$bulk"
+   Append WCLOB,'"line_no":{"$title":"'+func M(L,146,5)+'","$type":"application/x-integer"},'
+   Append WCLOB,'"z_p":{"$type":"application/x-integer","$isExcluded":true},'
+   Append WCLOB,'"z_m":{"$type":"application/x-integer","$isExcluded":true}'
+  SEPRES=","
+ Endif
+ Append WCLOB,SEPRES: SEPRES="," 
+ Append WCLOB,'"CODE":{"$title":"'+func ASYRREQ.T(L,"ALISTED","ZTPLA","INTITLIG",1)+'","$type":"application/x-string","$maxLength":30}'
+ Append WCLOB,SEPRES: SEPRES="," 
+ Append WCLOB,'"DATEEPM":{"$title":"'+func ASYRREQ.T(L,"ALISTED","ZTPLA","INTITLIG",2)+'","$type":"application/x-date"}'
+ Append WCLOB,SEPRES: SEPRES="," 
+ Append WCLOB,'"SITE":{"$title":"'+func ASYRREQ.T(L,"ALISTED","ZTPLA","INTITLIG",3)+'","$type":"application/x-string","$maxLength":5}'
+ Append WCLOB,'}'
+ Append WCLOB,'}'
+ Append WCLOB,'}}}'
+End
+
+# 
+# Read the inquiry lines
+# Parameters are the level (LEVEL) and the line number (NUMLIG)
+# 
+$GET
+Return
+
+Funprog B(CHAINE)
+Value Char CHAINE()
+
+End escjson(CHAINE)
+
+# 
+# Get the param value types
+# 
+Subprog GET_PARAMS(PARAM,PARTYPE,MAXLEVEL,IFSHARED)
+Variable Char PARAM()(1..)
+Variable Libelle PARTYPE(1..)
+Variable Integer MAXLEVEL
+Variable Libelle IFSHARED
+  MAXLEVEL=1
+  IFSHARED=1
+End
+
+# 
+# Give the number of records in the main table in order to define if execution has to be done in batch
+# 
+Subprog GET_NBREC_ORACLE(COMPTE)
+Variable Integer COMPTE
+  For (Integer NBRE) From "3"
+& Sql "SELECT NUM_ROWS FROM USER_TABLES WHERE TABLE_NAME = 'ZTESTPLA'" As [ORC]
+    COMPTE=[ORC]NBRE
+    Break
+  Next
+End
+Subprog GET_NBREC_SQL(COMPTE)
+Variable Integer COMPTE
+  For (Integer NBRE) From '5'
+& Sql "SELECT TOP 1 rows FROM sysindexes WHERE id = OBJECT_ID('ZTESTPLA') AND indid < 2" As [SQ]
+    COMPTE=[SQ]NBRE
+    Break
+  Next
+End
+
+# Copy of the transcoding function for strings
+Funprog S(CHAINE)
+Value Char CHAINE()
+Local Char RESULT(255)
+RESULT='"'
+Local Integer I,J
+  While 1
+    I=instr(1,CHAINE,"'") : J=instr(1,CHAINE,'"')
+    If (I<>0 and I<J) or (I<>0 and J=0)
+      RESULT+=left$(CHAINE,I-1)+'"+chr$(34)+"'
+      CHAINE=right$(CHAINE,I+1)
+    Elsif (J<>0)
+      RESULT+=left$(CHAINE,J-1)+'"+chr$(39)+"'
+      CHAINE=right$(CHAINE,J+1)
+    Else
+      RESULT+=CHAINE
+      Break
+    Endif
+  Wend
+  If right$(RESULT,len(RESULT)-1)='+"'
+    End left$(RESULT,len(RESULT)-2)
+  Else
+    End RESULT+'"'
+  Endif
+End
+
+# Get a pointer value in a buffer
+
+Funprog GET_PTVAL(BUF,POINT)
+Value Clbfile BUF()
+Value Char POINT()
+Local Integer I,J
+Local Char RESULT(250)
+  I=instr(1,BUF,'"'+POINT+'"')
+  If I
+    J=instr(I+len(POINT)+3,BUF,",")
+    If J
+      RESULT=seg$(BUF,I+len(POINT)+3,J-1)
+    Else
+      J=instr(I+len(POINT)+3,BUF,"}")
+      If J
+        RESULT=seg$(BUF,I+len(POINT)+3,J-1)
+      Else
+        RESULT=""
+      Endif
+    Endif
+  Endif
+  If right$(RESULT,len(RESULT))='"' and left$(RESULT,1)='"'
+    RESULT=seg$(RESULT,2,len(RESULT)-1)
+  Endif
+End RESULT
+
+Subprog PARSE_PARAM(ARCV,VALBEG,VALEND,STRICTBEG,STRICTEND)
+Variable Instance ARCV Using C_ASYRRCV
+Variable Char VALBEG()(1..),VALEND()(1..)
+Variable Libelle STRICTBEG(1..),STRICTEND(1..)
+Local Integer I
+Local Char CHAINE1(250),CHAINE2(250)
+End
+
+Funprog GET_MAINTABLE()
+End "ZTESTPLA"
+

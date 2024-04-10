@@ -1,0 +1,127 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+################################################## ZCTLPRI
+################################################## 01/10/2013
+
+################################################## ASQTY
+################################################## Action appelée en Avant_saisie dans le champ quantité
+################################################## Initialiser la variable globale pour sauvegarder la valeur du prix en cours
+
+Subprog ASQTY(AMTLOC1)
+Variable Decimal AMTLOC1
+
+If dim(GZCTRLGROPRI)<0
+    Global Decimal GZCTRLGROPRI
+Endif
+GZCTRLGROPRI = AMTLOC1
+End
+
+################################################## APQTY
+################################################## Action appelée en Après_zone dans le champ quantité
+################################################## Vérifier si le prix de la ligne correspond à la valeur sauvegardée
+
+Subprog APQTY(AMTLOC1,ZMKSTAT)
+Variable Decimal AMTLOC1
+Variable Shortint ZMKSTAT
+
+# si on est sur les commandes EPALIS, on ne fait rien
+If(GFONCTION="GESSOH" and GFLAG="EPI")Then
+    End
+Endif
+
+# Si Webservices, on ne fait rien
+If GWEBSERV : End : Endif
+
+If clalev([F:ZAUS])=0 : Local File AUTILIS [F:ZAUS] : Endif
+
+Read [F:ZAUS]CODUSR=GUSER
+If fstat
+    GMESSAGE="Erreur de lecture de la fiche Utilisateur pour controle prix de vente."
+    ZMKSTAT=2
+Elsif [F:ZAUS]ZCTLPRIV=2
+    If AMTLOC1=0
+        If GZCTRLGROPRI<>0
+            AMTLOC1 = GZCTRLGROPRI
+        Endif
+    Endif
+Endif
+
+Close Local File [F:ZAUS]
+
+End
+
+################################################## AMQTY
+################################################## Action appelée en Après_modif dans le champ quantité
+################################################## (la recherche tarif est forcée grâce au point d'entrée OUINON dans ZPESUP)
+################################################## la valeur remontée par la recherche de tarif doit être différente de 0
+
+Subprog AMQTY(AMTLOC1,ZISIS,ZMKSTAT)
+Variable Decimal AMTLOC1
+Value Char ZISIS()
+Variable Shortint ZMKSTAT
+
+# si on est sur les commandes EPALIS, on ne fait rien
+If(GFONCTION="GESSOH" and GFLAG="EPI")Then
+    End
+Endif
+
+# Si import, on ne fait rien
+If GIMPORT : End : Endif
+
+# Si Webservices, on ne fait rien
+If GWEBSERV : End : Endif
+
+# Si inter-site sans inter-société, on ne fait rien
+If ZISIS="21" : End : Endif
+
+If clalev([F:ZAUS])=0 : Local File AUTILIS [F:ZAUS] : Endif
+
+Read [F:ZAUS]CODUSR=GUSER
+If fstat
+    GMESSAGE="Erreur de lecture de la fiche Utilisateur pour controle prix de vente."
+    ZMKSTAT=2
+Elsif [F:ZAUS]ZCTLPRIV=1 or AMTLOC1<>0
+    ZMKSTAT=0
+Elsif [F:ZAUS]ZCTLPRIV=2 and AMTLOC1=0
+    GMESSAGE="Saisie impossible tant qu'un tarif (non égal à 0) n'est pas renseigné."
+    ZMKSTAT=2
+Endif
+
+Close Local File [F:ZAUS]
+
+End
+
+################################################## ASPRI
+################################################## Action appelée en Avant_saisie du prix
+################################################## Evite de passer sur la zone Prix
+
+Subprog ASPRI(ZISIS,ZMKSTAT)
+Value Char ZISIS()
+Variable Shortint ZMKSTAT
+
+# si on est sur les commandes EPALIS, on ne fait rien
+If(GFONCTION="GESSOH" and GFLAG="EPI")Then
+    End
+Endif
+
+# Si import, on ne fait rien
+If GIMPORT : End : Endif
+
+# Si inter-site sans inter-société, on ne fait rien
+If ZISIS="21" : End : Endif
+
+# Si Webservices, on ne fait rien
+If GWEBSERV : End : Endif
+
+If clalev([F:ZAUS])=0 : Local File AUTILIS [F:ZAUS] : Endif
+
+Read [F:ZAUS]CODUSR=GUSER
+If fstat
+    GMESSAGE="Erreur de lecture de la fiche Utilisateur pour controle prix de vente."
+    ZMKSTAT=2
+Elsif [F:ZAUS]ZCTLPRIV=2
+    ZMKSTAT=2
+Endif
+
+Close Local File [F:ZAUS]
+
+End

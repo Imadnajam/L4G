@@ -1,0 +1,1087 @@
+#<AdxTL>@(#)4.0.0.0 $Revision$
+#################################################### SPEPOH
+#################################################### 13/11/2013
+
+$ACTION
+Case ACTION
+ When "OUVRE" : Gosub OUVRE
+ When "AFFMASK" : Gosub AFFMASK
+ When "FILTRE" : Gosub FILTRE
+ When "STYLE" : Gosub STYLE
+ When "SETBOUT" : Gosub SETBOUT
+ When "AVANTBOUT" : Gosub AVANTBOUT
+ When "EXEBOUT" : Gosub EXEBOUT
+ When "RAZCRE" : Gosub RAZCRE
+ When "VERIF_CRE" : Gosub VERIF_CRE
+ When "INICRE" : Gosub INICRE
+ When "LIENS" : Gosub LIENS
+ When "LIENS_LIG" : Gosub LIENS_LIG
+ When "VERIF_MOD" : Gosub VERIF_MOD
+ When "FERME" : Gosub FERME
+ When "RAZDUP" : Gosub RAZDUP
+ When "CREATION" : Gosub CREATION
+ When "MODIF" : Gosub MODIF
+ When Default
+Endcase
+Return
+
+#################################################### OUVRE
+
+$OUVRE
+If clalev([F:CNT])=0 : Local File CONTACT : Endif
+If clalev([F:AIN])=0 : Local File CONTACTCRM : Endif
+If clalev([F:ITM])=0 : Local File ITMMASTER : Endif
+If clalev([F:ZUC])=0 : Local File ZUSRCPT : Endif
+#On ouvre le fichier des transactions de saisies des commandes d'achats
+If clalev([F:PTR])=0 : Local File PURTRS [PTR] : Endif
+#Ouverture du fichier des modèle de tris
+If clalev([F:ZMH])=0 : Local File ZMODTRIH [ZMH] : Endif
+If(dim(WRETMODTRI)<0)Then
+    Global Integer WRETMODTRI : WRETMODTRI = 0
+Endif
+If(dim(WMENUCONTEXT)<0)Then
+    Global Integer WMENUCONTEXT : WMENUCONTEXT = 0
+Endif
+#Ouverture du fichier (vue) des prix moyen par bon de réception
+If clalev([F:ZPM])=0 : Local File ZPMLOTPAL [ZPM] : Endif
+If clalev([F:ZTCFG])=0 : Local File ZTRSPCFG [F:ZTCFG] : Endif
+If clalev([F:BPC])=0 : Local File BPCUSTOMER [F:BPC] : Endif
+If clalev([F:BPS])=0 : Local File BPSUPPLIER [F:BPS] : Endif
+If clalev([F:BPA])=0 : Local File BPADDRESS  [F:BPA] : Endif
+If clalev([F:ZDPO])=0 : Local File ZDEPOT [F:ZDPO] : Endif
+If clalev([F:BPD])=0 : Local File BPDLVCUST [F:BPD] : Endif
+Return
+
+################################################################ CREATION
+
+$CREATION
+#Mise à jour des table spécifique
+Gosub CREMOD
+Return
+
+################################################################ MODIF
+
+$MODIF
+#Mise à jour des table spécifique
+Gosub CREMOD
+Return
+
+################################################################ CREMOD
+
+$CREMOD
+  #suppression de la table spécifique des détails Enlèvements/Livraisons
+  Local Integer WERR : WERR = 0
+  Delete [F:ZTCFG] Where [F:ZTCFG]POHNUM=[M:POH0]POHNUM
+  If(fstat=0)Then
+    For I = 0 To [M:POH2]NBLIGDT-1
+      [F:ZTCFG]POHNUM     = [M:POH0]POHNUM
+      [F:ZTCFG]ORDRE      = [M:POH2]ORDRE(I)
+      [F:ZTCFG]TYPETRSP   = [M:POH2]TYPETRSP(I)
+      [F:ZTCFG]CODE       = [M:POH2]CODE(I)
+      [F:ZTCFG]BPAADD     = [M:POH2]BPAADD(I)
+      [F:ZTCFG]LIBELLECFD = [M:POH2]LIBELLECFD(I)
+      [F:ZTCFG]LIBELLEADR = [M:POH2]LIBELLEADR(I)
+      [F:ZTCFG]ZDATETRSP  = [M:POH2]ZDATETRSP(I)
+      [F:ZTCFG]ZQTYTRSP   = [M:POH2]ZQTYTRSP(I)
+      Write [F:ZTCFG]
+      If(fstat<>0)Then
+        WERR = 1
+      Endif
+    Next I
+  Else
+    WERR = 1
+  Endif
+  If(WERR=1)Then
+    #Il y a eu des erreurs, on arrête la transaction en cours
+    Call ERREUR ("[err : " + num$(fstat) + "] - Des erreurs sont survenues lors de l'enregistrement des détails du transport") From GESECRAN
+    GOK = 0
+  Endif
+Return
+
+#################################################### AFFMASK
+
+$AFFMASK
+#If GFLAG="CFG"
+#    GCODNUM="POG"
+#Elsif GFLAG="API"
+#    GCODNUM="API"
+#Endif
+#If(GUSER="MICRO")Then
+#  Gosub ACTION From SUBPOH
+#  GPE=1
+#Endif
+Read [F:PTR]PTR0=3;GFLAG
+If(fstat=0)Then
+  If([F:PTR]ZCOMPTEUR<>"")Then
+    GCODNUM = [F:PTR]ZCOMPTEUR
+  Endif
+Else
+    Infbox "Problème de réupération du compteur pour la transaction : " + GFLAG + " -Erreur n°" + num$(fstat)
+Endif
+If GFLAG="SER"
+    Chgfmt [M:POH2]ZTYPPAL With "-LA1010:15X"
+#    Chgfmt [M:POH2]ZDLQBON With "N:9.2"
+#    Chgfmt [M:POH2]ZDLQREP With "N:9.2"
+#    Chgfmt [M:POH2]ZDLQHS With "N:9.2"
+#    Chgfmt [M:POH2]ZDATTRIR With "D:DDMMYY"
+#    [M:POH2]ZFMDATE=GFMD
+#    [M:POH2]ZFMNUM="N:9.2"
+Else
+#    [M:POH2]ZFMDATE="-D:X"
+#    [M:POH2]ZFMNUM="-N:9.2"
+    Chgfmt [M:POH2]ZDLTRI With "-LA1:4X"
+    Chgfmt [M:POH2]ZDLQBON With "-N:9.2"
+    Chgfmt [M:POH2]ZDLQREP With "-N:9.2"
+    Chgfmt [M:POH2]ZDLQHS With "-N:9.2"
+    Chgfmt [M:POH2]ZDATTRIR With "-D:DDMMYY"
+
+    Chgfmt [M:POH1]ZCODCLT With "-K:30X"
+    Chgfmt [M:POH1]ZEBPRNAM With "-K:30X"
+    Chgfmt [M:POH1]ZEBPAADDLI(0) With "-K:30X"
+    Chgfmt [M:POH1]ZEBPAADDLI(1) With "-K:30X"
+    Chgfmt [M:POH1]ZEBPAADDLI(2) With "-K:30X"
+    Chgfmt [M:POH1]ZEPOSCOD With "-K:30X"
+    Chgfmt [M:POH1]ZECTY With "-K:30X"
+    Chgfmt [M:POH1]ZECRY With "-K:30X"
+    Chgfmt [M:POH1]ZECRYNAM With "-K:30X"
+Endif
+If(GFLAG<>"LOG")Then
+  Chgfmt [M:POH0]ZNBPALPLAT With "-K:30X"
+Endif
+Return
+
+#################################################### FILTRE
+
+$FILTRE
+If GFLAG<>"STD"
+    Gosub FILTRE From SUBPOHA
+    GPE=1
+    FILTSUP+=" & ([F:POH]ZMEMOTRANS=[V]GFLAG)"
+Endif
+Return
+
+################################################# STYLE
+
+$STYLE
+Local Integer WNUMLIG
+For WNUMLIG=0 To [M:POH2]NBLIG-1
+    If([M:POH2]ZMODTRIFLG(WNUMLIG)=2)Then
+        Chgstl [M:POH2]NBLIG(WNUMLIG) With "AEXPEXC2"
+    Else
+        Chgstl [M:POH2]NBLIG(WNUMLIG) With "TDB00"
+    Endif
+Next
+If(GFLAG="LOG")Then
+    Chgstl [M:POH0]ZNBPALPLAT With "AEXPEXC2"
+Endif
+If GFLAG<>"SER"
+    Chgfmt [M:POH2]ZDATTRIR With "-D:DD2"
+Endif
+Return
+
+#################################################### SETBOUT
+
+$SETBOUT
+If(WMENUCONTEXT=1)Then
+  Gosub ACTION From SUBPOH
+  GPE=1
+Endif
+WMENUCONTEXT = 0
+#On active ou desactive le bouton pour récupérer les modèles de tris
+If([M:POH0]ZCODADR="" or [M:POH0]BPSNUM="" or [M:POH1]CCE(1)="")Then
+  Disable GSTABOU+5
+  If(GREP<>"C")Then
+    Call VIREBOUT(CHAINE,"5") From GOBJET
+  Endif
+Else
+  #Avant d'activer le bouton, on va regarder si ce fournisseur avec ce code adresse à un modèle de tri pour les commandes
+  #Filter [F:ZMH] Where [F:ZMH]ZBPSNUM=[M:POH0]BPSNUM and [F:ZMH]ZBPAADD=[M:POH0]ZCODADR and [F:ZMH]ZTYPMOD=1
+  If(GFLAG="SER")Then
+      Filter [F:ZMH] Where [F:ZMH]ZBPSNUM=[M:POH0]BPSNUM and [F:ZMH]ZBPAADD=[M:POH0]ZCODADR and [F:ZMH]ZAXEMET=[M:POH1]CCE(1) and [F:ZMH]ZTYPMOD=3
+  Else
+      Filter [F:ZMH] Where [F:ZMH]ZBPSNUM=[M:POH0]BPSNUM and [F:ZMH]ZBPAADD=[M:POH0]ZCODADR and [F:ZMH]ZAXEMET=[M:POH1]CCE(1) and [F:ZMH]ZTYPMOD=1
+  Endif
+  If(rowcount([F:ZMH])=0)Then
+    Disable GSTABOU+5
+    If(GREP<>"C")Then
+      Call VIREBOUT(CHAINE,"5") From GOBJET
+    Endif
+  Else
+    Enable GSTABOU+5
+  Endif
+  Filter [F:ZMH]
+Endif
+If [M:POH0]POHNUM="" | [F:POH]ZVALFLG=2 | GREP<>"" | GFLAG="SER"
+    Call VIREBOUT(CHAINE,"4") From GOBJET
+Endif
+If [M:POH1]ZVALFLG=2
+    Call VIREBOUT(CHAINE,"1") From GOBJET
+    Call VIREBOUT(CHAINE,"A") From GOBJET
+Endif
+  If(WRETMODTRI = 1 and [M:POH0]POHNUM<>"")Then
+    #On active le bouton enregistrer si l'utilisateur à cliqué
+    #sur le bouton "Modèle de tri" puis sur Ok
+    REP="M"
+    WRETMODTRI = 0
+  Endif
+Return
+
+#################################################### AVANTBOUT
+
+$AVANTBOUT
+WMENUCONTEXT = 1
+If BOUT="4"
+    #----- Vérification si commande bloquée logiquement -----#
+    If !VERROU  GMESSAGE=mess(10,100,1) : GERR=1 : OK=0 : Return : Endif
+    #----- L'utilisateur a-t-il droit au solde ? -----#
+    GFCY=[M:POH0]POHFCY
+    GBIDC2="4" : Gosub AUTORIS_OPT From CONTX3
+    If !GBIDI2  GMESSAGE=mess(2,104,1)  : GERR=1 : OK=0 : Return : Endif
+Endif
+If(BOUT="5")Then
+    WRETMODTRI = 0
+Endif
+Return
+
+#################################################### EXEBOUT
+
+$EXEBOUT
+Case BOUT
+    When "3"
+      [F:POH]ZDATESOLDE = date$
+      [F:POH]UPDUSR = GUSER
+      [F:POH]UPDDAT = date$
+      Rewrite [F:POH]
+      If fstat GOK=0 : Call FSTA("POH") From GLOCK : Endif
+    When "4"
+        If [M:POH1]ZCHFNUM=""
+            Call MESSAGE("Chauffeur non renseigné. Validation impossible.") From GESECRAN
+        Else
+            Local Integer WREP
+            Call OUINON("Voulez-vous vraiment valider cette commande ?",WREP) From GESECRAN
+            If WREP=2
+                [M:POH1]ZVALFLG=2
+                Affzo [M:POH1]ZVALFLG
+                [F:POH]ZVALFLG=2
+                Rewrite [F:POH]
+            Endif
+        Endif
+    Endcase
+Return
+
+#################################################### RAZCRE
+
+$RAZCRE
+#On désactive le bouton de récupération des modèles de tris
+Disable GSTABOU+3
+Return
+
+#################################################### RAZDUP
+
+$RAZDUP
+[M:POH1]ZVALFLG = 1
+Affzo [M:POH1]ZVALFLG
+[M:POH1]PRNFLG = 1
+Affzo [M:POH1]PRNFLG
+Return
+
+#################################################### VERIF_CRE
+
+$VERIF_CRE
+Case GFLAG
+ When "STD"
+    [M:POH0]ZMEMOTRANS="CFG"
+ When Default
+    [M:POH0]ZMEMOTRANS=[V]GFLAG
+Endcase
+Gosub CT_LIGNES_QTY
+Return
+
+#################################################### INICRE
+
+$INICRE
+#Gosub ACTION From SUBPOH
+#GPE = 1
+WRETMODTRI = 0
+#On va récupérer la transaction de saisie de la commande
+#pour voir si cette transaction possède un compteur particulier
+#If(GUSER="O0008")Then
+#    Dbgaff
+#Endif
+Read [F:PTR]PTR0=3;GFLAG
+If(fstat=0)Then
+  If([F:PTR]ZCOMPTEUR<>"")Then
+    [F:POH]POHTYP=1 : [F:POH]PURTYP=1
+    If GAPPPOH>1 [F:POH]APPFLG=1 Else [F:POH]APPFLG=4 : Endif
+    If GMANCOU<>2 | (GMANCOU=2 & vireblc([M:POH0]POHNUM,2)="")
+      GCODNUM = [F:PTR]ZCOMPTEUR
+      Call NUMERO(GCODNUM,GFCY,[M:POH0]ORDDAT,"",[M:POH0]POHNUM,STAT) From SUBANM
+      If GOK<0
+        Infbox "Erreur de création du compteur"
+        Return
+      Elsif GOK<1 | STAT<>0
+        GOK=0 : GERR=1 : GMESSAGE=GCODNUM-mess(60,199,1)
+        Return
+      Endif
+      Affzo [M:POH0]POHNUM
+      [F:POH]POHNUM=[M:POH0]POHNUM
+      GPE = 1
+      #-----
+      Gosub CHARGENTETE From SUBPOHA
+      #---------------------------------------------------#
+      # Création ou duplication des textes entête et pied #
+      #---------------------------------------------------#
+      Gosub CHARG_TEXT_ENTETE From SUBPOHA
+    Endif
+  Endif
+Else
+    Infbox "Erreur de lecture de la transaction"
+Endif
+
+Return
+
+#################################################### LIENS
+
+$LIENS
+Gosub ACTION From SUBPOH
+GPE=1
+Gosub LIENS From TABLEAUX
+[M:POH0]ZCODADR=[F:POH]BPAADD
+Affzo [M:POH0]ZCODADR
+Diszo [M:POH0]ZCODADR
+If [M:POH1]CLEFLG=2 | [M:POH1]RCPFLG>=3
+  Diszo [M:POH1]ZCHFNUM, ZPERENLDEB, ZPERENLFIN, ZDETAILTRI, ZHORAIRES, ZCONTACT
+  Diszo [M:POH0]ZNBPALPLAT
+Else
+  Actzo [M:POH1]ZCHFNUM, ZPERENLDEB, ZPERENLFIN, ZDETAILTRI, ZHORAIRES, ZCONTACT
+  Actzo [M:POH0]ZNBPALPLAT
+Endif
+Actzo [M:POH1]ZROTPLAT, ZROTBENN
+Read [F:PTR]PTR0=3;GFLAG
+If(fstat=0)Then
+  If([F:PTR]ZCOMPTEUR<>"")Then
+    GCODNUM = [F:PTR]ZCOMPTEUR
+  Endif
+Endif
+#On va mettre à jour le tableau des détails Enlèvements/Livraisons
+Effzo [M:POH2]NBLIGDT
+[M:POH2]NBLIGDT=0
+If([M:POH0]POHNUM<>"")Then
+  For [F:ZTCFG]ZTCFG0 Where [F:ZTCFG]POHNUM=[M:POH0]POHNUM
+    [M:POH2]ORDRE([M:POH2]NBLIGDT)      = [F:ZTCFG]ORDRE
+    [M:POH2]TYPETRSP([M:POH2]NBLIGDT)   = [F:ZTCFG]TYPETRSP
+    [M:POH2]CODE([M:POH2]NBLIGDT)       = [F:ZTCFG]CODE
+    [M:POH2]BPAADD([M:POH2]NBLIGDT)     = [F:ZTCFG]BPAADD
+    [M:POH2]LIBELLECFD([M:POH2]NBLIGDT) = [F:ZTCFG]LIBELLECFD
+    [M:POH2]LIBELLEADR([M:POH2]NBLIGDT) = [F:ZTCFG]LIBELLEADR
+    [M:POH2]ZDATETRSP([M:POH2]NBLIGDT)  = [F:ZTCFG]ZDATETRSP
+    [M:POH2]ZQTYTRSP([M:POH2]NBLIGDT)   = [F:ZTCFG]ZQTYTRSP
+    [M:POH2]NBLIGDT += 1
+  Next
+  Affzo [M:POH2]
+Endif
+GBPCNUM = [M:POH2]ZCLLIV
+If [M:POH1]ZVALFLG=2
+    Diszo [M:POH0]
+    Diszo [M:POH1]
+    Diszo [M:POH2]
+    Diszo [M:POH3]
+    Grizo [M:POH1]20
+    Actzo [M:POH0]POHNUM
+Else
+    Actzo [M:POH0]
+    Actzo [M:POH1]
+    Actzo [M:POH2]
+    Actzo [M:POH3]
+    Actzo [M:POH1]20
+    Grizo [M:POH0]POHNUM
+Endif
+Return
+
+#################################################### LIENS_LIG
+
+$LIENS_LIG
+Local Integer WNOL : WNOL=nolign-1
+If WNOL=0
+    [M:POH2]ZTOTQTE=0
+Endif
+Read [F:ITM]ITM0=[M:POH2]ITMREF(WNOL)
+If fstat
+    Raz [F:ITM]
+Endif
+If [F:ITM]TSICOD(4)<>"ZZZ"
+    [M:POH2]ZTOTQTE += [M:POH2]QTYUOM(WNOL)
+Endif
+Affzo [M:POH2]ZTOTQTE
+Return
+
+#################################################### VERIF_MOD
+
+$VERIF_MOD
+Gosub CT_LIGNES_QTY
+Return
+
+#################################################### FERME
+
+$FERME
+WRETMODTRI = 0
+WMENUCONTEXT = 0
+Return
+
+#################################################### CT_LIGNES_QTY
+
+$CT_LIGNES_QTY
+Local Integer WNUMLIG
+For WNUMLIG=0 To [M:POH2]NBLIG-1
+    If [M:POH2]ZDLTRI(WNUMLIG)=2
+        If [M:POH2]QTYUOM(WNUMLIG)<>[M:POH2]ZDLQBON(WNUMLIG)+[M:POH2]ZDLQREP(WNUMLIG)+[M:POH2]ZDLQHS(WNUMLIG)
+            GMESSAGE="Quantité incorrecte en ligne "+num$(WNUMLIG+1)+"."
+            OK=0
+            GERR=1
+            Break
+        Endif
+        #Il faut que le champ ZDATTRIR soit renseigné
+        If([M:POH2]ZDATTRIR(WNUMLIG)=[0/0/0])Then
+            GMESSAGE="La date du tri réel est obligatoire en ligne "+num$(WNUMLIG+1)+"."
+            OK=0
+            GERR=1
+            Break
+        Endif
+    Endif
+Next
+Return
+
+####################################################
+#### ACTIONS CHAMPS
+####################################################
+
+#################################################### POH0
+
+Subprog C_BPSNUM(VALEUR)
+Variable Char    VALEUR()
+# Empêcher de saisir un fournisseur comptoir pour éviter le picking
+# If clalev([F:BPS])=0 : Local File BPSUPPLIER : Endif
+# Read [F:BPS]BPS0=VALEUR
+# If fstat=0
+#     If [F:BPS]ZSITEFCPT<>""
+#         Call ERREUR("Vous ne pouvez pas choisir un fournisseur comptoir.") From GESECRAN
+#         mkstat=1
+#         End
+#     Endif
+# Endif
+Filter [F:ZUC] Where ZUCBPS=VALEUR
+If rowcount([F:ZUC])>0
+    Call ERREUR("Vous ne pouvez pas choisir un fournisseur comptoir.") From GESECRAN
+    mkstat=1
+    Filter [F:ZUC]
+    End
+Endif
+Filter [F:ZUC]
+End
+
+Subprog AM_BPSNUM(VALEUR)
+Variable Char    VALEUR()
+Local Integer WTROUVE
+WTROUVE=1
+If clalev([F:BPA])=0 : Local File BPADDRESS : Endif
+Filter [F:BPA] Where [F:BPA]BPANUM=VALEUR
+Read [F:BPA] First
+While fstat=0
+    If [F:BPA]BPAADDFLG=2
+        WTROUVE=2
+        Break
+    Endif
+    Read [F:BPA] Next
+Wend
+Actzo [M:POH0]ZCODADR
+If WTROUVE=2
+    [M:POH0]ZCODADR    = [F:BPA]BPAADD
+    [M:POH1]ZHORAIRES  = [F:BPA]ZHORAIRES
+    [M:POH1]MDL        = [F:BPA]ZMLIV
+    [M:POH1]ZDETAILTRI = [F:BPA]ZDETAILTRI
+    [M:POH1]ZROTPLAT   = [F:BPA]ZDEPPLAT
+    [M:POH1]ZROTBENN   = [F:BPA]ZDEPBENN
+    Affzo [M:POH0]ZCODADR
+    Affzo [M:POH1]ZHORAIRES, MDL, ZDETAILTRI, ZROTPLAT, ZROTBENN
+Endif
+Filter [F:BPA]
+If clalev([F:BPS])=0 : Local File BPSUPPLIER : Endif
+Read [F:BPS]BPS0=VALEUR
+If fstat=0
+    If [F:BPS]ZBPSREM2<>""
+        Call MESSAGE([F:BPS]ZBPSREM2) From GESECRAN
+    Endif
+Endif
+#On active ou desactive le bouton pour récupérer les modèles de tris
+If(VALEUR="" or [M:POH0]ZCODADR="" or [M:POH1]CCE(1)="")Then
+  Disable GSTABOU+5
+Else
+  #Avant d'activer le bouton, on va regarder si ce fournisseur avec ce code adresse à un modèle de tri pour les réceptions
+  #Ouverture du fichier des modèle de tris
+  If clalev([F:ZMH])=0 : Local File ZMODTRIH [ZMH] : Endif
+  If(GFLAG="SER")Then
+      Filter [F:ZMH] Where [F:ZMH]ZBPSNUM=VALEUR and [F:ZMH]ZBPAADD=[M:POH0]ZCODADR and [F:ZMH]ZAXEMET=[M:POH1]CCE(1) and [F:ZMH]ZTYPMOD=3
+  Else
+      Filter [F:ZMH] Where [F:ZMH]ZBPSNUM=VALEUR and [F:ZMH]ZBPAADD=[M:POH0]ZCODADR and [F:ZMH]ZAXEMET=[M:POH1]CCE(1) and [F:ZMH]ZTYPMOD=1
+  Endif
+  If(rowcount([F:ZMH])>0)Then
+    Enable GSTABOU+5
+  Else
+    Disable GSTABOU+5
+  Endif
+  Filter [F:ZMH]
+Endif
+End
+
+Subprog AP_ZCODADR(VALEUR)
+Variable Char    VALEUR()
+If clalev([F:BPA])=0 : Local File BPADDRESS : Endif
+Read [F:BPA]BPA0=1;[M:POH0]BPSNUM;VALEUR
+If fstat<>0
+    Call ERREUR("Adresse non trouvée. Recommencez.") From GESECRAN
+    mkstat=1
+Else
+    # [M:ADBW]BPAADD=VALEUR
+    If VALEUR<>[M:AD61]BPAADD
+        Local Integer WADR
+        If clalev([M:ADR])=0 : Local Mask ADRBPC [ADB] : WADR=2 : Endif
+        [M:ADB]BPAADD=VALEUR
+        Call AM_BPAADD(VALEUR) From SUBADB
+        [M:AD61] = [M:ADB]
+        If WADR=2 : Close Local Mask [M:ADB] : Endif
+    Endif
+    [M:POH1]ZHORAIRES  = [F:BPA]ZHORAIRES
+    [M:POH1]MDL        = [F:BPA]ZMLIV
+    [M:POH1]ZDETAILTRI = [F:BPA]ZDETAILTRI
+    [M:POH1]ZROTPLAT   = [F:BPA]ZDEPPLAT
+    [M:POH1]ZROTBENN   = [F:BPA]ZDEPBENN
+    Affzo [M:POH1]ZHORAIRES, MDL, ZDETAILTRI, ZROTPLAT, ZROTBENN
+Endif
+End
+
+#################################################### POH2
+
+Subprog IB_NBLIG
+If [M:POH1]ZVALFLG=2
+    Raz GBOUT2
+    Raz GBOUT4
+Endif
+End
+
+Subprog AVANT_NBLIG
+Local Integer WNOL : WNOL=nolign-1
+Read [F:ITM]ITM0=[M:POH2]ITMREF(WNOL)
+If fstat
+    Raz [F:ITM]
+Endif
+If [F:ITM]TSICOD(4)<>"ZZZ"
+    [M:POH2]ZTOTQTE -= [M:POH2]QTYUOM(WNOL)
+Endif
+Affzo [M:POH2]ZTOTQTE
+End
+
+Subprog APRES_NBLIG
+Local Integer WNOL : WNOL=nolign-1
+Read [F:ITM]ITM0=[M:POH2]ITMREF(WNOL)
+If fstat
+    Raz [F:ITM]
+Endif
+If [F:ITM]TSICOD(4)<>"ZZZ"
+    [M:POH2]ZTOTQTE += [M:POH2]QTYUOM(WNOL)
+Endif
+Affzo [M:POH2]ZTOTQTE
+End
+
+Subprog C_FCYADD(VALEUR)
+Variable Char    VALEUR()
+# Un filtre est fait dans le SUBPOH et est conservé à tort sur BPADDRESS
+# donc on l'annule
+Filter [F:BPA]
+End
+
+Subprog AM_ZDLTRI(VALEUR)
+Variable Integer VALEUR
+Local Integer WNOL : WNOL=nolign-1
+If VALEUR=1
+    [M:POH2]ZDLQBON(WNOL) = 0
+    [M:POH2]ZDLQREP(WNOL) = 0
+    [M:POH2]ZDLQHS(WNOL) = 0
+    [M:POH2]ZDATTRI(WNOL) = [0/0/0]
+    [M:POH2]ZHEUTRI(WNOL) = ""
+    [M:POH2]ZDATTRIR(WNOL) = [0/0/0]
+    Affzo [M:POH2]ZDLQBON(WNOL), ZDLQREP(WNOL), ZDLQHS(WNOL),ZDATTRI(WNOL), ZHEUTRI(WNOL), ZDATTRIR(WNOL)
+Elsif(VALEUR=2)Then
+#Dbgaff
+    #On va renseigner les champs ZDATTRI et ZHEUTRI
+    If([M:POH2]ZDATTRI(WNOL)=[0/0/0])Then
+        [M:POH2]ZDATTRI(WNOL)=date$
+        Affzo [M:POH2]ZDATTRI(WNOL)
+    Endif
+    If([M:POH2]ZHEUTRI(WNOL)="")Then
+        [M:POH2]ZHEUTRI(WNOL)=time$
+        Affzo [M:POH2]ZHEUTRI(WNOL)
+    Endif
+Endif
+End
+
+Subprog AS_ZDLQBON(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL=nolign-1
+If [M:POH2]ZDLTRI(WNOL)=1
+    mkstat=2
+Endif
+End
+
+Subprog AS_ZDLQREP(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL=nolign-1
+If [M:POH2]ZDLTRI(WNOL)=1
+    mkstat=2
+Endif
+End
+
+Subprog AS_ZDLQHS(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL=nolign-1
+If [M:POH2]ZDLTRI(WNOL)=1
+    mkstat=2
+Endif
+End
+
+Subprog AS_ZDATTRIR(VALEUR)
+Variable Date    VALEUR
+Local Integer WNOL : WNOL=nolign-1
+If [M:POH2]ZDLTRI(WNOL)=1
+    mkstat=2
+Endif
+End
+
+Subprog AM_CCE(VALEUR)
+Variable Char    VALEUR()
+Local Integer WIND :WIND = nolign-1
+If(WIND=1)Then
+  #On active ou desactive le bouton pour récupérer les modèles de tris
+  If([M:POH0]BPSNUM="" or [M:POH0]ZCODADR="" or VALEUR="")Then
+    Disable GSTABOU+5
+  Else
+    #Avant d'activer le bouton, on va regarder si ce fournisseur avec ce code adresse à un modèle de tri pour les réceptions
+    #Ouverture du fichier des modèle de tris
+    If clalev([F:ZMH])=0 : Local File ZMODTRIH [ZMH] : Endif
+    If(GFLAG="SER")Then
+        Filter [F:ZMH] Where [F:ZMH]ZBPSNUM=[M:POH0]BPSNUM and [F:ZMH]ZBPAADD=[M:POH0]ZCODADR and [F:ZMH]ZAXEMET=VALEUR and [F:ZMH]ZTYPMOD=3
+    Else
+        Filter [F:ZMH] Where [F:ZMH]ZBPSNUM=[M:POH0]BPSNUM and [F:ZMH]ZBPAADD=[M:POH0]ZCODADR and [F:ZMH]ZAXEMET=VALEUR and [F:ZMH]ZTYPMOD=1
+    Endif
+    If(rowcount([F:ZMH])>0)Then
+      Enable GSTABOU+5
+    Else
+      Disable GSTABOU+5
+    Endif
+    Filter [F:ZMH]
+  Endif
+Endif
+End
+
+Subprog AM_ZCODADR(VALEUR)
+Variable Char    VALEUR()
+#On active ou desactive le bouton pour récupérer les modèles de tris
+If(VALEUR="" or [M:POH0]BPSNUM="" or [M:POH1]CCE(1)="")Then
+  Disable GSTABOU+5
+Else
+  #Avant d'activer le bouton, on va regarder si ce fournisseur avec ce code adresse à un modèle de tri pour les réceptions
+  #Ouverture du fichier des modèle de tris
+  If clalev([F:ZMH])=0 : Local File ZMODTRIH [ZMH] : Endif
+  If(GFLAG="SER")Then
+      Filter [F:ZMH] Where [F:ZMH]ZBPSNUM=[M:POH0]BPSNUM and [F:ZMH]ZBPAADD=VALEUR and [F:ZMH]ZAXEMET=[M:POH1]CCE(1) and [F:ZMH]ZTYPMOD=3
+  Else
+      Filter [F:ZMH] Where [F:ZMH]ZBPSNUM=[M:POH0]BPSNUM and [F:ZMH]ZBPAADD=VALEUR and [F:ZMH]ZAXEMET=[M:POH1]CCE(1) and [F:ZMH]ZTYPMOD=1
+  Endif
+  If(rowcount([F:ZMH])>0)Then
+    Enable GSTABOU+5
+  Else
+    Disable GSTABOU+5
+  Endif
+  Filter [F:ZMH]
+Endif
+End
+######################################################################################
+## Etiquette ajoutée par le superviseur (écran WE3DEC2) 20/11/2013 13:45:53 (DG002)
+######################################################################################
+Subprog IB_ZQTEFOR
+End
+
+Subprog AM_ITMREF(VALEUR)
+Variable Char    VALEUR()
+Local Decimal WPRIXMOYEN : WPRIXMOYEN = 0
+Local Integer WNOL : WNOL = nolign-1
+Local Integer WLOTPAL : WLOTPAL = 0
+#Si la famille stat 5 de l'article = 'ZZZ' (ex : 00LOTPALTRI) on va récupérer le prix moyen d'un bon de réception
+#des 3 ou 12 derniers mois pour un fournisseur, une adresse et un site
+If(VALEUR<>"")Then
+    #Suite appel de Stéphane Le Barazer le 18/02/2014, on se focalise uniquement sur l'article 00LOTPALTRI et non sur la famille
+    #stat 5="ZZZ"
+#    #On va récupérer l'enregistrement de l'article
+#    Read [F:ITM]ITM0=VALEUR
+#    If(fstat=0)Then
+#        If([F:ITM]TSICOD(4)="ZZZ")Then
+        If(VALEUR="00LOTPALTRI")Then
+            #On récupère l'enregistrement de la vue ZPMLOTPAL
+            Read [F:ZPM]ZPM0=[M:POH0]BPSNUM;[M:POH0]ZCODADR;[M:POH0]POHFCY
+            If(fstat=0)Then
+                WPRIXMOYEN = [F:ZPM]PU_MOYEN
+                WLOTPAL = 1
+            Endif
+        Endif
+#    Endif
+Endif
+#On a maintenant le prix moyen d'un bon de réception.
+#On va renseigner le prix unitaire
+If(WLOTPAL = 1)Then
+    [M:POH2]GROPRI(WNOL) = WPRIXMOYEN
+    [M:POH2]NETPRI(WNOL) = [M:POH2]GROPRI(WNOL)
+    Affzo [M:POH2]GROPRI(WNOL)
+    Affzo [M:POH2]NETPRI(WNOL)
+Endif
+End
+
+Subprog AM_QTYUOM(VALEUR)
+Variable Decimal VALEUR
+Local Decimal WPRIXMOYEN : WPRIXMOYEN = 0
+Local Integer WNOL : WNOL = nolign-1
+Local Integer WLOTPAL : WLOTPAL = 0
+#Si la famille stat 5 de l'article = 'ZZZ' (ex : 00LOTPALTRI) on va récupérer le prix moyen d'un bon de réception
+#des 3 ou 12 derniers mois pour un fournisseur, une adresse et un site
+If([M:POH2]ITMREF(WNOL)<>"")Then
+    #Suite appel de Stéphane Le Barazer le 18/02/2014, on se focalise uniquement sur l'article 00LOTPALTRI et non sur la famille
+    #stat 5="ZZZ"
+#    #On va récupérer l'enregistrement de l'article
+#    Read [F:ITM]ITM0=[M:POH2]ITMREF(WNOL)
+#    If(fstat=0)Then
+#        If([F:ITM]TSICOD(4)="ZZZ")Then
+        If([M:POH2]ITMREF(WNOL)="00LOTPALTRI")Then
+            #On récupère l'enregistrement de la vue ZPMLOTPAL
+            Read [F:ZPM]ZPM0=[M:POH0]BPSNUM;[M:POH0]ZCODADR;[M:POH0]POHFCY
+            If(fstat=0)Then
+                WPRIXMOYEN = [F:ZPM]PU_MOYEN
+                WLOTPAL = 1
+            Endif
+        Endif
+#    Endif
+Endif
+#On a maintenant le prix moyen d'un bon de réception.
+#On va renseigner le prix unitaire
+If(WLOTPAL = 1)Then
+    [M:POH2]GROPRI(WNOL) = WPRIXMOYEN
+    [M:POH2]NETPRI(WNOL) = [M:POH2]GROPRI(WNOL)
+    Affzo [M:POH2]GROPRI(WNOL)
+    Affzo [M:POH2]NETPRI(WNOL)
+Endif
+End
+
+Subprog C_QTYUOM(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL = nolign-1
+If([M:POH2]ITMREF(WNOL)="00LOTPALTRI" and VALEUR<>1)Then
+    GMESSAGE = "Pour l'article 00LOTPALTRI, la quantité ne peut pas être différente de 1. La quantité doit être renseignée dans la zone ci-dessus. 'Nb Pal. entrées'"
+    mkstat = 2
+Endif
+End
+
+Subprog AP_ZCODCLT(VALEUR)
+Variable Char    VALEUR()
+Local Char WCODCLIENT : WCODCLIENT = VALEUR
+
+  If clalev([F:ZAI])=0 : Local File ZADREPI [ZAI] : Endif
+  Read [F:ZAI]ZAI1=WCODCLIENT;[M:POH0]BPSNUM
+  If(fstat=0)Then
+    [M:POH1]ZEBPRNAM=[F:ZAI]ZNOMCLT
+    [M:POH1]ZEBPAADDLI(0)=[F:ZAI]ZADRESSE(0)
+    [M:POH1]ZEBPAADDLI(1)=[F:ZAI]ZADRESSE(1)
+    [M:POH1]ZEBPAADDLI(2)=[F:ZAI]ZADRESSE(2)
+    [M:POH1]ZEPOSCOD=[F:ZAI]ZPOSCOD
+    [M:POH1]ZECTY=[F:ZAI]ZCITY
+    [M:POH1]ZECRY="FR"
+    [M:POH1]ZECRYNAM="France"
+    Affzo [M:POH1]ZEBPRNAM
+    Affzo [M:POH1]ZEBPAADDLI(0)
+    Affzo [M:POH1]ZEBPAADDLI(1)
+    Affzo [M:POH1]ZEBPAADDLI(2)
+    Affzo [M:POH1]ZEPOSCOD
+    Affzo [M:POH1]ZECTY
+    Affzo [M:POH1]ZECRY
+    Affzo [M:POH1]ZECRYNAM
+  Endif
+End
+
+Subprog D_ZADCL(VALEUR)
+Variable Char    VALEUR()
+    GBPCNUM = [M:POH2]ZCLLIV
+End
+
+
+Subprog AM_ZCLLIV(VALEUR)
+Variable Char    VALEUR()
+    GBPCNUM = VALEUR
+End
+
+######################################################################################
+## Etiquette ajoutée par le superviseur (écran POH2) 19/03/2020 15:30:00 (JBS)
+######################################################################################
+Subprog C_ORDRE(VALEUR)
+Variable Decimal VALEUR
+Local Integer WMAXORDRE
+If([M:POH2]NBLIGDT>nolign)Then
+  WMAXORDRE = [M:POH2]NBLIGDT
+Else
+  WMAXORDRE = nolign
+Endif
+If(VALEUR>WMAXORDRE)Then
+  Call ERREUR("Impossible ! , le n° d'ordre ne peut pas être supérieur au nombre de ligne.") From GESECRAN
+  mkstat = 2
+Endif
+End
+
+Subprog AM_ORDRE(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL = nolign-1
+#Si on change un ordre, on va inverser avec le numéro que l'on change
+Local Integer WNUMLIG
+For WNUMLIG=0 To [M:POH2]NBLIGDT-1
+  If([M:POH2]ORDRE(WNUMLIG)=VALEUR)Then
+    [M:POH2]ORDRE(WNUMLIG) = [M:POH2]ORDRE(WNOL)
+    Affzo [M:POH2]ORDRE(WNUMLIG)
+    Break
+  Endif
+Next WNUMLIG
+End
+
+Subprog AM_TYPETRSP(VALEUR)
+Variable Integer VALEUR
+Local Integer WNOL : WNOL = nolign-1
+#On va effacer le code et l'adresse de la ligne sur laquelle on se trouve
+[M:POH2]CODE(WNOL)       = "" : Affzo [M:POH2]CODE(WNOL)
+[M:POH2]LIBELLECFD(WNOL) = "" : Affzo [M:POH2]LIBELLECFD(WNOL)
+[M:POH2]BPAADD(WNOL)     = "" : Affzo [M:POH2]BPAADD(WNOL)
+[M:POH2]LIBELLEADR(WNOL) = "" : Affzo [M:POH2]LIBELLEADR(WNOL)
+End
+
+Subprog C_CODE(VALEUR)
+Variable Char    VALEUR()
+#On va controler que le code Client/Fournisseur/Dépôt existe bien
+Local Integer WNOL : WNOL = nolign-1
+Local Integer WTYPE : WTYPE = [M:POH2]TYPETRSP(WNOL)
+# WTYPE = 1 -> Client
+# WTYPE = 2 -> Fournisseur
+# WTYPE = 3 -> Dépôt EPALIS
+If(WTYPE=1)Then
+  Read[F:BPC]BPC0=VALEUR
+  If(fstat=0)Then
+    If([F:BPC]BPCSTA<>2)Then
+      Call ERREUR("Impossible ! Ce client n'est pas actif.") From GESECRAN
+      mkstat = 2
+    Endif
+  Else
+    Call ERREUR("Impossible ! Ce client n'existe pas.") From GESECRAN
+    mkstat = 2
+  Endif
+Elsif(WTYPE=2)Then
+  Read[F:BPS]BPS0=VALEUR
+  If(fstat=0)Then
+    If([F:BPS]ENAFLG<>2)Then
+      Call ERREUR("Impossible ! Ce fournisseur n'est pas actif.") From GESECRAN
+      mkstat = 2
+    Endif
+  Else
+    Call ERREUR("Impossible ! Ce fournisseur n'existe pas.") From GESECRAN
+    mkstat = 2
+  Endif
+Elsif(WTYPE=3)Then
+  Read[F:ZDPO]ZDPO0=VALEUR
+  If(fstat<>0)Then
+    Call ERREUR("Impossible ! Ce dépôt n'existe pas.") From GESECRAN
+    mkstat = 2
+  Endif
+Endif
+End
+
+Subprog AM_CODE(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL = nolign-1
+#On va effacer l'adresse de la ligne sur laquelle on se trouve
+[M:POH2]BPAADD(WNOL)     = "" : Affzo [M:POH2]BPAADD(WNOL)
+[M:POH2]LIBELLEADR(WNOL) = "" : Affzo [M:POH2]LIBELLEADR(WNOL)
+#On va maintenant aller chercher le libellé du client/fournisseur/Dépôt
+Local Integer WTYPE : WTYPE = [M:POH2]TYPETRSP(WNOL)
+# WTYPE = 1 -> Client
+# WTYPE = 2 -> Fournisseur
+# WTYPE = 3 -> Dépôt EPALIS
+If(WTYPE=1)Then
+  Read[F:BPC]BPC0=VALEUR
+  If(fstat=0)Then
+    [M:POH2]LIBELLECFD(WNOL) = [F:BPC]BPCNAM : Affzo [M:POH2]LIBELLECFD(WNOL)
+  Endif
+Elsif(WTYPE=2)Then
+  Read[F:BPS]BPS0=VALEUR
+  If(fstat=0)Then
+    [M:POH2]LIBELLECFD(WNOL) = [F:BPS]BPSNAM : Affzo [M:POH2]LIBELLECFD(WNOL)
+  Endif
+Elsif(WTYPE=3)Then
+  Read[F:ZDPO]ZDPO0=VALEUR
+  If(fstat=0)Then
+    [M:POH2]LIBELLECFD(WNOL) = [F:ZDPO]ZDEPNAM : Affzo [M:POH2]LIBELLECFD(WNOL)
+    [M:POH2]LIBELLEADR(WNOL) = [F:ZDPO]ZADRESSE(0) + " ," + [F:ZDPO]ZPOSCOD + " ," + [F:ZDPO]ZCITY + " ," + [F:ZDPO]ZPAYS : Affzo [M:POH2]LIBELLEADR(WNOL)
+  Endif
+Endif
+End
+
+Subprog C_BPAADD(VALEUR)
+Variable Char    VALEUR()
+#On va controler que le code adresse du Client/Fournisseur/Dépôt existe bien
+Local Integer WNOL : WNOL = nolign-1
+Local Integer WTYPE : WTYPE = [M:POH2]TYPETRSP(WNOL)
+# WTYPE = 1 -> Client
+# WTYPE = 2 -> Fournisseur
+# WTYPE = 3 -> Dépôt EPALIS
+If(WTYPE=1)Then
+  #On commence par regarder si le code rentré est bin dans la table BPDLVCUST
+  Read[F:BPD]BPD0=[M:POH2]CODE(WNOL);VALEUR
+  If(fstat=0)Then
+    Read[F:BPA]BPA0=1;[M:POH2]CODE(WNOL);VALEUR
+    If(fstat<>0)Then
+      Call ERREUR("Impossible ! Cette adresse n'exite pas.") From GESECRAN
+      mkstat = 2
+    Endif
+  Else
+    Call ERREUR("Impossible ! Cette adresse n'est pas une adresse du livraison du client.") From GESECRAN
+    mkstat = 2
+  Endif
+Elsif(WTYPE=2)Then
+  Read[F:BPA]BPA0=1;[M:POH2]CODE(WNOL);VALEUR
+  If(fstat<>0)Then
+    Call ERREUR("Impossible ! Cette adresse n'exite pas.") From GESECRAN
+    mkstat = 2
+  Endif
+Endif
+End
+
+Subprog AM_BPAADD(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL = nolign-1
+#On va maintenant aller chercher l'adresse du client/Fournisseur
+Local Integer WTYPE : WTYPE = [M:POH2]TYPETRSP(WNOL)
+# WTYPE = 1 -> Client
+# WTYPE = 2 -> Fournisseur
+# WTYPE = 3 -> Dépôt EPALIS
+If(WTYPE=1 or WTYPE=2)Then
+  Read[F:BPA]BPA0=1;[M:POH2]CODE(WNOL);VALEUR
+  If(fstat=0)Then
+    [M:POH2]LIBELLEADR(WNOL) = [F:BPA]BPAADDLIG(0) + " ," + [F:BPA]POSCOD + " ," + [F:BPA]CTY + " ," + [F:BPA]CRYNAM : Affzo [M:POH2]LIBELLEADR(WNOL)
+  Endif
+Endif
+End
+
+Subprog S_CODE(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL = nolign-1
+Local Integer WTYPE : WTYPE = [M:POH2]TYPETRSP(WNOL)
+# WTYPE = 1 -> Client
+# WTYPE = 2 -> Fournisseur
+# WTYPE = 3 -> Dépôt EPALIS
+Local Char SAVACT(30)
+If(WTYPE=1)Then
+  If !GWEBSERV
+   ## Action SELBPRC
+   Local Char    PARMSK(250)(1..20) , SAVACT(20)
+   SAVACT = GACTION : GACTION = "SELBPRC"
+   PARMSK(1) = ""
+   Call S_TAB_CHAR(VALEUR,PARMSK,"SELBPRC","CPTSUB2","") From GACTION
+   GACTION = SAVACT
+  Endif
+Elsif(WTYPE=2)Then
+  If !GWEBSERV
+   ## Action SELBPS
+   Local Char    PARMSK(250)(1..20) , SAVACT(20)
+   SAVACT = GACTION : GACTION = "SELBPS"
+   PARMSK(1) = ""
+   PARMSK(2) = ""
+   Call S_TAB_CHAR(VALEUR,PARMSK,"SELBPS","SUBBPS","") From GACTION
+   GACTION = SAVACT
+  Endif
+Elsif(WTYPE=3)Then
+  If !GWEBSERV
+   ## Action ZRECHDEP
+   Local Char    PARMSK(250)(1..20) , SAVACT(20)
+   SAVACT = GACTION : GACTION = "ZRECHDEP"
+   Call S_TAB_CHAR(VALEUR,PARMSK,"","","ZRECHDEP") From GACTION
+   GACTION = SAVACT
+  Endif
+Endif
+End
+
+Subprog S_BPAADD(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL = nolign-1
+Local Integer WTYPE : WTYPE = [M:POH2]TYPETRSP(WNOL)
+# WTYPE = 1 -> Client
+# WTYPE = 2 -> Fournisseur
+Local Char SAVACT(30)
+If(WTYPE=1)Then
+  If !GWEBSERV
+   ## Action SELBPD
+   Local Char    PARMSK(250)(1..20) , SAVACT(20)
+   SAVACT = GACTION : GACTION = "SELBPD"
+   PARMSK(1) = ""
+   PARMSK(2) = [M:POH2]CODE(nolign-1)
+   Call S_TAB_CHAR(VALEUR,PARMSK,"SELBPD","TRTVENSEL","") From GACTION
+   GACTION = SAVACT
+  Endif
+Elsif(WTYPE=2)Then
+  If !GWEBSERV
+   ## Action SELBPRADR
+   Local Char    PARMSK(250)(1..20) , SAVACT(20)
+   SAVACT = GACTION : GACTION = "SELBPRADR"
+   PARMSK(1) = [M:POH2]CODE(nolign-1)
+   Call S_TAB_CHAR(VALEUR,PARMSK,"SELBPRADR","CRMSEL001","") From GACTION
+   GACTION = SAVACT
+  Endif
+Endif
+End
+
+Subprog AS_BPAADD(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL = nolign-1
+If([M:POH2]TYPETRSP(WNOL)>2)Then
+  mkstat = 2
+Endif
+End
+
+Subprog AS_ORDRE(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL = nolign-1
+If(VALEUR=0)Then
+  VALEUR = func SPE_GET_NEXT_ORDRE()
+Endif
+End
+
+Funprog SPE_GET_NEXT_ORDRE()
+Local Integer RESULT : RESULT = 0
+Local Integer WNUMLIG
+For WNUMLIG=0 To [M:POH2]NBLIGDT-1
+  If([M:POH2]ORDRE(WNUMLIG)>RESULT)Then
+    RESULT = [M:POH2]ORDRE(WNUMLIG)
+  Endif
+Next
+RESULT +=1
+End RESULT
+
+Subprog AS_ZDATETRSP(VALEUR)
+Variable Date    VALEUR
+Local Integer WNOL : WNOL = nolign-1
+If(VALEUR=[0/0/0])Then
+  VALEUR = [M:POH1]ZPERENLDEB
+Endif
+End
+
+
+######################################################################################
+

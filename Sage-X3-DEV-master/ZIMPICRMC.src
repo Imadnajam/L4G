@@ -1,0 +1,11 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+#################################################### ZIMPICRMC
+#################################################### 21/02/2020
+#Ce traitement permet d'importer les fichiers XML issus de l'ICR
+#pour les réceptions et les tris des pièces Multi-Chargeurs
+
+GSILENCE = 1              # global variable that inhibits all the messages on the screen
+Gosub DEBUT From ZIMPICRREC
+Gosub DEBUT From ZIMPICRTRI
+GSILENCE = 0              # restore the value of GSILENCE
+

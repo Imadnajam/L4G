@@ -1,0 +1,179 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+# Superviseur
+# Gestion du masque ZDEP1 
+
+$_AFF
+If GIMPORT
+ Gosub AFF From GSAISIE
+Else
+ If GMESSAGE <>""
+  Gosub ERR From GSAISIE
+ Else
+  Raz GERR , GZNUM
+ Endif
+Endif
+Return
+
+$HORODAT
+Local Date    A_DATE
+Local Char    A_HEURE(10) , A_USER(10)
+Local Char    A_STAMP(15)
+A_DATE  = [19/08/2019]
+A_HEURE = "09:20:51"
+A_USER  = "JBS"
+A_STAMP = "20190819092051"
+Return
+
+$TITRES
+Return
+
+$VISU
+Local Integer A_REPONSE
+Global Integer GPRE_VIEW
+If dim(A_WINDPREV)<=0 : Local Char A_WINDPREV(30) : Endif
+Local Mask ZDEP1 [ZDEP1]
+Gosub HORODAT
+Local Inpbox "ZDEP1" From GFONCTION At A_STAMP With A_WINDPREV Mask [ZDEP1] As [SIM_]
+Grizo [ZDEP1]10
+Grizo [ZDEP1]15
+Boxact [SIM_]
+Gosub TITRES
+Boxinp [SIM_] Using A_REPONSE
+Close Local Inpbox [SIM_]
+Close Local Mask [ZDEP1]
+Kill GPRE_VIEW
+Return
+
+$HARDCOP
+Local Integer X1(0..14),X2(0..14),Y1(0..14),Y2(0..14)
+X1(0)=43 : X2(0)=112 : Y1(0)=1 : Y2(0)=13
+X1(1)=1 : X2(1)=42 : Y1(1)=14 : Y2(1)=25
+Return
+
+$ON_ZPAYSISO
+Onevent CONTROL Call C_ZPAYSISO(zc) From W1ZDEP1
+Onevent BEFORE_INPUT Call AS_ZPAYSISO(zc) From W1ZDEP1
+Onevent INIT_AREA Call D_ZPAYSISO(zc) From W1ZDEP1
+Return
+
+Subprog D_ZPAYSISO(VALEUR)
+Variable Char    VALEUR()
+If varinit([M]ZPAYSISO,indice)=0
+ VALEUR = GPAYS
+Endif
+Gosub _AFF
+End
+
+Subprog AS_ZPAYSISO(VALEUR)
+Variable Char    VALEUR()
+Local Integer INDIC : INDIC = indice
+Raz mkstat
+Call TEXTE(53316,GBOUT1) From OBJDIV
+Call TEXTE(6028,GBOUTS) From OBJDIV
+Call TEXTE(12276,GBOUTP) From OBJDIV
+Call TEXTE(16134,GBOUTA) From OBJDIV
+Onkey 129 Titled GBOUT1 Call B1_ZPAYSISO(zc) From W1ZDEP1
+Onkey   2 Titled GBOUTS Call S_ZPAYSISO(zc) From W1ZDEP1
+Onkey 144 Titled GBOUTP Call P_ZPAYSISO(zc) From W1ZDEP1
+Onkey 146 Titled GBOUTA Call SA_ZPAYSISO(zc) From W1ZDEP1
+Gosub _AFF
+End
+
+Subprog C_ZPAYSISO(VALEUR)
+Variable Char    VALEUR()
+## Action %CNTOBJ
+Call CONTSEL("TCY","!",VALEUR,"",mkstat) From CONTOBJ
+If mkstat : GERR = 1 : GZONE = "ZPAYSISO" : GZNUM = 46043 : Endif
+Gosub _AFF
+End
+
+Subprog S_ZPAYSISO(VALEUR)
+Variable Char    VALEUR()
+Local Char PARMSK(250)(1..16)
+PARMSK(1) = "TCY"
+PARMSK(2) = "!"
+Call S_TAB_CHAR(VALEUR,PARMSK,"SELOBJ","SELOBJ","") From GACTION
+Gosub _AFF
+End
+
+Subprog B1_ZPAYSISO(VALEUR)
+Variable Char    VALEUR()
+Call OBJET("TCY",VALEUR,"") From GOBJET
+Gosub _AFF
+End
+
+Subprog SA_ZPAYSISO(VALEUR)
+Variable Char    VALEUR()
+Local Char PARMSK(250)(1..16) , SAVACT(20)
+SAVACT = GACTION : GACTION = "SELOBJAW"
+PARMSK(1) = "TCY"
+Call SAISIE_CHAR(VALEUR,PARMSK,"DSELOBJAW","SELOBJAW","XWDSELOBJAW") From GSAISIE
+GACTION = SAVACT
+Gosub _AFF
+End
+
+Subprog P_ZPAYSISO(VALEUR)
+Variable Char    VALEUR()
+Local Char PAROBJ(250)
+PAROBJ = ""
+Call VISU("TCY",VALEUR,PAROBJ) From SUBAOP
+Gosub _AFF
+End
+
+$ON_ZSIRET
+Onevent BEFORE_AREA Gosub AV_ZSIRET From W1ZDEP1
+Onevent CONTROL Call C_ZSIRET(zc) From W1ZDEP1
+Return
+
+$AV_ZSIRET
+If !GWEBSERV
+ ## Action FMTCRTPAY
+ Call FMTCRTPAY([M:ZDEP1]ZPAYS) From TRTDIV
+Endif
+If !GWEBSERV
+ ## Action ASAICRT
+ If [F:TCY]CRTFMTFLG<>2 : Grizo =zoncou : mkstat = 1 : Else : Actzo =zoncou : Endif
+Endif
+If GFMT<>""
+ Chgfmt [M]ZSIRET(indice) With "K:"+GFMT
+Else
+ Chgfmt [M]ZSIRET(indice) With "-K:1X"
+Endif
+Gosub _AFF
+Return
+
+Subprog C_ZSIRET(VALEUR)
+Variable Char    VALEUR()
+## Action CONTSIRET
+Call CONTSIRET(VALEUR,[M:ZDEP1]ZPAYS,"") From CONTNUM
+If mkstat : GERR = 1 : GZONE = "ZSIRET" : GZNUM = 26815 : Endif
+Gosub _AFF
+End
+
+$ON_ZTYPENT
+Onevent INIT_AREA Call D_ZTYPENT(zc) From W1ZDEP1
+Onevent BEFORE_INPUT Call AS_ZTYPENT(zc) From W1ZDEP1
+Return
+
+Subprog D_ZTYPENT(VALEUR)
+Variable Integer VALEUR
+If varinit([M]ZTYPENT,indice)=0
+ VALEUR = 1
+Endif
+Gosub _AFF
+End
+
+Subprog AS_ZTYPENT(VALEUR)
+Variable Integer VALEUR
+Local Integer INDIC : INDIC = indice
+Raz mkstat
+If VALEUR<1
+ VALEUR = 1
+Endif
+Gosub _AFF
+End
+
+$CHG_STY
+Return
+
+

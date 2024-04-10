@@ -1,0 +1,99 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$ 
+##################################################### SPEZCMP
+##################################################### créé le 29/01/18
+##################################################### modifié le 29/01/18
+
+###################################################################################### ACTION
+$ACTION
+#Infbox ACTION
+Case ACTION
+ When "OUVRE" : Gosub OUVRE
+ When "DEBUT" : Gosub DEBUT
+ When "OK" : Gosub OK
+ When Default
+Endcase
+Return
+
+###################################################################################### OUVRE
+$OUVRE
+  #Ouverture des fichiers
+  If clalev([F:ZME])=0 : Local File ZMODPREST [ZME] : Endif
+  If clalev([F:ZML])=0 : Local File ZMODPRESTL [ZML] : Endif
+  If clalev([F:ZAT])=0 : Local File ZARTTRI [ZAT] : Endif
+  If clalev([F:ZAR])=0 : Local File ZARTPREST [ZAR] : Endif
+Return
+
+###################################################################################### DEBUT
+$DEBUT
+#  [M:ZNBP]ZZTYPEPIEC = PARAM(1)
+#  [M:ZNBP]ZZCODFOURN = PARAM(2)
+#  [M:ZNBP]ZZCODADR = PARAM(3)
+Return
+
+###################################################################################### OK
+$OK
+Local Integer WSTAT, WNOL
+Local Char WYPSNUM(15)
+Local Integer WERR : WERR = 1
+Local Integer WNUMLINE : WNUMLINE = 1000
+#Infbox "Paramètre n°1 : " + PARAM(1)
+#On va créer un modèle de prestation à partir du paramétrage de l'article de tri sur lequel on se trouve
+#Infbox num$([M:ZEP3]ZNBLIGT) + "---" + [M:ZEP3]ZATNUM([M:ZEP3]ZNBLIGT)
+#On va créer le modèle de prestation à l'intérieur d'une transaction
+Trbegin [F:ZME],[F:ZML],[F:ZAT]
+Call NUMERO("ZME","",date$,"",WYPSNUM,WSTAT) From SUBANM
+If GOK<0 : Return : Endif
+If(WSTAT=0)Then
+  #On créé l'entête du modèle
+  Raz [F:ZME]
+  [F:ZME]ZMENUM    = WYPSNUM
+  [F:ZME]MODNAME   = [M:ZCMP]ZNOMMODCRE
+  [F:ZME]ZCODCHARG = [M:BPC0]BPCNUM
+  [F:ZME]CREUSR    = GUSER
+  [F:ZME]CREDAT    = date$
+  Write [F:ZME]
+  #On va maintenant parcourir le tableau des lignes
+  For I=0 To [M:ZEP3]NBLIGP-1
+    Raz [F:ZML]
+    [F:ZML]ZMENUM       = WYPSNUM
+    [F:ZML]ZMELIN       = (I+1)*1000
+    [F:ZML]ZTYPPAL      = [M:ZEP3]ZTYPPAL(I)
+    [F:ZML]ITMREF       = [M:ZEP3]PRESTITMREF(I)
+    [F:ZML]ZPRIX        = [M:ZEP3]ZPRIX(I)
+    [F:ZML]ZTYPPRIX     = [M:ZEP3]ZTYPPRIX(I)
+    [F:ZML]ZTYPPREST    = [M:ZEP3]ZTYPPREST(I)
+    [F:ZML]ZCODCLTCHARG = [M:ZEP3]ZCODCLTCHARG(I)
+    [F:ZML]ARTREF       = [M:ZEP3]ARTREF(I)
+    [F:ZML]ZCOEFFAC     = [M:ZEP3]ZCOEFFAC(I)
+    [F:ZML]ZTSTTRSP     = [M:ZEP3]ZTSTTRSP(I)
+    [F:ZML]ZSITE        = [M:ZEP3]ZSITE(I)
+    [F:ZML]ZTYPARTEPI   = [M:ZEP3]ZTYPARTEPI(I)
+    [F:ZML]ZPAYS        = [M:ZEP3]ZPAYS(I)
+    [F:ZML]ZBPSNUM      = [M:ZEP3]ZBPSNUM(I)
+    Write [F:ZML]
+    If(fstat<>0)Then
+      WERR=0
+    Endif
+  Next
+  #On va maintenant ajouter le lien au modèle sur l'article de tri
+  Read [F:ZAT]ZAT0=[M:ZEP3]ZATNUM([M:ZEP3]ZNBLIGT)
+  If(fstat=0)Then
+    [F:ZAT]ZMENUM = WYPSNUM
+    [M:ZEP3]ZMENUM([M:ZEP3]ZNBLIGT) = WYPSNUM
+    Affzo [M:ZEP3]ZMENUM([M:ZEP3]ZNBLIGT)
+    Rewrite [F:ZAT]
+    If(fstat<>0)Then
+      WERR=0
+    Endif
+  Else
+    WERR=0
+  Endif
+Else
+  WERR=0
+Endif
+If(WERR=1)Then
+  Commit
+Else
+  Rollback
+Endif
+Return

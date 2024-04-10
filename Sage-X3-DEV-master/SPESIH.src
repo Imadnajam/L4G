@@ -1,0 +1,734 @@
+#<AdxTL>@(#)7.0.0.0 $Revision:   1.5  $
+#################################################### SPESIH
+#################################################### 02/01/2015
+
+$ACTION
+Case ACTION
+ When "OUVRE"        : Gosub OUVRE
+ When "FILTRE"       : Gosub FILTRE
+ When "LIENS"        : Gosub LIENS
+ When "AP_FILGAUCHE" : Gosub AP_FILGAUCHE
+ When "SETBOUT"      : Gosub SETBOUT
+ When "RAZCRE"       : Gosub RAZCRE
+ When "RAZDUP"       : Gosub RAZDUP
+ When "VERIF_CRE"    : Gosub VERIF_CRE
+ When "INICRE_LIG"   : Gosub INICRE_LIG
+ When "VERIF_MOD"    : Gosub VERIF_MOD
+ When "FIN_PICK"     : Gosub FIN_PICK
+ When "FERME"        : Gosub FERME
+ When "EXEBOUT"      : Gosub EXEBOUT
+ When "VARIANTE"     : Gosub VARIANTE
+ When "ANNULE" : Gosub ANNULE
+ When Default
+Endcase
+Return
+
+####################################################### OUVRE
+
+$OUVRE
+Global Date GWACCDAT
+If clalev([F:ZFC])=0 : Local File ZFACTCLI [ZFC] : Endif
+If clalev([F:CAL])=0 : Local File CPTANALIN : Endif
+If clalev([F:ZNH])=0 : Local File ZNEGHEA : Endif
+If clalev([F:ZPJF])=0 : Local File ZPJFACT [F:ZPJF] : Endif
+If clalev([F:ZPJFV])=0 : Local File ZPJFACTV [F:ZPJFV] : Endif
+Return
+
+####################################################### EXEBOUT
+
+$EXEBOUT
+#BOUT=4 ==> l'utilisateur a cliqué sur le bouton "Génération du PDF"
+#BOUT=3 ==> l'utilisateur a cliqué sur le bouton "Validation"
+If(BOUT="4" or BOUT="3")Then
+  #On va générer le fichier PDF de la facture ou de l'avoir que si le document est validé
+  #Et que la facture est issue d'une commande E-Commerce
+  If([F:SIH]STA=3 and [F:SIH]CCE(1)="WEB")
+    Local Char TBPAR(250)(1..50),TBVAL(250)(1..50)
+    TBPAR(2) = "_ExportFile" : TBVAL(2) = GZECREPSIH + "\" + [M:SIH0]NUM + ".pdf"
+    TBPAR(3) = "_FormatExport" : TBVAL(3) = "29"
+    TBPAR(4) = "facturedeb":TBVAL(4) = [M:SIH0]NUM
+    TBPAR(5) = "facturefin":TBVAL(5) = [M:SIH0]NUM
+    Local Char WNAMEETAT : WNAMEETAT = ""
+    If([M:SIH0]INVTYP=1)Then
+      WNAMEETAT = GZECEFACT
+      Endif
+    If([M:SIH0]INVTYP=2)Then
+      WNAMEETAT = GZECEAVOIR
+    Endif
+    If(WNAMEETAT<>"")Then
+      #Call ETAT("SBONFACP3","PDF","FRA",0,"",TBPAR,TBVAL) From AIMP3
+      Call ETAT(WNAMEETAT,"PDF","FRA",0,"",TBPAR,TBVAL) From AIMP3
+      # TODO
+      #Alimentation de la table ZFACTCLI pour signifier au site web
+      #qu'une nouvelle facture a été générée
+      Raz [F:ZFC]
+      [F:ZFC]ZBPCNUM = [M:SIH0]BPCINV
+      [F:ZFC]ZSIHNUM = [M:SIH0]NUM
+      [F:ZFC]CREDAT = date$
+      [F:ZFC]CREUSR = GUSER
+      [F:ZFC]UPDDAT = date$
+      [F:ZFC]UPDUSR = GUSER
+      Write [F:ZFC]
+      If(fstat<>0)Then
+      Endif
+    Endif
+  Endif
+Endif
+If([F:SIH]STA=3 and BOUT="3")Then
+  Local Integer WERROR : WERROR = 0
+  #L'utilisateur vient de cliquer sur le bouton permettant la validation de la facture.
+  #On va donc alimenter la table des pièces jointes associées à cette facture
+  If([M:SIH0]NUM<>"")Then
+    Trbegin [F:ZPJF]
+    For [F:ZPJFV]ZPJFV1 Where [F:ZPJFV]NUM=[M:SIH0]NUM
+      #Pour chaque pièce jointes, nous allons regarder dans la table si une lignes n'existe pas déjà
+      #Cela pourrait arriver si la pièce jointe à été scannée avant la création de la facture
+      #Nous allons travailler au sein d'un transaction
+      Read[F:ZPJF]ZPJF0=[F:ZPJFV]NUM_PJ
+      If(fstat=0)Then
+        #Un enregistrement existe déjà dans la table
+        [F:ZPJF]NUM = [M:SIH0]NUM
+        [F:ZPJF]DATFACT = [M:SIH0]INVDAT
+        Rewrite[F:ZPJF]
+        If(fstat<>0)Then
+          WERROR = 1
+          Break
+        Endif
+      Else
+        #Aucun enregistrement n'existe dans la table, nous allons donc en créer un
+        [F:ZPJF]NUM = [M:SIH0]NUM
+        [F:ZPJF]NUM_PJ = [F:ZPJFV]NUM_PJ
+        [F:ZPJF]ETATTRAIT = 2
+        [F:ZPJF]DATFACT = [M:SIH0]INVDAT
+        Write[F:ZPJF]
+        If(fstat<>0)Then
+          WERROR = 2
+          Break
+        Endif
+      Endif
+    Next
+    If(WERROR=0)Then
+      Commit
+    Else
+      Rollback
+      Call ERREUR("Impossible de sauvegarder la liste des pièces jointes attachées à la facture " + [M:SIH0]NUM + "Veuillez contacter l'administrateur et lmui envoyer une copie d'écran de ce message."
+& ) From GESECRAN
+    Endif
+  Endif
+Endif
+Return
+
+#################################################### VARIANTE
+
+$VARIANTE
+#Si on vient d'une livraison issue d'une commande E-commerce
+#la seule transaction possible est la transaction STD
+If(GFONC1="GESSDH")Then
+  If([F:SDH]SOHNUM<>"")Then
+    Local Char WSOHNUM : WSOHNUM = [F:SDH]SOHNUM
+    If clalev([F:SOH2])=0 : Local File SORDER [F:SOH2] : Endif
+    Read [F:SOH2]SOH0=WSOHNUM
+    If(fstat=0)Then
+      If([F:SOH2]ZTRS="ECO")Then
+        #Nous sommes dans le cas, où on facture une livraison issue d'une commande E-commerce
+        #La seule transaction possible est alors la transaction STD
+        If clalev ([F:SLT])=0 Local File SALTRS [SLT] Endif
+        Read [SLT]SLT0=5;[F:AWI]TRN
+        If fstat
+          OK = 0
+        Elsif [F:SLT]ENAFLG<>2 | [F:SLT]STRNUM<>"STD"
+          OK = 0
+        Endif
+      Endif
+    Endif
+  Endif
+Endif
+Return
+
+####################################################### FILTRE
+
+$FILTRE
+If GFLAG="FBP"
+    Gosub ACTION From SUBSIH
+    GPE=1
+    Local Char WCRIT(255)
+    If FILTSUP<>""
+        WCRIT="("+FILTSUP+")"
+        FILTSUP=WCRIT
+        FILTSUP += "&"
+    Endif
+    FILTSUP += "[F:SIV]SALFCY='BP'"
+Endif
+Return
+
+####################################################### LIENS
+
+$LIENS
+Gosub ACTION From SUBSIH
+GPE=1
+[M:SIH4]ZTOTQTE = sum([M:SIH4]QTY(0..[M:SIH4]NBLIG-1))
+Affzo [M:SIH4]ZTOTQTE
+#PERMET DE REGENERER UNE FACTURE WEB AU FORMAT PDF
+#If([M:SIH0]NUM="FAC1408-310001")Then
+#Dbgaff
+#  #On va générer le fichier PDF de la facture ou de l'avoir que si le document est validé
+#  #Et que la facture est issue d'une commande E-Commerce
+#  If([F:SIH]STA=3 and [F:SIH]CCE(1)="WEB")
+#    Local Char TBPAR(250)(1..50),TBVAL(250)(1..50)
+#    TBPAR(2) = "_ExportFile" : TBVAL(2) = GZECREPSIH + "\" + [M:SIH0]NUM + ".pdf"
+#    TBPAR(3) = "_FormatExport" : TBVAL(3) = "29"
+#    TBPAR(4) = "facturedeb":TBVAL(4) = [M:SIH0]NUM
+#    TBPAR(5) = "facturefin":TBVAL(5) = [M:SIH0]NUM
+#    Local Char WNAMEETAT : WNAMEETAT = ""
+#    If([M:SIH0]INVTYP=1)Then
+#      WNAMEETAT = GZECEFACT
+#      Endif
+#    If([M:SIH0]INVTYP=2)Then
+#      WNAMEETAT = GZECEAVOIR
+#    Endif
+#    If(WNAMEETAT<>"")Then
+#      #Call ETAT("SBONFACP3","PDF","FRA",0,"",TBPAR,TBVAL) From AIMP3
+#      Call ETAT(WNAMEETAT,"PDF","FRA",0,"",TBPAR,TBVAL) From AIMP3
+#    Endif
+#  Endif
+#Endif
+Return
+
+####################################################### AP_FILGAUCHE
+
+$AP_FILGAUCHE
+If currbox=GBOXSD1
+    FILGAUSUP(1) += "& [F:SDD]QTYSTU>[F:SDD]RTNQTYSTU"
+Endif
+Return
+
+####################################################### SETBOUT
+
+$SETBOUT
+If [M:SIH1]ZACCDAT=[0/0/0]
+  Call VIREBOUT(CHAINE,"3") From GOBJET
+Endif
+If([M:SIH1]INVSTA<>3)Then
+  #On est dans le cas la facture n'est pas validée
+  Call VIREBOUT(CHAINE,"Z") From GOBJET
+Else
+  #On est dans le cas où la facture est validée
+  #Si l'utilisateur n'est ni l'ADMIN, ni JBS, ni Sévérine, on vire le bouton
+  If not(GUSER="ADMIN" or GUSER="JBS" or GUSER="")Then
+    Call VIREBOUT(CHAINE,"Z") From GOBJET
+  Endif
+Endif
+Return
+
+####################################################### RAZCRE
+
+$RAZCRE
+Raz [M:SIH1]ZACCDAT, GWACCDAT
+Return
+
+####################################################### RAZDUP
+
+$RAZDUP
+Raz [M:SIH1]ZACCDAT, GWACCDAT
+Return
+
+####################################################### VERIF_CRE
+
+$VERIF_CRE
+Call C_INVDAT([M:SIH0]INVDAT)
+Call AP_INVDAT([M:SIH0]INVDAT)
+Gosub GERE_GASOIL
+[M:SIHV]INVNOT = sum([M:SIHV]XVNOT)+sum([M:SIHV]XFNOT)
+[M:SIHV]INVATI = sum([M:SIHV]XVATI)+sum([M:SIHV]XFATI)
+# Négoce : récupération des données analytiques (sections 1 et 2 depuis la ligne BL et nature depuis article)
+Local Integer WNUMLIG
+For WNUMLIG=0 To [M:SIH4]NBLIG-1
+    If [M:SIH4]SDHNUM(WNUMLIG)<>"" and [M:SIH4]SDDLIN(WNUMLIG)<>0
+        Read [F:SDD]SDD0=[M:SIH4]SDHNUM(WNUMLIG);[M:SIH4]SDDLIN(WNUMLIG)
+        If fstat=0
+            If [F:SDD]ZNHDNUM<>""
+                Read [F:CAL]CAL0="SDD";0;[M:SIH4]SDHNUM(WNUMLIG);[M:SIH4]SDDLIN(WNUMLIG);0;"";1
+                If fstat=0
+                    # Version 5
+                    # [M:SIH4]CCE1(WNUMLIG) = [F:SDD]CCE1
+                    # [M:SIH4]CCE2(WNUMLIG) = [F:SDD]CCE2
+                    [M:SIH4]CCE1(WNUMLIG) = [F:CAL]CCE(0)
+                    [M:SIH4]CCE2(WNUMLIG) = [F:CAL]CCE(1)
+                    If [M:SIH2]NBAXE>0
+                        If [M:SIH2]CCE(0)=""
+                            # Version 5
+                            # [M:SIH2]CCE(0) = [F:SDD]CCE1
+                            [M:SIH2]CCE(0) = [F:CAL]CCE(0)
+                        Endif
+                    Endif
+                    If [M:SIH2]NBAXE>1
+                        If [M:SIH2]CCE(1)=""
+                            # Version 5
+                            # [M:SIH2]CCE(1) = [F:SDD]CCE2
+                            [M:SIH2]CCE(1) = [F:CAL]CCE(1)
+                        Endif
+                    Endif
+                    Affzo [M:SIH4]CCE1(WNUMLIG), CCE2(WNUMLIG)
+                Endif
+            Endif
+        Endif
+    Endif
+Next
+Return
+
+#################################################### INICRE_LIG
+
+$INICRE_LIG
+# Gosub ACTION From SUBSIH
+# GPE=1
+# Négoce : récupération des données analytiques (nature depuis article)
+# If [F:SID]SDHNUM<>"" and [F:SID]SDDLIN<>0
+#     Read [F:SDD]SDD0=[F:SID]SDHNUM;[F:SID]SDDLIN
+#     If fstat=0
+#         If [F:SDD]ZNHDNUM<>""
+#            [F:SID]CCE1 = [F:SDD]CCE1
+#            [F:SID]CCE2 = [F:SDD]CCE2
+#            Read [F:ITM]ITM0=[F:SID]ITMREF
+#            If fstat=0
+#                [F:SID]LINCNA = [F:ITM]ZNEGNATV
+#            Endif
+#         Endif
+#     Endif
+# Endif
+Return
+
+####################################################### VERIF_MOD
+
+$VERIF_MOD
+Call C_INVDAT([M:SIH0]INVDAT)
+Call AP_INVDAT([M:SIH0]INVDAT)
+Gosub GERE_GASOIL
+[M:SIHV]INVNOT = sum([M:SIHV]XVNOT)+sum([M:SIHV]XFNOT)
+[M:SIHV]INVATI = sum([M:SIHV]XVATI)+sum([M:SIHV]XFATI)
+Return
+
+####################################################### GERE_GASOIL
+
+$GERE_GASOIL
+Local Decimal WMTTAXEHT  : WMTTAXEHT  = 0
+Local Integer WTAXE : WTAXE=2
+If clalev([F:ZGI])=0 : Local File ZGOINDIC   : Endif
+If clalev([F:SFI])=0 : Local File SFOOTINV   : Endif
+If clalev([F:TVC])=0 : Local File TABVAC     : Endif
+If clalev([F:TRA])=0 : Local File TABRATVAT  : Endif
+If clalev([F:SDH])=0 : Local File SDELIVERY  : Endif
+If clalev([F:ITM])=0 : Local File ITMMASTER  : Endif
+If clalev([F:FCY])=0 : Local File FACILITY   : Endif
+If clalev([F:BPC])=0 : Local File BPCUSTOMER : Endif
+If clalev([F:BPD])=0 : Local File BPDLVCUST  : Endif
+If clalev([F:SRD])=0 : Local File SRETURND   : Endif
+If [F:BPC]BPCNUM<>[M:SIH0]BPCINV
+    Read [F:BPC]BPC0=[M:SIH0]BPCINV
+    If fstat
+        Raz [F:BPC]
+    Endif
+Endif
+WTAXE=[F:BPC]ZTAXEGO
+If WTAXE=2
+    If [F:FCY]FCY<>[M:SIH0]SALFCY
+        Read [F:FCY]FCY0=[M:SIH0]SALFCY
+        If fstat
+            Raz [F:FCY]
+        Endif
+    Endif
+    WTAXE=[F:FCY]ZTAXEGO
+Endif
+If WTAXE=2
+    WTAXE=[M:SIH2]ZCALTAXEGO
+Endif
+Local Integer NOLIG
+If WTAXE=2
+    For NOLIG=0 To [M:SIH4]NBLIG-1
+        If [M:SIH4]SDHNUM(NOLIG)<>""
+            Read [F:SDH]SDH0=[M:SIH4]SDHNUM(NOLIG)
+            If fstat=0
+                Read [F:BPD]BPD0=[F:SDH]BPCORD;[F:SDH]BPAADD
+                If fstat=0
+                    If [F:BPD]ZTAXEGO=2
+                        If [F:SDH]ZCALTAXEGO=2
+                            Read [F:ITM]ITM0=[M:SIH4]ITMREF(NOLIG)
+                            If fstat=0
+                                If [F:ITM]ZTAXEGO=2
+                                    Filter [F:ZGI] Where [F:ZGI]DATIND<=[F:SDH]SHIDAT
+                                    Read [F:ZGI]ZGI0 Last
+                                    If fstat=0
+                                        WMTTAXEHT += ([M:SIH4]QTY(NOLIG)*((([F:ZGI]VALIND-[F:BPD]ZINDGOREF)/[F:BPD]ZINDGOREF)*[F:ZGI]COUTGO))
+                                    Endif
+                                Endif
+                            Endif
+                        Endif
+                    Endif
+                Endif
+            Endif
+        Elsif [M:SIH4]SRHNUM(NOLIG)<>""
+            Read [F:SRD]SRD0=[M:SIH4]SRHNUM(NOLIG);[M:SIH4]SRDLIN(NOLIG)
+            If fstat=0
+                Read [F:SDH]SDH0=[F:SRD]SDHNUM
+                If fstat=0
+                    Read [F:BPD]BPD0=[F:SDH]BPCORD;[F:SDH]BPAADD
+                    If fstat=0
+                        If [F:BPD]ZTAXEGO=2
+                            If [F:SDH]ZCALTAXEGO=2
+                                Read [F:ITM]ITM0=[M:SIH4]ITMREF(NOLIG)
+                                If fstat=0
+                                    If [F:ITM]ZTAXEGO=2
+                                        Filter [F:ZGI] Where [F:ZGI]DATIND<=[F:SDH]SHIDAT
+                                        Read [F:ZGI]ZGI0 Last
+                                        If fstat=0
+                                            WMTTAXEHT += ([M:SIH4]QTY(NOLIG)*((([F:ZGI]VALIND-[F:BPD]ZINDGOREF)/[F:BPD]ZINDGOREF)*[F:ZGI]COUTGO))
+                                        Endif
+                                    Endif
+                                Endif
+                            Endif
+                        Endif
+                    Endif
+                Endif
+            Endif
+        Endif
+    Next
+Endif
+
+# Recherche code taux et taux de taxe
+If WMTTAXEHT>0
+    Call MAJTAXGO(2,WMTTAXEHT)
+    Call MAJTAXGO(4,0)
+Elsif WMTTAXEHT<0
+    Call MAJTAXGO(2,0)
+    Call MAJTAXGO(4,abs(WMTTAXEHT))
+Else
+    Call MAJTAXGO(2,0)
+    Call MAJTAXGO(4,0)
+Endif
+
+# Vérifier que la ligne "Taxe go-" est positive
+If [M:SIH2]INVDTAAMT(3)<0
+    Call ERREUR("Attention : le montant de Taxe GO- est négatif. Contactez la maintenance pour gérer ce problème. Ne validez pas la facture") From GESECRAN
+Endif
+Return
+
+###################################################### MAJTAXEGO
+
+Subprog MAJTAXGO(WNUMTAXE,WMTTAXEHT)
+Value Integer WNUMTAXE
+Value Decimal WMTTAXEHT
+
+Local Char WVAT
+Local Decimal WVATRAT
+Local Decimal WMTTAXETTC : WMTTAXETTC = 0
+
+Read [F:SFI]SFI0=WNUMTAXE
+If fstat>1
+    Raz [F:SFI]
+    WMTTAXEHT=0
+    WMTTAXETTC=0
+Else
+    Raz WVAT, WVATRAT
+    If [M:SIH1]VACBPR="FRA"
+        Read [F:TVC]TVC1=[M:SIH1]VACBPR;[F:SFI]VACITM
+        If fstat>1
+            Raz [F:TVC]
+            WMTTAXEHT=0
+            WMTTAXETTC=0
+        Else
+            Filter [F:TRA] Where [F:TRA]VAT=[F:TVC]VAT & [F:TRA]STRDAT<=[M:SIH0]INVDAT
+            Read [F:TRA] Last
+            If fstat>1
+                Raz [F:TRA]
+                WMTTAXEHT=0
+                WMTTAXETTC=0
+            Else
+                WMTTAXETTC = WMTTAXEHT*(1+([F:TRA]VATRAT/100))
+                WVAT    = [F:TRA]VAT
+                WVATRAT = [F:TRA]VATRAT
+            Endif
+        Endif
+    Else
+        For [F:TVC] Where [F:TVC]VACBPR=[M:SIH1]VACBPR
+            Filter [F:TRA] Where [F:TRA]VAT=[F:TVC]VAT & [F:TRA]STRDAT<=[M:SIH0]INVDAT
+            Read [F:TRA] Last
+            If fstat=0
+                If [F:TRA]VATRAT=0
+                    WMTTAXETTC = WMTTAXEHT*(1+([F:TRA]VATRAT/100))
+                    WVAT    = [F:TRA]VAT
+                    WVATRAT = [F:TRA]VATRAT
+                    Break
+                Endif
+            Endif
+        Next
+    Endif
+Endif
+WMTTAXEHT = arr(WMTTAXEHT,10^-2)
+WMTTAXETTC = arr(WMTTAXETTC,10^-2)
+
+# Mise à jour masques SIH2 et SIHV
+[M:SIH2]INVDTA(WNUMTAXE-1) = WNUMTAXE
+[M:SIH2]INVDTAAMT(WNUMTAXE-1) = WMTTAXEHT
+
+Call AP_NBFAC From SUBSIH
+Call APRES_NBFAC From SUBSIH
+
+# If [M:SIHV]NBFOOT>0
+#     NOLIG=find(WNUMTAXE,[M:SIHV]XFNUM(0..[M:SIHV]NBFOOT-1))
+#     If NOLIG=0
+#         NOLIG=[M:SIHV]NBFOOT
+#         [M:SIHV]NBFOOT += 1
+#     Else
+#         NOLIG -= 1
+#     Endif
+# Else
+#     NOLIG=0
+#     [M:SIHV]NBFOOT = 1
+# Endif
+# If WNUMTAXE = 2
+#     [M:SIHV]XFSHO(NOLIG) = "Taxe go +"
+# Else
+#     [M:SIHV]XFSHO(NOLIG) = "Taxe go -"
+# Endif
+# [M:SIHV]XFNOT(NOLIG) = WMTTAXEHT
+# [M:SIHV]XFSMI(NOLIG) = WMTTAXEHT
+# [M:SIHV]XFATI(NOLIG) = WMTTAXETTC
+# [M:SIHV]XFNUM(NOLIG) = WNUMTAXE
+# [M:SIHV]XFDTAAMT(NOLIG) = WMTTAXEHT
+# [M:SIHV]XFTAX(NOLIG) = WVAT
+# [M:SIHV]XFRAT(NOLIG) = WVATRAT
+# [M:SIHV]XFVATAMT(NOLIG) = WMTTAXETTC-WMTTAXEHT
+# [M:SIHV]PROCOD(NOLIG) = 1
+# [M:SIHV]AMTCOD(NOLIG) = 1
+# [M:SIHV]INCDCR(NOLIG) = 1
+# If dim([M:SIHV]MISRULSTD(NOLIG))>0
+#     [M:SIHV]MISRULSTD(NOLIG) = 1
+# Endif
+# [M:SIHV]MISRULUSR(NOLIG) = 1
+# [M:SIHV]CLCBAS(NOLIG) = 1
+# [M:SIHV]VATRUL(NOLIG) = 1
+# [M:SIHV]EXCTAXRUL(NOLIG) = 1
+# [M:SIHV]SPETAXRUL(NOLIG) = 1
+# [M:SIHV]XFLINCDCR(NOLIG) = 1
+# [M:SIHV]XFLVALTYP(NOLIG) = 1
+# [M:SIHV]XFLCLCRUL(NOLIG) = 1
+End
+
+####################################################### FIN_PICK
+
+$FIN_PICK
+Gosub ACTION From SUBSIH
+GPE=1
+Call AP_INVDAT([M:SIH0]INVDAT)
+# Négoce
+If [F:SDH]SDHNUM<>""
+    If [F:SDH]ZNHNUM<>""
+        If [M:SIH2]CCE(1)=""
+            [M:SIH2]CCE(1)="N"
+            Affzo [M:SIH2]CCE(1)
+        Endif
+    Endif
+Endif
+Return
+
+####################################################### ANNULE
+
+$ANNULE
+Filter [F:ZNH] Where ZNHSPROF=[M:SIH0]NUM
+For [F:ZNH]ZNH0
+    [F:ZNH]ZNHSPROF = ""
+    Rewrite [F:ZNH]
+Next
+If clalev([M:ZNG1])>0
+    If [M:ZNG1]ZNHSPROF=[M:SIH0]NUM
+        [M:ZNG1]ZNHSPROF = ""
+        Affzo [M:ZNG1]ZNHSPROF
+    Endif
+Endif
+Return
+
+####################################################### FERME
+
+$FERME
+Kill [V]GWACCDAT
+Return
+
+############################################################
+###### ACTIONS CHAMPS
+############################################################
+
+##################################################################### SIH0
+
+Subprog C_BPCINV(VALEUR)
+Variable Char    VALEUR()
+If clalev([F:ZBPC])=0 : Local File BPCUSTOMER [ZBPC] : Endif
+Read [F:ZBPC]BPC0=VALEUR
+If fstat=0
+    If [F:ZBPC]BPCINV<>VALEUR
+        Call MESSAGE("Attention : le tiers facturé de ce client est "+[F:ZBPC]BPCINV+".") From GESECRAN
+    Endif
+Endif
+# Contrôle dépassement d'échéance
+Local Integer WDELAIDEFAUT : WDELAIDEFAUT = 0
+Local Integer WCTLSITEDEF : WCTLSITEDEF=1
+Read [F:BPC]BPC0=VALEUR
+If fstat=0
+    If [F:BPC]ZCTLCDE=2
+        Local Integer ZOKCLIENT
+        ZOKCLIENT=2
+        For [F:DUD]DUD4 Where [F:DUD]BPR=VALEUR & [F:DUD]TYP="FAC"
+            Read [F:SIH]SIH0=[F:DUD]NUM
+            If fstat=0
+                If [F:SIH]STA=3
+                    # Read [F:FCY]FCY0=[M:SIH0]SALFCY
+                    Read [F:FCY]FCY0=[F:SIH]FCY
+                    If fstat=0
+                        WDELAIDEFAUT = [F:FCY]ZDELAIECH
+                        WCTLSITEDEF  = [F:FCY]ZCTLSITE
+                    Else
+                        Raz [F:FCY]
+                    Endif
+                    If (WCTLSITEDEF=1 | (WCTLSITEDEF=2 & [F:SIH]FCY=[M:SIH0]SALFCY)) & [F:DUD]DUDDAT+WDELAIDEFAUT<date$ & [F:DUD]AMTCUR>[F:DUD]PAYCUR+[F:DUD]TMPCUR
+                        ZOKCLIENT=1
+                        Break
+                    Endif
+                Endif
+            Endif
+        Next
+        If ZOKCLIENT=1
+            Call MESSAGE("Au moins une facture est en retard de règlement.") From GESECRAN
+            # Mail de S LE BARAZER du 23/11/2012, 15h41
+            # Le message n'est plus bloquant
+            # mkstat=2
+        Endif
+    Endif
+    If [F:BPC]ZPROF=2
+        Call MESSAGE("PROFORMA obligatoire.") From GESECRAN
+    Endif
+Endif
+End
+
+Subprog AM_BPCINV(VALEUR)
+Variable Char    VALEUR()
+## Affichage commentaires
+Call AFFCOM(VALEUR,"C") From ZAFFCOM
+End
+
+Subprog C_INVDAT(VALEUR)
+Variable Date    VALEUR
+If GMODU(2) = 2    : # Présence du module compta
+    Raz GWACCDAT
+    If clalev([F:PER])=0 : Local File PERIOD : Endif
+    If clalev([F:FCY])=0 : Local File FACILITY : Endif
+    If clalev([F:FIY])=0 : Local File FISCALYEAR : Endif
+    Local Integer EXERCICE, PERIOD
+    Read [F:FCY]FCY0=[M:SIH0]SALFCY
+    If fstat=0
+        For [PER]PER0 Where CPY=[F:FCY]LEGCPY & PERSTR<=VALEUR & PEREND>=VALEUR
+            EXERCICE = [F:PER]FIYNUM
+            PERIODE  = [F:PER]PERNUM
+        Next
+        If EXERCICE<>0 & PERIODE<>0
+            Read [F:PER]PER0 = [F:FCY]LEGCPY;1;EXERCICE;PERIODE
+            If fstat=0
+                If [F:PER]ZGFCDAT<>[0/0/0]
+                    If VALEUR>=[F:PER]ZGFCDAT
+                        # il faut controler que la période suivante est ouverte.
+                        GWACCDAT=addmonth(VALEUR,1)
+                        GWACCDAT=gdat$(1,month(GWACCDAT),year(GWACCDAT))
+                        Raz EXERCICE,PERIODE
+                        For [PER]PER0 Where CPY=[F:FCY]LEGCPY & PERSTR<=GWACCDAT & PEREND>=GWACCDAT
+                            EXERCICE = [F:PER]FIYNUM
+                            PERIODE  = [F:PER]PERNUM
+                        Next
+                        If EXERCICE=0 | PERIODE=0
+                            GMESSAGE = "Date comptable : "-mess(1,104,1) : # MSG=Date incorrecte
+                            mkstat = 2
+                            Raz GWACCDAT
+                            End
+                        Endif
+                        Read [FIY]FIY0 = [F:FCY]LEGCPY;1;EXERCICE
+                        If fstat | [F:FIY]FIYSTA<>2
+                            GMESSAGE = "Date comptable : "-mess(20,101,1) : # MSG=Exercice non ouvert
+                            mkstat = 2
+                            Raz GWACCDAT
+                            End
+                        Endif
+                        If [F:PER]PERSTA<2
+                            GMESSAGE = "Date comptable : "-mess(35,101,1) : # MSG=Periode non ouverte
+                            mkstat = 2
+                            Raz GWACCDAT
+                            End
+                        Endif
+                        If [F:PER]PERSTA>2
+                            GMESSAGE = "Date comptable : "-mess(36,101,1) : # MSG=Période fermee
+                            mkstat = 2
+                            Raz GWACCDAT
+                            End
+                        Endif
+                    Endif
+                Endif
+            Endif
+        Endif
+    Endif
+Endif
+End
+
+Subprog AP_INVDAT(VALEUR)
+Variable Date    VALEUR
+If GWACCDAT<>[0/0/0]
+    [M:SIH1]ZACCDAT = GWACCDAT
+Else
+    [M:SIH1]ZACCDAT = VALEUR
+Endif
+Affzo [M:SIH1]ZACCDAT
+End
+
+Subprog D_ZNEGHORO(VALEUR)
+Variable Char    VALEUR()
+If GIMPORT
+    VALEUR = GIMP(4)
+Endif
+End
+
+##################################################################### SIH1
+
+Subprog AS_NBFAC
+Local Integer NOLIG : NOLIG=nolign-1
+If [M:SIH2]SHO(NOLIG)="Taxe go +" | [M:SIH2]SHO(NOLIG)="Taxe go -"
+    mkstat=1
+Endif
+End
+
+##################################################################### SIH4
+
+Subprog AVANT_NBLIG
+Local Integer WNOL : WNOL = nolign-1
+[M:SIH4]ZTOTQTE -= [M:SIH4]QTY(WNOL)
+End
+
+Subprog APRES_NBLIG
+Local Integer WNOL : WNOL = nolign-1
+[M:SIH4]ZTOTQTE += [M:SIH4]QTY(WNOL)
+Affzo [M:SIH4]ZTOTQTE
+End
+
+Subprog D_ZDHNUM(VALEUR)
+Variable Char    VALEUR()
+If GIMPORT=1
+    VALEUR = GIMP(1)
+Endif
+End
+
+Subprog D_ZBPHORODAT(VALEUR)
+Variable Char    VALEUR()
+If GIMPORT=1
+    VALEUR = GIMP(2)
+Endif
+End
+
+Subprog D_ZDLLIG(VALEUR)
+Variable Decimal VALEUR
+If GIMPORT=1
+    VALEUR = val(GIMP(3))
+Endif
+End

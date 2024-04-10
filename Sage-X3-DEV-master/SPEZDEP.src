@@ -1,0 +1,369 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### SPEZDEP
+##################################################### créé le 24/07/2019
+##################################################### modifié le 24/07/2019
+
+$ACTION
+#Infbox ACTION
+Case ACTION
+  When "OUVRE"       : Gosub OUVRE
+  When "RAZCRE"      : Gosub RAZCRE
+  When "RAZDUP"      : Gosub RAZDUP
+  When "LIENS"       : Gosub LIENS
+  When "INICRE"      : Gosub INICRE
+  When "APRES_MODIF" : Gosub APRES_MODIF  #<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS
+  When "STYLE"       : Gosub STYLE        #<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS
+  When "APRES_MOD"   : Gosub APRES_MOD    #<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS
+  When "RAZCRE"      : Gosub RAZCREDUP    #<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS
+  When "RAZDUP"      : Gosub RAZCREDUP    #<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS
+Endcase
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           LABELS                                                  #
+#---------------------------------------------------------------------------------------------------#
+$OUVRE
+If clalev([F:ZDPO])=0  : Local File ZDEPOT       [ZDPO]    : Endif
+If clalev([F:ZAI])=0   : Local File ZADREPI      [ZAI]     : Endif
+If clalev([F:ZCHA])=0  : Local File ZCHANTIER    [ZCHA]    : Endif
+If clalev([F:TCY])=0   : Local File TABCOUNTRY   [TCY]     : Endif
+If clalev([F:AXX])=0   : Local File ATEXTRA      [AXX]     : Endif
+If clalev([F:ZDD])=0   : Local File ZDETDEP      [ZDD]     : Endif
+#<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS-----
+Global Char GTABPRIM(30) : GTABPRIM = "ZDEPOT" # Définition de la table primaire
+#Nous allons définir un mask que nous allons alimenter au fur et à mesure de la modification
+#des champs dont la modification doit être répercuté en temps réel dans EPALIS
+If clalev([M:ZZSE1])=0 : Local Mask ZZSE1        [M:ZZSE1] : Endif
+If clalev([F:ZZSE])=0  : Local File ZONESSYNCEPI [F:ZZSE]  : Endif
+#-------------------------------------------------------------------------------------------->
+Return
+
+$RAZCREDUP
+  [M:ZDEP0]ZIDEPI = 0
+  Affzo [M:ZDEP0]ZIDEPI
+Return
+
+$STYLE
+#<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS-----
+#L'appel à cette fonction permet de colorer les zones qui vont être
+#mise à jour en temps réel avec le site web EPALIS
+#Cette procédure prend 3 paramètres :
+# 1 - Le nom de la table
+# 2 - Le nom de la fenêtre
+# 3 - Le nom d'un style de présentation
+If(!GWEBSERV)Then
+  Call SPE_SET_ZONE_TR(GTABPRIM,"ZDEP","MTOLINKD") From ZWSEPALISC #Table, nom de la fenêtre, Style de présentation
+Endif
+#-------------------------------------------------------------------------------------------->
+Return
+
+$APRES_MODIF
+#Après chaque modification d'un champ, on remet le champ ZASYNCHRO à 2
+If([M:ZDEP0]ZASYNCHRO<>2 and !GWEBSERV)Then
+  [M:ZDEP0]ZASYNCHRO = 2
+  Affzo [M:ZDEP0]ZASYNCHRO
+Endif
+#<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS-----
+If(!GWEBSERV)Then
+  Call SPE_SET_JSON(GTABPRIM,COUZON,num$(CZ),[M:ZDEP0]ZIDEPI,2) From ZWSEPALISC #Table, nom de la zone, valeur de la zone, ZIDEPI de la table, Type 1:Création, 2:Modification, 3:Suppression
+Endif
+#-------------------------------------------------------------------------------------------->
+Return
+
+$APRES_MOD
+#<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS-----
+#Infbox func ZWSEPALISC.SPE_GET_JSON()
+#On va commencer par regarder s'il faut déclencher la mise à jour de l'entité dans EPALIS web
+If(!GWEBSERV)Then
+  If([M:ZZSE1]NBLIG>0)Then
+    #La valeur de certains champs en modification temps réel a été modifié, on va donc faire appel au WS
+    Local Integer WRET
+    Local Clbfile WRCORPS(0)
+    Local Char WSPARAM1(50) : WSPARAM1 = [M:ZZSE1]ZRESTNAME(0)
+#    Infbox "WSPARAM1=" + WSPARAM1
+    Local Char WSPARAM2(10) : WSPARAM2 = [M:ZZSE1]ZMETHODREST(0)
+#    Infbox "WSPARAM2=" + WSPARAM2
+    Local Char WSPARAM3(250) : WSPARAM3 = func ZWSEPALISC.SPE_REPLACE_CHAR([M:ZZSE1]ZURLREST(0),"[ZIDEPI]",num$([M:ZDEP0]ZIDEPI))
+#    Infbox "WSPARAM3=" + WSPARAM3
+    Local Clbfile WSPARAM4(0) : WSPARAM4 = func ZWSEPALISC.SPE_GET_JSON()
+#    Infbox "WSPARAM4=" + WSPARAM4
+    Call SPE_WS_REST(WSPARAM1,WSPARAM2,WSPARAM3,WSPARAM4,"",WRET,WRCORPS) From ZWSEPALISC
+    If(WRET<>200)Then
+      Call ERREUR("Impossible de mettre à jour l'enregistrement sur le site Web EPALIS : [Erreur n°" + num$(WRET) + "]") From GESECRAN
+    Else
+      Call MESSAGE("Modification effectuées avec succès sur le site web EPALIS.") From GESECRAN
+      Infbox WRCORPS
+    Endif
+  Endif
+Endif
+#-------------------------------------------------------------------------------------------->
+Return
+
+$RAZCRE
+Effzo [M:ZDEP0]
+Effzo [M:ZDEP1]
+Effzo [M:ZDEP2]
+Effzo [M:ZDEP3]
+Effzo [M:ZDEP4]
+Return
+
+$RAZDUP
+#On vide le champ [M:ZDEP0]ZDEPNUM et le champ [M:ZDEP0]ZDEPNAM
+[M:ZDEP0]ZDEPNUM = ""
+[M:ZDEP0]ZDEPNAM = ""
+Affzo [M:ZDEP0]ZDEPNUM, ZDEPNAM
+Return
+
+$LIENS
+#<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS-----
+#On va effacer le mask permettant la sauvegarde des informations à synchroniser en temps réel
+Effzo[M:ZZSE1]10
+[M:ZZSE1]NBLIG = 0
+#Infbox "ID EPALIS : " + num$([M:ZDEP0]ZIDEPI)
+If(!GWEBSERV)Then
+  If([M:ZDEP0]ZIDEPI=0)Then
+    Local Integer WRET
+    Local Clbfile WRCORPS(0)
+    Call SPE_WS_REST(GZWSREST, "GET","/x3/depot/" + [M:ZDEP0]ZDEPNUM,"{}","id",WRET,WRCORPS) From ZWSEPALISC
+    If(WRET<>200)Then
+      Call ERREUR("Problème de récupération de l'ID EPALIS via le web service : [Erreur n°" + num$(WRET) + "]") From GESECRAN
+    Else
+      If(val(WRCORPS)>0)Then
+        [F:ZDPO]ZIDEPI = val(WRCORPS)
+        [M:ZDEP0]ZIDEPI = val(WRCORPS) : Affzo [M:ZDEP0]ZIDEPI
+        Rewrite[F:ZDPO]
+        If(fstat=0)Then
+          Gosub RELIT From GOBJSUB
+        Else
+          Call ERREUR("Pb lors de la sauvegarde de l'enregistrement.") From GESECRAN
+        Endif
+      Endif
+    Endif
+  Endif
+Endif
+#-------------------------------------------------------------------------------------------->
+If!(GWEBSERV or GUSER="ADMIN" or GUSER="DG002" or GUSER="JBS")Then
+  Diszo [M:ZDEP0]ZLOGEPI
+Endif
+If([F:ZDPO]ZASYNCHRO=0)Then
+  [M:ZDEP0]ZASYNCHRO = 1
+  Affzo [M:ZDEP0]ZASYNCHRO
+Endif
+Actzo [M:ZDEP0]ZDEPNUM
+If([M:ZDEP0]ZDEPNUM<>"")Then
+  Effzo[M:ZDEP0]ZNBCHG
+  Effzo[M:ZDEP0]ZNBCLTCHG
+  Effzo[M:ZDEP0]ZNBCHANTIER
+  Read[F:ZDD]ZDD0=[M:ZDEP0]ZDEPNUM
+  If(fstat=0)Then
+    [M:ZDEP0]ZNBCHG      = [F:ZDD]NB_CHG
+    [M:ZDEP0]ZNBCLTCHG   = [F:ZDD]NB_CLTCHG
+    [M:ZDEP0]ZNBCHANTIER = [F:ZDD]NB_CHA
+  Endif
+  Affzo[M:ZDEP0]ZNBCHG
+  Affzo[M:ZDEP0]ZNBCLTCHG
+  Affzo[M:ZDEP0]ZNBCHANTIER
+Endif
+#On va maintenant récupérer les informations de tous les clients chargeurs attachés au dépôt
+Effzo [M:ZDEP2]
+Raz [M:ZDEP2]NBLIGDEP
+[M:ZDEP2]NBLIGDEP = 0
+Local Integer WNOL : WNOL = 0
+Chgstl [M:ZDEP2]NBLIGDEP With ""
+For [F:ZAI]ZAI0 Where [F:ZAI]ZDEPOTCLT=[M:ZDEP0]ZDEPNUM #and [F:ZAI]ZACTIF=2 and [F:ZAI]ZINVCOLL<>2 and [F:ZAI]ZDEPOTCLT<>""
+  [M:ZDEP2]CBPCNUM(WNOL)      = [F:ZAI]BPCNUM
+  [M:ZDEP2]CDEPOTCLT(WNOL)    = [F:ZAI]ZDEPOTCLT
+  [M:ZDEP2]CCODCLT(WNOL)      = [F:ZAI]ZCODCLT
+  [M:ZDEP2]CNOMCLT(WNOL)      = [F:ZAI]ZNOMCLT
+  [M:ZDEP2]CSIRET(WNOL)       = [F:ZAI]ZSIRET
+  [M:ZDEP2]CTYPCLCHA(WNOL)    = [F:ZAI]ZTYPCLCHA
+  [M:ZDEP2]CCLTSENSIBLE(WNOL) = [F:ZAI]ZCLTSENSIBLE
+  [M:ZDEP2]CINVCOLL(WNOL)     = [F:ZAI]ZINVCOLL
+  [M:ZDEP2]CNIVDECONS(WNOL)   = [F:ZAI]ZNIVDECONS
+  [M:ZDEP2]CADRESSE(WNOL)     = [F:ZAI]ZADRESSE(0)
+  [M:ZDEP2]CADRESSE2(WNOL)    = [F:ZAI]ZADRESSE(1)
+  [M:ZDEP2]CADRESSE3(WNOL)    = [F:ZAI]ZADRESSE(2)
+  [M:ZDEP2]CTEL(WNOL)         = [F:ZAI]ZTEL
+  [M:ZDEP2]CFAX(WNOL)         = [F:ZAI]ZFAX
+  [M:ZDEP2]CMOB(WNOL)         = [F:ZAI]ZMOB
+  [M:ZDEP2]CPOSCOD(WNOL)      = [F:ZAI]ZPOSCOD
+  [M:ZDEP2]CCITY(WNOL)        = [F:ZAI]ZCITY
+  [M:ZDEP2]CMAIL(WNOL)        = [F:ZAI]ZMAIL
+  [M:ZDEP2]CPAYSISO(WNOL)     = [F:ZAI]ZPAYSISO
+  [M:ZDEP2]CPAYS(WNOL)        = [F:ZAI]ZPAYS
+  [M:ZDEP2]CREGION(WNOL)      = [F:ZAI]ZREGION
+  [M:ZDEP2]CASST(WNOL)        = [F:ZAI]ZASST
+  [M:ZDEP2]CREPDS(WNOL)       = [F:ZAI]ZREPDS
+  [M:ZDEP2]CTYPCL(WNOL)       = [F:ZAI]ZTYPCL
+  [M:ZDEP2]CANCCODCLT(WNOL)   = [F:ZAI]ZANCCODCLT
+  [M:ZDEP2]CCODCLTREG(WNOL)   = [F:ZAI]ZCODCLTREG
+  [M:ZDEP2]CSECT(WNOL)        = [F:ZAI]ZSECT
+  [M:ZDEP2]CSTATCLT(WNOL)     = [F:ZAI]ZSTATCLT
+  [M:ZDEP2]CGROUPE(WNOL)      = [F:ZAI]ZGROUPE
+  [M:ZDEP2]CRGTCODCOM(WNOL)   = [F:ZAI]ZRGTCODCOM
+  [M:ZDEP2]CRGTNOMCOM(WNOL)   = [F:ZAI]ZRGTNOMCOM
+  [M:ZDEP2]CRGTCODFIN(WNOL)   = [F:ZAI]ZRGTCODFIN
+  [M:ZDEP2]CRGTNOMFIN(WNOL)   = [F:ZAI]ZRGTNOMFIN
+  [M:ZDEP2]CTRIFR(WNOL)       = [F:ZAI]ZTRIFR
+  [M:ZDEP2]CTRIADR(WNOL)      = [F:ZAI]ZTRIADR
+  [M:ZDEP2]CREPEPI(WNOL)      = [F:ZAI]ZREPEPI
+  If([F:ZAI]ZACTIF<>2)Then
+    Chgstl [M:ZDEP2]NBLIGDEP(WNOL) With "BACKRED"
+  Else
+    If([F:ZAI]ZINVCOLL=2)Then
+      Chgstl [M:ZDEP2]NBLIGDEP(WNOL) With "BACKORANGE"
+    Endif
+  Endif
+  WNOL += 1
+  [M:ZDEP2]NBLIGDEP += 1
+  Affzo [M:ZDEP2]NBLIGDEP
+Next
+[M:ZDEP2]NBLIGDEP = WNOL
+Affzo [M:ZDEP2]
+#On va maintenant récupérer les informations de tous les chantiers attachés au dépôt
+Effzo [M:ZDEP3]
+Raz [M:ZDEP3]NBLIGCHA
+[M:ZDEP3]NBLIGCHA = 0
+Local Integer WNOL : WNOL = 0
+Chgstl [M:ZDEP3]NBLIGCHA With ""
+For [F:ZCHA]ZCHA0 Where [F:ZCHA]ZDEPNUM=[M:ZDEP0]ZDEPNUM
+  [M:ZDEP3]WCHANUM(WNOL)      = [F:ZCHA]ZCHANUM
+  [M:ZDEP3]WCHANAM(WNOL)      = [F:ZCHA]ZCHANAM
+  [M:ZDEP3]WADRESSE(WNOL)     = [F:ZCHA]ZADRESSE(0)
+  [M:ZDEP3]WADRESSE2(WNOL)    = [F:ZCHA]ZADRESSE(1)
+  [M:ZDEP3]WADRESSE3(WNOL)    = [F:ZCHA]ZADRESSE(2)
+  [M:ZDEP3]WTEL(WNOL)         = [F:ZCHA]ZTEL
+  [M:ZDEP3]WFAX(WNOL)         = [F:ZCHA]ZFAX
+  [M:ZDEP3]WMOB(WNOL)         = [F:ZCHA]ZMOB
+  [M:ZDEP3]WPOSCOD(WNOL)      = [F:ZCHA]ZPOSCOD
+  [M:ZDEP3]WCITY(WNOL)        = [F:ZCHA]ZCITY
+  [M:ZDEP3]WMAIL(WNOL)        = [F:ZCHA]ZMAIL
+  [M:ZDEP3]WPAYSISO(WNOL)     = [F:ZCHA]ZPAYSISO
+  [M:ZDEP3]WPAYS(WNOL)        = [F:ZCHA]ZPAYS
+  [M:ZDEP3]WINFOCONTACT(WNOL) = [F:ZCHA]ZINFOCONTACT
+  If([F:ZCHA]ZACTIF<>2)Then
+    Chgstl [M:ZDEP3]NBLIGCHA(WNOL) With "BACKRED"
+  Endif
+  WNOL += 1
+  [M:ZDEP3]NBLIGCHA += 1
+  Affzo [M:ZDEP3]NBLIGCHA
+Next
+[M:ZDEP3]NBLIGCHA = WNOL
+Affzo [M:ZDEP3]
+#Dans le cas où l'utilisateur a choisit un pays, on se positionne sur la fiche du pays
+If([M:ZDEP1]ZPAYSISO<>"")Then
+  Read[F:TCY]TCY0=[M:ZDEP1]ZPAYSISO
+  If(fstat<>0)Then
+    Grizo[M:ZDEP1]ZSIRET
+  Else
+    Actzo[M:ZDEP1]ZSIRET
+  Endif
+Endif
+Return
+
+$INICRE
+Local Integer WSTAT, WNOL
+Local Char WYPSNUM(15)
+#On affecte un code en automatique uniquement si l'utilisateur n'a pas renseigné de code dépôt
+If([M:ZDEP0]ZDEPNUM="")Then
+  Call NUMERO("ZDEP","",date$,"",WYPSNUM,WSTAT) From SUBANM
+  If GOK<0 : Return : Endif
+  If WSTAT=0
+      [M:ZDEP0]ZDEPNUM = WYPSNUM
+      [F:ZDPO]ZDEPNUM = WYPSNUM
+      Affzo [M:ZDEP0]ZDEPNUM
+  Else
+      GERR=1
+      GMESSAGE=mess(60,199,1)
+      GOK=0
+      Return
+  Endif
+Endif
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           SUBPROGS                                                #
+#---------------------------------------------------------------------------------------------------#
+
+Subprog AS_NBLIGDEP
+Effzo[M:ZDEP2]10
+Local Integer WNOL : WNOL = nolign-1
+[M:ZDEP2]XBPCNUM      = [M:ZDEP2]CBPCNUM(WNOL)
+[M:ZDEP2]XZDEPOTCLT   = [M:ZDEP2]CDEPOTCLT(WNOL)
+[M:ZDEP2]XZCODCLT     = [M:ZDEP2]CCODCLT(WNOL)
+[M:ZDEP2]XZNOMCLT     = [M:ZDEP2]CNOMCLT(WNOL)
+[M:ZDEP2]XZSIRET      = [M:ZDEP2]CSIRET(WNOL)
+[M:ZDEP2]XZTYPCLCHA   = [M:ZDEP2]CTYPCLCHA(WNOL)
+[M:ZDEP2]XZCLTSENSIBL = [M:ZDEP2]CCLTSENSIBLE(WNOL)
+[M:ZDEP2]XZINVCOLL    = [M:ZDEP2]CINVCOLL(WNOL)
+[M:ZDEP2]XZNIVDECONS  = [M:ZDEP2]CNIVDECONS(WNOL)
+[M:ZDEP2]XZADRESSE(0) = [M:ZDEP2]CADRESSE(WNOL)
+[M:ZDEP2]XZADRESSE(1) = [M:ZDEP2]CADRESSE2(WNOL)
+[M:ZDEP2]XZADRESSE(2) = [M:ZDEP2]CADRESSE3(WNOL)
+[M:ZDEP2]XZTEL        = [M:ZDEP2]CTEL(WNOL)
+[M:ZDEP2]XZFAX        = [M:ZDEP2]CFAX(WNOL)
+[M:ZDEP2]XZMOB        = [M:ZDEP2]CMOB(WNOL)
+[M:ZDEP2]XZPOSCOD     = [M:ZDEP2]CPOSCOD(WNOL)
+[M:ZDEP2]XZCITY       = [M:ZDEP2]CCITY(WNOL)
+[M:ZDEP2]XZMAIL       = [M:ZDEP2]CMAIL(WNOL)
+[M:ZDEP2]XZPAYSISO    = [M:ZDEP2]CPAYSISO(WNOL)
+[M:ZDEP2]XZPAYS       = [M:ZDEP2]CPAYS(WNOL)
+[M:ZDEP2]XZREGION     = [M:ZDEP2]CREGION(WNOL)
+[M:ZDEP2]XZASST       = [M:ZDEP2]CASST(WNOL)
+[M:ZDEP2]XZREPDS      = [M:ZDEP2]CREPDS(WNOL)
+[M:ZDEP2]XZTYPCL      = [M:ZDEP2]CTYPCL(WNOL)
+[M:ZDEP2]XZANCCODCLT  = [M:ZDEP2]CANCCODCLT(WNOL)
+[M:ZDEP2]XZCODCLTREG  = [M:ZDEP2]CCODCLTREG(WNOL)
+[M:ZDEP2]XZSECT       = [M:ZDEP2]CSECT(WNOL)
+[M:ZDEP2]XZSTATCLT    = [M:ZDEP2]CSTATCLT(WNOL)
+[M:ZDEP2]XZGROUPE     = [M:ZDEP2]CGROUPE(WNOL)
+[M:ZDEP2]XZRGTCODCOM  = [M:ZDEP2]CRGTCODCOM(WNOL)
+[M:ZDEP2]XZRGTNOMCOM  = [M:ZDEP2]CRGTNOMCOM(WNOL)
+[M:ZDEP2]XZRGTCODFIN  = [M:ZDEP2]CRGTCODFIN(WNOL)
+[M:ZDEP2]XZRGTNOMFIN  = [M:ZDEP2]CRGTNOMFIN(WNOL)
+[M:ZDEP2]XZTRIFR      = [M:ZDEP2]CTRIFR(WNOL)
+[M:ZDEP2]XZTRIADR     = [M:ZDEP2]CTRIADR(WNOL)
+[M:ZDEP2]XZREPEPI     = [M:ZDEP2]CREPEPI(WNOL)
+Affzo[M:ZDEP2]10
+End
+
+Subprog AS_NBLIGCHA
+Effzo[M:ZDEP3]10
+Local Integer WNOL : WNOL = nolign-1
+[M:ZDEP3]YZCHANUM     = [M:ZDEP3]WCHANUM(WNOL)
+[M:ZDEP3]YZCHANAM     = [M:ZDEP3]WCHANAM(WNOL)
+[M:ZDEP3]YZADRESSE(0) = [M:ZDEP3]WADRESSE(WNOL)
+[M:ZDEP3]YZADRESSE(1) = [M:ZDEP3]WADRESSE2(WNOL)
+[M:ZDEP3]YZADRESSE(2) = [M:ZDEP3]WADRESSE3(WNOL)
+[M:ZDEP3]YZTEL        = [M:ZDEP3]WTEL(WNOL)
+[M:ZDEP3]YZFAX        = [M:ZDEP3]WFAX(WNOL)
+[M:ZDEP3]YZMOB        = [M:ZDEP3]WMOB(WNOL)
+[M:ZDEP3]YZPOSCOD     = [M:ZDEP3]WPOSCOD(WNOL)
+[M:ZDEP3]YZCITY       = [M:ZDEP3]WCITY(WNOL)
+[M:ZDEP3]YZMAIL       = [M:ZDEP3]WMAIL(WNOL)
+[M:ZDEP3]YZPAYSISO    = [M:ZDEP3]WPAYSISO(WNOL)
+[M:ZDEP3]YZPAYS       = [M:ZDEP3]WPAYS(WNOL)
+[M:ZDEP3]YZINFOCONTAC = [M:ZDEP3]WINFOCONTACT(WNOL)
+Affzo[M:ZDEP3]10
+End
+
+Subprog AM_ZPAYSISO(VALEUR)
+Variable Char    VALEUR()
+#Dans le cas où l'utilisateur a choisit un pays, on se positionne sur la fiche du pays
+If(VALEUR<>"")Then
+  Read[F:TCY]TCY0=VALEUR
+  If(fstat<>0)Then
+    Grizo[M:ZDEP1]ZSIRET
+    [M:ZDEP1]ZPAYS = ""
+  Else
+    Actzo[M:ZDEP1]ZSIRET
+    Read[F:AXX]AXX0="TABCOUNTRY";"CRYDES";"FRA";VALEUR;""
+    If(fstat=0)Then
+      [M:ZDEP1]ZPAYS = toupper([F:AXX]TEXTE)
+    Else
+      [M:ZDEP1]ZPAYS = ""
+    Endif
+  Endif
+  Affzo [M:ZDEP1]ZPAYS
+Endif
+End

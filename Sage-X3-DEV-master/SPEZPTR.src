@@ -1,0 +1,145 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### SPEZPTR
+##################################################### créé le 27/09/2019
+##################################################### modifié le 27/09/2019
+
+$ACTION
+#infbox ACTION
+Case ACTION
+  When "OUVRE" : Gosub OUVRE
+  When "DEBUT" : Gosub DEBUT
+  When "OK"    : Gosub OK
+Endcase
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           LABELS                                                  #
+#---------------------------------------------------------------------------------------------------#
+
+######################################################################### OUVRE
+$OUVRE
+If clalev([F:ZPTR])=0  : Local File ZPARAMTRSF  [F:ZPTR] : Endif
+If clalev([F:ITM])=0   : Local File ITMMASTER   [F:ITM]  : Endif
+Return
+
+######################################################################### DEBUT
+$DEBUT
+[M:ZPTR0]ZATNUM       = PARAM(1)
+[M:ZPTR0]ZCODCHARG    = PARAM(2)
+[M:ZPTR0]ZARTTRI      = PARAM(3)
+Affzo [M:ZPTR0]5
+#On va maintenant récupérer les enregistrements dans la table concernant l'article de prestation
+Effzo [M:ZPTR0]10
+Raz [M:ZPTR0]NBLIG
+For[F:ZPTR]ZPTR0 Where [F:ZPTR]ZATNUM=[M:ZPTR0]ZATNUM
+  [M:ZPTR0]ITMEN([M:ZPTR0]NBLIG)      = [F:ZPTR]ITMEN
+  Read[F:ITM]ITM0=[F:ZPTR]ITMEN
+  If(fstat=0)Then
+    [M:ZPTR0]ITMDES([M:ZPTR0]NBLIG)   = [F:ITM]ITMDES1
+  Endif
+  [M:ZPTR0]ZCOEFTRANS([M:ZPTR0]NBLIG) = [F:ZPTR]ZCOEFTRANS
+  [M:ZPTR0]NBLIG += 1
+Next
+Affzo [M:ZPTR0]10
+[M:ZPTR0]ZINFO  = "Le coefficient sert à indiquer la quantité de palette générée au final pour une palette initiale."
+[M:ZPTR0]ZINFO2 = " - Si le coefficient est supérieur à 1, il faut que ce soit un entier."
+[M:ZPTR0]ZINFO3 = " - S'il est inférieur à 1, il faut que 1/Coeff soit également un entier."
+Affzo [M:ZPTR0]15
+Return
+
+######################################################################### OK
+$OK
+#On va sauvegarder les lignes du tableau
+#L'opération va se faire à l'intérieure d'une transaction
+Local Integer WERR : WERR = 0
+Local Integer WNUMLIG : WNUMLIG = 0
+Trbegin [F:ZPTR]
+#On commence par supprimer toute les lignes de la table concernant l'article de tri
+Delete [F:ZPTR] Where [F:ZPTR]ZATNUM=[M:ZPTR0]ZATNUM
+If(fstat=0)Then
+  #On va maintenant parcourir le tableau pour sauvegarder les lignes
+  For WNUMLIG=0 To [M:ZPTR0]NBLIG-1
+    [F:ZPTR]ZATNUM     = [M:ZPTR0]ZATNUM
+    [F:ZPTR]ITMEN      = [M:ZPTR0]ITMEN(WNUMLIG)
+    [F:ZPTR]ZCOEFTRANS = [M:ZPTR0]ZCOEFTRANS(WNUMLIG)
+    Write[F:ZPTR]
+    If(fstat<>0)Then
+      WERR = 1
+      Break
+    Endif
+  Next
+Else
+  WERR = 1
+Endif
+If(WERR=0)Then
+  Commit
+Else
+  Rollback
+  Call ERREUR("Impossible de sauvegarder les lignes !!") From GESECRAN
+Endif
+For WNUMLIG=0 To [M:ZEP3]NBLIGT-1
+  If([M:ZEP3]ZATNUM(WNUMLIG)=[M:ZPTR0]ZATNUM)Then
+    [M:ZEP3]ZSPECIFTRA(WNUMLIG) = func SPEZEPI.SPE_GET_SPECIF_TRANSF([M:ZPTR0]ZATNUM)
+    Affzo [M:ZEP3]ZSPECIFTRA(WNUMLIG)
+    Break
+  Endif
+Next
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           SUBPROGS                                                #
+#---------------------------------------------------------------------------------------------------#
+
+Subprog C_ITMEN(VALEUR)
+Variable Char    VALEUR()
+##On va controler que l'article saisi par l'utilisateur se trouve dans la vue ZSELARTTRI
+#If(VALEUR<>[M:ZPTR0]ZARTTRI)Then
+#  If clalev([F:ZSART])=0 : Local File ZSELARTTRI [F:ZSART] : Endif
+#  Read[F:ZSART]ZSART=[M:ZPTR0]ZCODCHARG;VALEUR
+#  If(fstat<>0)Then
+#    GMESSAGE = "Impossible ! Cet article n'est pas un article de tri du chargeur " + [M:ZPTR0]ZCODCHARG
+#    mkstat = 2
+#  Endif
+#Else
+#  GMESSAGE = "Vous ne pouvez pas choisir cet article."
+#  mkstat = 2
+#Endif
+End
+
+Subprog AM_ITMEN(VALEUR)
+Variable Char    VALEUR()
+#On va mettre à jour la désignation de l'article
+Local Integer WNOL : NOL = nolign-1
+[M:ZPTR0]ITMDES(WNOL) = ""
+If(VALEUR<>"")Then
+  Read[F:ITM]ITM0=VALEUR
+  If(fstat=0)Then
+    [M:ZPTR0]ITMDES(WNOL) = [F:ITM]ITMDES1
+  Endif
+Endif
+Affzo [M:ZPTR0]ITMDES(WNOL)
+End
+
+Subprog C_ZCOEFTRANS(VALEUR)
+Variable Decimal VALEUR
+Local Decimal WRESULT
+#On va controler le coefficient de transformation.
+#3 cas sont autorisés
+# - Le coefficent vaut 1 (cas le plus fréquent)
+# - Le coefficient est supérieur à 1. Dans ce cas, le coefficient est forcément un entier. Ca n'a pas de sens de faire 1.5 pal B à patir d'une pal A
+# - Le coefficient est inférieur à 1. Dans ce cas, il faut que 1/coeff soit un entier. Exemple :
+# avec 2 palettes A, on fait 1 palette B. Dans ce cas le coeff vaut 0.5
+If(VALEUR>1)Then
+  If(int(VALEUR)<>VALEUR)Then
+    GMESSAGE = "Impossible ! Le coefficient doit forcément être un entier."
+    mkstat = 2
+  Endif
+Endif
+If(VALEUR<1)Then
+  WRESULT = ar2(1/VALEUR)
+  If(int(WRESULT)<>WRESULT)Then
+    GMESSAGE = "Impossible ! La valeur (1/coeff) doit forcément être un entier."
+    mkstat = 2
+  Endif
+Endif
+End

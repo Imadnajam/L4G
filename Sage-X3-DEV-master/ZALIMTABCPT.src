@@ -1,0 +1,21 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+#On va alimenter la table de comptage ZALIMTABCPT
+If clalev([F:ZTABCPT])=0 : Local File ZTABCPT [ZTABCPT] : Endif
+Local Integer WNUMLIG
+Local Integer WERR : WERR = 0
+Trbegin [F:ZTABCPT]
+For WNUMLIG=1 To 20000
+  Raz[F:ZTABCPT]
+  [F:ZTABCPT]COMPTAGE=WNUMLIG
+  Write[F:ZTABCPT]
+  If(fstat<>0)Then
+    WERR = 1
+    Break
+  Endif
+Next WNUMLIG
+If(WERR=0)Then
+  Commit
+Else
+  Rollback
+Endif
+

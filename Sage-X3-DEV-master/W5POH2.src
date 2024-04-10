@@ -1,0 +1,423 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+# Superviseur
+# Gestion du masque POH2 
+
+$_AFF
+If GIMPORT
+ Gosub AFF From GSAISIE
+Else
+ If GMESSAGE <>""
+  Gosub ERR From GSAISIE
+ Else
+  Raz GERR , GZNUM
+ Endif
+Endif
+Return
+
+$ON_ZCTTRP
+Onevent BEFORE_INPUT Call AS_ZCTTRP(zc) From W5POH2
+Return
+
+Subprog AS_ZCTTRP(VALEUR)
+Variable Decimal VALEUR
+Local Integer INDIC : INDIC = indice
+Raz mkstat
+If !([M]ZTYPCOM=2 and [M]ZLLD=3 and (GFLAG="LOG" or GFLAG="DEC" or GFLAG="SER"))
+ Affzo ZCTTRP : mkstat = 2
+Endif
+If !mkstat
+Endif
+Gosub _AFF
+End
+
+$ON_ORDRE
+Onevent BEFORE_INPUT Call AS_ORDRE(zc) From W5POH2
+Onevent CONTROL Call C_ORDRE(zc) From W5POH2
+Onevent AFTER_CHANGE Gosub AMM_ORDRE From W5POH2
+Return
+
+Subprog AS_ORDRE(VALEUR)
+Variable Decimal VALEUR
+Local Integer INDIC : INDIC = indice
+Raz mkstat
+## Action SPE
+Call AS_ORDRE(VALEUR) From SPEPOH
+If mkstat=2
+ [M]ORDRE(INDIC) = VALEUR
+ Affzo ORDRE(INDIC) : mkstat = 2
+Endif
+Gosub _AFF
+End
+
+Subprog C_ORDRE(VALEUR)
+Variable Decimal VALEUR
+## Action %OBLIG
+If VALEUR=0
+ mkstat = 1 : GMESSAGE = mess(10,123,1)
+Endif
+If mkstat : GERR = 1 : GZONE = "ORDRE" : GZNUM = 5626 : Endif
+If !mkstat
+ ## Action SPE
+ Call C_ORDRE(VALEUR) From SPEPOH
+ If mkstat : GERR = 1 : GZONE = "ORDRE" : GZNUM = 5626 : Endif
+Endif
+Gosub _AFF
+End
+
+$AMM_ORDRE
+Call AM_ORDRE(zc)
+If !mkstat & GOBJET
+ zoncou = "ORDRE" : Gosub APRES_MODIF From =GPROGRAMME
+Endif
+Return
+
+Subprog AM_ORDRE(VALEUR)
+Variable Decimal VALEUR
+## Action SPE
+Call AM_ORDRE(VALEUR) From SPEPOH
+If mkstat : GERR = 1 : GZONE = "ORDRE" : GZNUM = 5626 : Endif
+Gosub _AFF
+End
+
+$ON_ZQTYTRSP
+Onevent BEFORE_AREA Gosub AV_ZQTYTRSP From W5POH2
+Return
+
+$AV_ZQTYTRSP
+If !GWEBSERV
+ ## Action FMTQTY
+ GUNTFMT="15F" : GUNTFMT = GUNTFMT1(max(find("",GUNITE(1..GNBUNT)),1))
+Endif
+Chgfmt [M]ZQTYTRSP(indice) With "Nz:"+GUNTFMT
+Gosub _AFF
+Return
+
+$ON_ZDATETRSP
+Onevent BEFORE_INPUT Call AS_ZDATETRSP(zc) From W5POH2
+Onevent CONTROL Call C_ZDATETRSP(zc) From W5POH2
+Onevent BEFORE_AREA Gosub AV_ZDATETRSP From W5POH2
+Return
+
+$AV_ZDATETRSP
+Chgfmt [M]ZDATETRSP(indice) With "D:"+GFMDAT
+Gosub _AFF
+Return
+
+Subprog AS_ZDATETRSP(VALEUR)
+Variable Date    VALEUR
+Local Integer INDIC : INDIC = indice
+Raz mkstat
+## Action SPE
+Call AS_ZDATETRSP(VALEUR) From SPEPOH
+If mkstat=2
+ [M]ZDATETRSP(INDIC) = VALEUR
+ Affzo ZDATETRSP(INDIC) : mkstat = 2
+Endif
+Gosub _AFF
+End
+
+Subprog C_ZDATETRSP(VALEUR)
+Variable Date    VALEUR
+## Action %OBLIG
+If VALEUR=[0/0/0]
+ mkstat = 1 : GMESSAGE = mess(10,123,1)
+Endif
+If mkstat : GERR = 1 : GZONE = "ZDATETRSP" : GZNUM = 212 : Endif
+Gosub _AFF
+End
+
+$ON_TYPETRSP
+Onevent AFTER_CHANGE Gosub AMM_TYPETRSP From W5POH2
+Onevent INIT_AREA Call D_TYPETRSP(zc) From W5POH2
+Onevent BEFORE_INPUT Call AS_TYPETRSP(zc) From W5POH2
+Onevent CONTROL Call C_TYPETRSP(zc) From W5POH2
+Return
+
+Subprog D_TYPETRSP(VALEUR)
+Variable Integer VALEUR
+If varinit([M]TYPETRSP,indice)=0
+ VALEUR = 1
+Endif
+Gosub _AFF
+End
+
+Subprog AS_TYPETRSP(VALEUR)
+Variable Integer VALEUR
+Local Integer INDIC : INDIC = indice
+Raz mkstat
+If VALEUR<1
+ VALEUR = 1
+Endif
+Gosub _AFF
+End
+
+Subprog C_TYPETRSP(VALEUR)
+Variable Integer VALEUR
+## Action %OBLIG
+If VALEUR=0
+ mkstat = 1 : GMESSAGE = mess(10,123,1)
+Endif
+If mkstat : GERR = 1 : GZONE = "TYPETRSP" : GZNUM = 53767 : Endif
+Gosub _AFF
+End
+
+$AMM_TYPETRSP
+Call AM_TYPETRSP(zc)
+If !mkstat & GOBJET
+ zoncou = "TYPETRSP" : Gosub APRES_MODIF From =GPROGRAMME
+Endif
+Return
+
+Subprog AM_TYPETRSP(VALEUR)
+Variable Integer VALEUR
+## Action SPE
+Call AM_TYPETRSP(VALEUR) From SPEPOH
+If mkstat : GERR = 1 : GZONE = "TYPETRSP" : GZNUM = 53767 : Endif
+Gosub _AFF
+End
+
+$ON_CODE
+Onevent CONTROL Call C_CODE(zc) From W5POH2
+Onevent AFTER_CHANGE Gosub AMM_CODE From W5POH2
+Onevent BEFORE_INPUT Call AS_CODE(zc) From W5POH2
+Return
+
+Subprog AS_CODE(VALEUR)
+Variable Char    VALEUR()
+Local Integer INDIC : INDIC = indice
+Raz mkstat
+Call TEXTE(6028,GBOUTS) From OBJDIV
+Onkey   2 Titled GBOUTS Call S_CODE(zc) From W5POH2
+Gosub _AFF
+End
+
+Subprog C_CODE(VALEUR)
+Variable Char    VALEUR()
+## Action %OBLIG
+If vireblc(VALEUR,2)=""
+ mkstat = 1 : GMESSAGE = mess(10,123,1)
+Endif
+If mkstat : GERR = 1 : GZONE = "CODE" : GZNUM = 5296 : Endif
+If !GWEBSERV
+ If !mkstat
+  ## Action SPE
+  Call C_CODE(VALEUR) From SPEPOH
+  If mkstat : GERR = 1 : GZONE = "CODE" : GZNUM = 5296 : Endif
+ Endif
+Endif
+Gosub _AFF
+End
+
+$AMM_CODE
+Call AM_CODE(zc)
+If !mkstat & GOBJET
+ zoncou = "CODE" : Gosub APRES_MODIF From =GPROGRAMME
+Endif
+Return
+
+Subprog AM_CODE(VALEUR)
+Variable Char    VALEUR()
+## Action SPE
+Call AM_CODE(VALEUR) From SPEPOH
+If mkstat : GERR = 1 : GZONE = "CODE" : GZNUM = 5296 : Endif
+Gosub _AFF
+End
+
+Subprog S_CODE(VALEUR)
+Variable Char    VALEUR()
+If !GWEBSERV
+ ## Action ZSELBPSAF
+ Local Char    PARMSK(250)(1..20) , SAVACT(20)
+ SAVACT = GACTION : GACTION = "ZSELBPSAF"
+ Local Char ACTION(20), PROGSUB(GLONADC), PROGSPE(GLONADC), PROGSPV(GLONADC)
+ ACTION = "AS_CODE" : PROGSUB = "SUBPOH" : PROGSPE = "SPEPOH" : PROGSPV = ""
+ Gosub ACTSUB From GOBJSUB
+ PARMSK(1) = "ENAFLG=2 and TSSCOD<>'CPT' and BETFCY<>2"
+ Call S_TAB_CHAR(VALEUR,PARMSK,"","","ZSELBPSAF") From GACTION
+ ACTION = "BS_CODE" : PROGSUB = "SUBPOH" : PROGSPE = "SPEPOH" : PROGSPV = ""
+ Gosub ACTSUB From GOBJSUB
+ GACTION = SAVACT
+Endif
+Gosub _AFF
+End
+
+$ON_BPAADD
+Onevent BEFORE_INPUT Call AS_BPAADD(zc) From W5POH2
+Onevent CONTROL Call C_BPAADD(zc) From W5POH2
+Onevent AFTER_CHANGE Gosub AMM_BPAADD From W5POH2
+Return
+
+Subprog AS_BPAADD(VALEUR)
+Variable Char    VALEUR()
+Local Integer INDIC : INDIC = indice
+Raz mkstat
+Call TEXTE(6028,GBOUTS) From OBJDIV
+## Action SPE
+Call AS_BPAADD(VALEUR) From SPEPOH
+If mkstat=2
+ [M]BPAADD(INDIC) = VALEUR
+ Affzo BPAADD(INDIC) : mkstat = 2
+Endif
+Onkey   2 Titled GBOUTS Call S_BPAADD(zc) From W5POH2
+Gosub _AFF
+End
+
+Subprog C_BPAADD(VALEUR)
+Variable Char    VALEUR()
+## Action %OBLIG
+If vireblc(VALEUR,2)=""
+ mkstat = 1 : GMESSAGE = mess(10,123,1)
+Endif
+If mkstat : GERR = 1 : GZONE = "BPAADD" : GZNUM = 103795 : Endif
+If !mkstat
+ ## Action SPE
+ Call C_BPAADD(VALEUR) From SPEPOH
+ If mkstat : GERR = 1 : GZONE = "BPAADD" : GZNUM = 103795 : Endif
+Endif
+Gosub _AFF
+End
+
+$AMM_BPAADD
+Call AM_BPAADD(zc)
+If !mkstat & GOBJET
+ zoncou = "BPAADD" : Gosub APRES_MODIF From =GPROGRAMME
+Endif
+Return
+
+Subprog AM_BPAADD(VALEUR)
+Variable Char    VALEUR()
+## Action SPE
+Call AM_BPAADD(VALEUR) From SPEPOH
+If mkstat : GERR = 1 : GZONE = "BPAADD" : GZNUM = 103795 : Endif
+Gosub _AFF
+End
+
+Subprog S_BPAADD(VALEUR)
+Variable Char    VALEUR()
+If !GWEBSERV
+ ## Action SPE
+ Call S_BPAADD(VALEUR) From SPEPOH
+Endif
+Gosub _AFF
+End
+
+$TIT_COL
+Local Char TITCL(200)(1..35)
+Raz TITCL
+Case BASPAG
+ When "NBLIG"
+  TITCL(1) = GCOLREM(0)
+  TITCL(2) = GCOLREM(1)
+  TITCL(3) = GCOLREM(2)
+  TITCL(4) = GCOLREM(3)
+  TITCL(5) = GCOLREM(4)
+  TITCL(6) = GCOLCOA(1)
+  TITCL(7) = GCOLCOA(2)
+  TITCL(8) = GCOLCOA(3)
+  TITCL(9) = GCOLCOA(4)
+  TITCL(10) = GCOLCOA(5)
+  TITCL(11) = GCOLCOA(6)
+  TITCL(12) = GCOLCOA(7)
+  TITCL(13) = GCOLCOA(8)
+  TITCL(14) = GCOLCOA(9)
+  TITCL(15) = GCOLCOA(10)
+  TITCL(16) = GCOLDIE(1)
+  TITCL(17) = GCOLDIE(2)
+  TITCL(18) = GCOLDIE(3)
+  TITCL(19) = GCOLDIE(4)
+  TITCL(20) = GCOLDIE(5)
+  TITCL(21) = GCOLDIE(6)
+  TITCL(22) = GCOLDIE(7)
+  TITCL(23) = GCOLDIE(8)
+  TITCL(24) = GCOLDIE(9)
+  TITCL(25) = GCOLDIE(10)
+  TITCL(26) = GCOLDIE(11)
+  TITCL(27) = GCOLDIE(12)
+  TITCL(28) = GCOLDIE(13)
+  TITCL(29) = GCOLDIE(14)
+  TITCL(30) = GCOLDIE(15)
+  TITCL(31) = GCOLDIE(16)
+  TITCL(32) = GCOLDIE(17)
+  TITCL(33) = GCOLDIE(18)
+  TITCL(34) = GCOLDIE(19)
+  TITCL(35) = GCOLDIE(20)
+  If !GORITITCOL
+   Titcol [M]NBLIG TITCL(1) For DISCRGVAL1
+   Titcol [M]NBLIG TITCL(2) For DISCRGVAL2
+   Titcol [M]NBLIG TITCL(3) For DISCRGVAL3
+   Titcol [M]NBLIG TITCL(4) For DISCRGVAL4
+   Titcol [M]NBLIG TITCL(5) For DISCRGVAL5
+   Titcol [M]NBLIG TITCL(6) For LINACC1
+   Titcol [M]NBLIG TITCL(7) For LINACC2
+   Titcol [M]NBLIG TITCL(8) For LINACC3
+   Titcol [M]NBLIG TITCL(9) For LINACC4
+   Titcol [M]NBLIG TITCL(10) For LINACC5
+   Titcol [M]NBLIG TITCL(11) For LINACC6
+   Titcol [M]NBLIG TITCL(12) For LINACC7
+   Titcol [M]NBLIG TITCL(13) For LINACC8
+   Titcol [M]NBLIG TITCL(14) For LINACC9
+   Titcol [M]NBLIG TITCL(15) For LINACC10
+   Titcol [M]NBLIG TITCL(16) For CCE1
+   Titcol [M]NBLIG TITCL(17) For CCE2
+   Titcol [M]NBLIG TITCL(18) For CCE3
+   Titcol [M]NBLIG TITCL(19) For CCE4
+   Titcol [M]NBLIG TITCL(20) For CCE5
+   Titcol [M]NBLIG TITCL(21) For CCE6
+   Titcol [M]NBLIG TITCL(22) For CCE7
+   Titcol [M]NBLIG TITCL(23) For CCE8
+   Titcol [M]NBLIG TITCL(24) For CCE9
+   Titcol [M]NBLIG TITCL(25) For CCE10
+   Titcol [M]NBLIG TITCL(26) For CCE11
+   Titcol [M]NBLIG TITCL(27) For CCE12
+   Titcol [M]NBLIG TITCL(28) For CCE13
+   Titcol [M]NBLIG TITCL(29) For CCE14
+   Titcol [M]NBLIG TITCL(30) For CCE15
+   Titcol [M]NBLIG TITCL(31) For CCE16
+   Titcol [M]NBLIG TITCL(32) For CCE17
+   Titcol [M]NBLIG TITCL(33) For CCE18
+   Titcol [M]NBLIG TITCL(34) For CCE19
+   Titcol [M]NBLIG TITCL(35) For CCE20
+  Else
+   Titcol [M:POH2]NBLIG TITCL(1) For DISCRGVAL1
+   Titcol [M:POH2]NBLIG TITCL(2) For DISCRGVAL2
+   Titcol [M:POH2]NBLIG TITCL(3) For DISCRGVAL3
+   Titcol [M:POH2]NBLIG TITCL(4) For DISCRGVAL4
+   Titcol [M:POH2]NBLIG TITCL(5) For DISCRGVAL5
+   Titcol [M:POH2]NBLIG TITCL(6) For LINACC1
+   Titcol [M:POH2]NBLIG TITCL(7) For LINACC2
+   Titcol [M:POH2]NBLIG TITCL(8) For LINACC3
+   Titcol [M:POH2]NBLIG TITCL(9) For LINACC4
+   Titcol [M:POH2]NBLIG TITCL(10) For LINACC5
+   Titcol [M:POH2]NBLIG TITCL(11) For LINACC6
+   Titcol [M:POH2]NBLIG TITCL(12) For LINACC7
+   Titcol [M:POH2]NBLIG TITCL(13) For LINACC8
+   Titcol [M:POH2]NBLIG TITCL(14) For LINACC9
+   Titcol [M:POH2]NBLIG TITCL(15) For LINACC10
+   Titcol [M:POH2]NBLIG TITCL(16) For CCE1
+   Titcol [M:POH2]NBLIG TITCL(17) For CCE2
+   Titcol [M:POH2]NBLIG TITCL(18) For CCE3
+   Titcol [M:POH2]NBLIG TITCL(19) For CCE4
+   Titcol [M:POH2]NBLIG TITCL(20) For CCE5
+   Titcol [M:POH2]NBLIG TITCL(21) For CCE6
+   Titcol [M:POH2]NBLIG TITCL(22) For CCE7
+   Titcol [M:POH2]NBLIG TITCL(23) For CCE8
+   Titcol [M:POH2]NBLIG TITCL(24) For CCE9
+   Titcol [M:POH2]NBLIG TITCL(25) For CCE10
+   Titcol [M:POH2]NBLIG TITCL(26) For CCE11
+   Titcol [M:POH2]NBLIG TITCL(27) For CCE12
+   Titcol [M:POH2]NBLIG TITCL(28) For CCE13
+   Titcol [M:POH2]NBLIG TITCL(29) For CCE14
+   Titcol [M:POH2]NBLIG TITCL(30) For CCE15
+   Titcol [M:POH2]NBLIG TITCL(31) For CCE16
+   Titcol [M:POH2]NBLIG TITCL(32) For CCE17
+   Titcol [M:POH2]NBLIG TITCL(33) For CCE18
+   Titcol [M:POH2]NBLIG TITCL(34) For CCE19
+   Titcol [M:POH2]NBLIG TITCL(35) For CCE20
+  Endif
+Endcase
+Return
+
+$CHG_STY
+Return
+
+

@@ -1,0 +1,134 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### SPEZDA
+##################################################### créé le 15/10/2019
+##################################################### modifié le 15/10/2019
+
+$ACTION
+#infbox ACTION
+Case ACTION
+  When "OUVRE" : Gosub OUVRE
+  When "DEBUT" : Gosub DEBUT
+  When "OK"    : Gosub OK
+Endcase
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           LABELS                                                  #
+#---------------------------------------------------------------------------------------------------#
+
+######################################################################### OUVRE
+$OUVRE
+If clalev([F:ZSQA])=0 : Local File ZSEQACTION   [F:ZSQA] : Endif
+If clalev([F:ZZHL])=0 : Local File ZZHISTOLIGNE [F:ZZHL] : Endif
+If clalev([F:ZTE])=0  : Local File ZTEMPEPI     [F:ZTE]  : Endif
+Return
+
+######################################################################### DEBUT
+$DEBUT
+Local Char WZACTNUM(30) : WZACTNUM = PARAM(1)
+Effzo[M:ZDA0]
+Raz[M:ZDA0]NBLIGP
+Raz[M:ZDA0]NBLIGD
+Raz[M:ZDA0]NBLIGA
+If(WZACTNUM<>"")Then
+  [M:ZDA0]ZACTNUM   = WZACTNUM
+  Read[F:ZTE]ZTE4=WZACTNUM
+  If(fstat=0)Then
+    [M:ZDA0]ZACTG     = [F:ZTE]ZACT
+    [M:ZDA0]ZDATACT   = [F:ZTE]ZDATACT
+    [M:ZDA0]ZDATEFFET = [F:ZTE]ZDATEFFET
+    [M:ZDA0]ZFCY      = [F:ZTE]ZFCY
+    [M:ZDA0]ZBPCORD   = [F:ZTE]ZBPCORD
+    #For[F:ZTE]ZTE4 Where [F:ZTE]ZACTNUM=WZACTNUM and [F:ZTE]ZBPCORD=[M:Z2AE0]ZBPCORD
+    For[F:ZTE]ZTE4 Where [F:ZTE]ZACTNUM=WZACTNUM and [F:ZTE]ZBPCORD=[M:ZDA0]ZBPCORD
+      [M:ZDA0]AZITMREF([M:ZDA0]NBLIGA)   = [F:ZTE]ZITMREF
+      [M:ZDA0]AZTYPPAL([M:ZDA0]NBLIGA)   = [F:ZTE]ZTYPPAL+1
+      [M:ZDA0]AZQTY([M:ZDA0]NBLIGA)      = [F:ZTE]ZQTY
+      [M:ZDA0]AZCHAUFFEU([M:ZDA0]NBLIGA) = [F:ZTE]ZCHAUFFEUR
+      [M:ZDA0]AZFCYF([M:ZDA0]NBLIGA)     = [F:ZTE]ZFCYF
+      [M:ZDA0]AZBPCORDF([M:ZDA0]NBLIGA)  = [F:ZTE]ZBPCORDF
+      [M:ZDA0]AZBPAADD([M:ZDA0]NBLIGA)   = [F:ZTE]ZBPAADD
+      [M:ZDA0]NBLIGA += 1
+    Next
+  Endif
+Endif
+Affzo[M:ZDA0]
+Return
+
+######################################################################### OK
+$OK
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           SUBPROGS                                                #
+#---------------------------------------------------------------------------------------------------#
+
+Subprog AS_NBLIGA
+Local Integer WNOL : WNOL = nolign-1
+Local Char WZITMREF(30) : WZITMREF = [M:ZDA0]AZITMREF(WNOL)
+Local Integer WZTYPAL   : WZTYPAL  = [M:ZDA0]AZTYPPAL(WNOL)-1
+#L'utilisateur vient de sélectionner une ligne d'action,
+#On va lui afficher toute les palettes utilisées
+Call TEMPON("Veuillez patienter...") From GESECRAN
+Chgstl [M:ZDA0]NBLIGA With ""
+Chgstl [M:ZDA0]NBLIGA(WNOL) With "GDD1G"
+If(WZITMREF<>"")Then
+  Effzo[M:ZDA0]15
+  Raz[M:ZDA0]NBLIGP
+  Effzo[M:ZDA0]20
+  Raz[M:ZDA0]NBLIGD
+  #On va récupérer les lignes de détails de la livraison
+  #Infbox [M:ZDA0]ZACTNUM + "---" + WZITMREF + "---" + num$(WZTYPAL)
+  #<-----Si l'action est un réparation ou une transformation, le typpal réultat est 1
+  If([M:ZDA0]ZACTG=1 or [M:ZDA0]ZACTG=3)Then
+    WZTYPAL = 1
+  Endif
+  #----->
+  For[F:ZSQA]ZSQA0 Where [F:ZSQA]ZACTNUM=[M:ZDA0]ZACTNUM and [F:ZSQA]ZITMREF=WZITMREF and [F:ZSQA]ZTYPAL=WZTYPAL
+    [M:ZDA0]PZACTNUM([M:ZDA0]NBLIGP)   = [F:ZSQA]ZACTNUM
+    [M:ZDA0]PZBPCORD([M:ZDA0]NBLIGP)   = [F:ZSQA]ZBPCORD
+    [M:ZDA0]PZCHAUFFEU([M:ZDA0]NBLIGP) = [F:ZSQA]ZCHAUFFEU
+    [M:ZDA0]PZCODCLT([M:ZDA0]NBLIGP)   = [F:ZSQA]ZCODCLT
+    [M:ZDA0]PZFCY([M:ZDA0]NBLIGP)      = [F:ZSQA]ZFCY
+    [M:ZDA0]PZNOMCLT([M:ZDA0]NBLIGP)   = [F:ZSQA]ZNOMCLT
+    [M:ZDA0]PZPAYSISO([M:ZDA0]NBLIGP)  = [F:ZSQA]ZPAYSISO
+    [M:ZDA0]PZSEQ([M:ZDA0]NBLIGP)      = [F:ZSQA]ZSEQ
+    [M:ZDA0]PZTRPINT([M:ZDA0]NBLIGP)   = [F:ZSQA]ZTRPINT
+    [M:ZDA0]PZITMREF([M:ZDA0]NBLIGP)   = [F:ZSQA]ZITMREF
+    [M:ZDA0]NBLIGP += 1
+  Next
+  Affzo[M:ZDA0]15
+  nolign=1
+  Call AS_NBLIGP
+  Affzo[M:ZDA0]20
+Endif
+Call TEMPOFF From GESECRAN
+End
+
+Subprog AS_NBLIGP
+Local Integer WNOL : WNOL = nolign-1
+Local Char WZSEQ(30) : WZSEQ = [M:ZDA0]PZSEQ(WNOL)
+#L'utilisateur vient de sélectionner une séquence,
+#On va lui afficher tout l'historique de la séquence
+Chgstl [M:ZDA0]NBLIGP With ""
+Chgstl [M:ZDA0]NBLIGP(WNOL) With "GDD1G"
+If(WZSEQ<>"")Then
+  Effzo[M:ZDA0]20
+  Raz[M:ZDA0]NBLIGD
+  #On va récupérer les lignes de détails de la livraison
+  For[F:ZZHL]ZZHL1 Where [F:ZZHL]ZSEQ=WZSEQ
+    [M:ZDA0]DCREUSR([M:ZDA0]NBLIGD)   = [F:ZZHL]CREUSR
+    [M:ZDA0]DZACTG([M:ZDA0]NBLIGD)    = [F:ZZHL]ZACTG
+    [M:ZDA0]DZACTNUM([M:ZDA0]NBLIGD)  = [F:ZZHL]ZACTNUM
+    [M:ZDA0]DZDATACT([M:ZDA0]NBLIGD)  = [F:ZZHL]ZDATACT
+    [M:ZDA0]DZFCY([M:ZDA0]NBLIGD)     = [F:ZZHL]ZFCY
+    [M:ZDA0]DZHEUACT([M:ZDA0]NBLIGD)  = [F:ZZHL]ZHEUACT
+    [M:ZDA0]DZITMREF([M:ZDA0]NBLIGD)  = [F:ZZHL]ZITMREF
+    [M:ZDA0]DZQTY([M:ZDA0]NBLIGD)     = [F:ZZHL]ZQTY
+    [M:ZDA0]DZSEQ([M:ZDA0]NBLIGD)     = [F:ZZHL]ZSEQ
+    [M:ZDA0]DZTYPPAL([M:ZDA0]NBLIGD)  = [F:ZZHL]ZTYPAL
+    [M:ZDA0]NBLIGD += 1
+  Next
+  Affzo[M:ZDA0]20
+Endif
+End

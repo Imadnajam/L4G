@@ -1,0 +1,64 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### ZSELCHAMC
+##################################################### créé le 06/09/2019
+##################################################### modifié le 06/09/2019
+
+###################################################################################### ACTION
+$ACTION
+#Infbox ACTION
+Case ACTION
+  When "SEL_LISTE" : Gosub SEL_LISTE
+Endcase
+Return
+
+###################################################################################### SEL_LISTE
+$SEL_LISTE
+Local Shortint I
+Local Integer WNUMLIG
+Local Integer WINDEXTAB
+Local Char WCHGTRAITE(250) : WCHGTRAITE = ""
+Local Char TEXTE(GLONDES)(1..500,1..3)    #- The dimension is 3, TEXTE needs to be declared
+                                          #- in order To initialize dimension
+#- Titre de la fenêtre
+TIT(0) = "Selection d'un chauffeur"
+#- Titre des colonnes
+TIT(1) = "Nom du chauffeur"
+TIT(2) = "Complément"
+TIT(3) = "Ville"
+
+If clalev([F:ZCE])=0  : Local File ZCHEPI       [F:ZCE]  : Endif
+I=1
+NBTEX=0    #- Nombre de ligne
+For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+  If(instr(1,";" + WCHGTRAITE + ";",";" + [M:ZCMC2]YZCODCHARG(WNUMLIG) + "")=0)Then
+    For [F:ZCE]ZCE1 Where [F:ZCE]ZBPCNUM=[M:ZCMC2]YZCODCHARG(WNUMLIG)
+      #Avant d'ajouter le chauffeur, on va regarder s'il n'existe pas déjà dans la liste
+      Local Integer WADDCHEPI : WADDCHEPI = 0
+      For WINDEXTAB=1 To I-1
+        If(TEXTE(WINDEXTAB,1)=[F:ZCE]ZCHFNAM)Then
+          WADDCHEPI = 1
+          Break
+        Endif
+      Next
+      If(WADDCHEPI=0)Then
+        NBTEX = I
+        TEX(I)     = [F:ZCE]ZCHFNAM    # - Valeur retournée lors de la sélection
+        TEXTE(I,1) = [F:ZCE]ZCHFNAM    # - Valeur de la ligne pour la colonne 1
+        TEXTE(I,2) = [F:ZCE]ZCHNAM2    # - Valeur de la ligne pour la colonne 2
+        TEXTE(I,3) = [F:ZCE]CTY        # - Valeur de la ligne pour la colonne 3
+        I = I+1
+      Endif
+    Next
+    If(WCHGTRAITE="")Then
+      WCHGTRAITE = [M:ZCMC2]YZCODCHARG(WNUMLIG)
+    Else
+      WCHGTRAITE += ";" + [M:ZCMC2]YZCODCHARG(WNUMLIG)
+    Endif
+  Endif
+Next
+If(NBTEX=0)Then
+  GERR = 1
+  GMESSAGE = "Pas d'enregistrement disponible."
+Endif
+Return
+

@@ -1,0 +1,176 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### SPEZDSREL
+##################################################### créé le 26/08/2019
+##################################################### modifié le 26/08/2019
+
+$ACTION
+#infbox ACTION
+Case ACTION
+  When "OUVRE" : Gosub OUVRE
+  When "DEBUT" : Gosub DEBUT
+  When "OK"    : Gosub OK
+Endcase
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           LABELS                                                  #
+#---------------------------------------------------------------------------------------------------#
+
+######################################################################### OUVRE
+$OUVRE
+If clalev([F:ZSREL])=0 : Local File ZSPEREL [ZSREL] : Endif
+Return
+
+######################################################################### DEBUT
+$DEBUT
+[M:ZDSREL]ZARNUM       = PARAM(1)
+[M:ZDSREL]ZCODCHARG    = PARAM(2)
+[M:ZDSREL]ZCODCLTCHARG = PARAM(3)
+Affzo [M:ZDSREL]5
+#On va maintenant récupérer les enregistrements dans la table concernant l'article de prestation
+Effzo [M:ZDSREL]10
+Raz [M:ZDSREL]NBLIG
+For[F:ZSREL]ZSREL0 Where [F:ZSREL]ZARNUM=[M:ZDSREL]ZARNUM and [F:ZSREL]ZCODCHARG=[M:ZDSREL]ZCODCHARG and [F:ZSREL]ZCODCLTCHARG=[M:ZDSREL]ZCODCLTCHARG
+  [M:ZDSREL]ZPAYSCOLL([M:ZDSREL]NBLIG) = [F:ZSREL]ZPAYSCOLL
+  [M:ZDSREL]ZSITECOLL([M:ZDSREL]NBLIG) = [F:ZSREL]ZSITECOLL
+  [M:ZDSREL]ZSITE([M:ZDSREL]NBLIG)     = [F:ZSREL]ZSITE
+  [M:ZDSREL]ZTARIF([M:ZDSREL]NBLIG)    = [F:ZSREL]ZTARIF
+  [M:ZDSREL]ZCLTFOU([M:ZDSREL]NBLIG)   = [F:ZSREL]ZCLTFOU
+  [M:ZDSREL]ZQTYMIN([M:ZDSREL]NBLIG)   = [F:ZSREL]ZQTYMIN
+  [M:ZDSREL]ZQTYMAX([M:ZDSREL]NBLIG)   = [F:ZSREL]ZQTYMAX
+  [M:ZDSREL]ZADRCHARG([M:ZDSREL]NBLIG) = [F:ZSREL]ZADRCHARG
+  [M:ZDSREL]ZTYPPAL([M:ZDSREL]NBLIG)   = [F:ZSREL]ZTYPPAL
+  [M:ZDSREL]ZARTVEN([M:ZDSREL]NBLIG)   = [F:ZSREL]ZARTVEN
+  [M:ZDSREL]ZARTACH([M:ZDSREL]NBLIG)   = [F:ZSREL]ZARTACH
+  [M:ZDSREL]NBLIG += 1
+Next
+Affzo [M:ZDSREL]10
+Return
+
+######################################################################### OK
+$OK
+#On va sauvegarder les lignes du tableau
+#L'opération va se faire à l'intérieure d'une transaction
+Local Integer WERR : WERR = 0
+Local Integer WNUMLIG : WNUMLIG = 0
+Trbegin [F:ZSREL]
+#On commence par supprimer toute les lignes de la table concernant l'article de prestation
+Delete [F:ZSREL] Where [F:ZSREL]ZARNUM=[M:ZDSREL]ZARNUM and [F:ZSREL]ZCODCHARG=[M:ZDSREL]ZCODCHARG and [F:ZSREL]ZCODCLTCHARG=[M:ZDSREL]ZCODCLTCHARG
+If(fstat=0)Then
+  #On va maintenant parcourir le tableau pour sauvegarder les lignes
+  For WNUMLIG=0 To [M:ZDSREL]NBLIG-1
+    [F:ZSREL]ZARNUM       = [M:ZDSREL]ZARNUM
+    [F:ZSREL]ZCODCHARG    = [M:ZDSREL]ZCODCHARG
+    [F:ZSREL]ZCODCLTCHARG = [M:ZDSREL]ZCODCLTCHARG
+    [F:ZSREL]ZSITE        = [M:ZDSREL]ZSITE(WNUMLIG)
+    [F:ZSREL]ZPAYSCOLL    = [M:ZDSREL]ZPAYSCOLL(WNUMLIG)
+    [F:ZSREL]ZSITECOLL    = [M:ZDSREL]ZSITECOLL(WNUMLIG)
+    [F:ZSREL]ZTARIF       = [M:ZDSREL]ZTARIF(WNUMLIG)
+    [F:ZSREL]ZCLTFOU      = [M:ZDSREL]ZCLTFOU(WNUMLIG)
+    [F:ZSREL]ZQTYMIN      = [M:ZDSREL]ZQTYMIN(WNUMLIG)
+    [F:ZSREL]ZQTYMAX      = [M:ZDSREL]ZQTYMAX(WNUMLIG)
+    [F:ZSREL]ZADRCHARG    = [M:ZDSREL]ZADRCHARG(WNUMLIG)
+    [F:ZSREL]ZTYPPAL      = [M:ZDSREL]ZTYPPAL(WNUMLIG)
+    [F:ZSREL]ZARTVEN      = [M:ZDSREL]ZARTVEN(WNUMLIG)
+    [F:ZSREL]ZARTACH      = [M:ZDSREL]ZARTACH(WNUMLIG)
+    Write[F:ZSREL]
+    If(fstat<>0)Then
+      WERR = 1
+      Break
+    Endif
+  Next
+Else
+  WERR = 2
+Endif
+If(WERR=0)Then
+  Commit
+Else
+  Rollback
+  Call ERREUR("Impossible de sauvegarder les lignes !! [Erreur n°" + num$(WERR) + "]") From GESECRAN
+Endif
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           SUBPROGS                                                #
+#---------------------------------------------------------------------------------------------------#
+
+Subprog C_ZPAYS(VALEUR)
+Variable Char    VALEUR()
+#On va controler que la valeur du code pays est bien dans le vue de sélection
+If(VALEUR<>"")Then
+  If clalev([F:ZSCRY])=0 : Local File ZSELCRY [ZSCRY] : Endif
+  Read[F:ZSCRY]ZSCRY0=VALEUR
+  If(fstat<>0)Then
+    mkstat = 2
+    GMESSAGE = "Impossible, ce code pays n'existe pas."
+  Endif
+Endif
+End
+
+Subprog C_ZSITE(VALEUR)
+Variable Char    VALEUR()
+#On va controler que la valeur du site est bien dans le vue de sélection
+If(VALEUR<>"")Then
+  If clalev([F:ZSFCY])=0 : Local File ZSELFCY [ZSFCY] : Endif
+  Read[F:ZSFCY]ZSFCY0=VALEUR
+  If(fstat<>0)Then
+    mkstat = 2
+    GMESSAGE = "Impossible, ce code site n'existe pas."
+  Endif
+Endif
+End
+
+Subprog C_ZCLTFOU(VALEUR)
+Variable Char    VALEUR()
+If(VALEUR<>"")Then
+  If clalev([F:ZDCE])=0 : Local File ZDEPCHARGEPI [ZDCE] : Endif
+  Read[F:ZDCE]ZDCE2=[M:ZDSREL]ZCODCHARG;VALEUR
+  If(fstat<>0)Then
+    mkstat = 2
+    GMESSAGE = "Impossible, ce tiers n'est pas valide."
+  Endif
+Endif
+End
+
+Subprog C_ZADRCHARG(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL = nolign-1
+If(VALEUR<>"")Then
+  If clalev([F:BPD2])=0 : Local File BPDLVCUST [F:BPD2] : Endif
+  Read[F:BPD2]ZBPD0=[M:ZDSREL]ZCLTFOU;VALEUR;2
+  If(fstat<>0)Then
+    mkstat = 2
+    GMESSAGE = "Impossible, cette adresse n'est pas valide."
+  Endif
+Endif
+End
+
+Subprog AM_ZCLTFOU(VALEUR)
+Variable Char    VALEUR()
+End
+
+Subprog C_ZPAYSCOLL(VALEUR)
+Variable Char    VALEUR()
+#On va controler que la valeur du code pays est bien dans le vue de sélection
+If(VALEUR<>"")Then
+  If clalev([F:ZSCRY])=0 : Local File ZSELCRY [ZSCRY] : Endif
+  Read[F:ZSCRY]ZSCRY0=VALEUR
+  If(fstat<>0)Then
+    mkstat = 2
+    GMESSAGE = "Impossible, ce code pays n'existe pas."
+  Endif
+Endif
+End
+
+Subprog C_ZSITECOLL(VALEUR)
+Variable Char    VALEUR()
+#On va controler que la valeur du site est bien dans le vue de sélection
+If(VALEUR<>"")Then
+  If clalev([F:ZSFCY])=0 : Local File ZSELFCY [ZSFCY] : Endif
+  Read[F:ZSFCY]ZSFCY0=VALEUR
+  If(fstat<>0)Then
+    mkstat = 2
+    GMESSAGE = "Impossible, ce code site n'existe pas."
+  Endif
+Endif
+End

@@ -1,0 +1,1178 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+# Superviseur
+# Gestion du masque ZEPALIS 
+
+Subprog SAIMSK(IMPFIC,ACTION,IMPTRT)
+Value Char IMPFIC
+Value Char ACTION
+Value Char IMPTRT
+
+Gosub DEFVAR
+
+####################################
+## Bloc liste 1
+####################################
+IMPTBL = 0
+
+####################################
+## Bloc tableau 2
+####################################
+IMPTBL = 1
+
+## Zone NBLIGC
+mkstat = 0
+zoncou = "NBLIGC"
+indice = 0
+status = 1
+zoncou = "NBLIGC"
+If varmode([M]NBLIGC,indice)=0
+ SAVACT = GACTION : GACTION = "SPE"
+ Call AS_NBLIGC From SPEZEPI
+ GACTION = SAVACT
+ If mkstat=1 : Raz [M]NBLIGC : Endif
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "NBLIGC" : Gosub ACTION From =IMPTRT
+ Endif
+ If !mkstat
+  NBLIG = [M]NBLIGC
+  For nolign=1 To NBLIG
+   indice = nolign-1
+   [M]NBLIGC = nolign
+   status = 75
+   Call SAI_NBLIGC(IMPFIC,ACTION,IMPTRT)
+   If mkstat : Break : Endif
+  Next nolign
+  If mkstat : End : Endif
+  indice = 0
+  If !mkstat
+   SAVACT = GACTION : GACTION = "SPE"
+   Call C_NBLIGC From SPEZEPI
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "NBLIGC" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+  Endif
+ Endif
+Endif
+
+####################################
+## Bloc tableau 3
+####################################
+IMPTBL = 1
+
+## Zone NBLIGPT
+mkstat = 0
+zoncou = "NBLIGPT"
+indice = 0
+status = 1
+zoncou = "NBLIGPT"
+If varmode([M]NBLIGPT,indice)=0
+ SAVACT = GACTION : GACTION = "SPE"
+ Call AS_NBLIGPT From SPEZEPI
+ GACTION = SAVACT
+ If mkstat=1 : Raz [M]NBLIGPT : Endif
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "NBLIGPT" : Gosub ACTION From =IMPTRT
+ Endif
+ If !mkstat
+  NBLIG = [M]NBLIGPT
+  For nolign=1 To NBLIG
+   indice = nolign-1
+   [M]NBLIGPT = nolign
+   status = 75
+   Call SAI_NBLIGPT(IMPFIC,ACTION,IMPTRT)
+   If mkstat : Break : Endif
+  Next nolign
+  If mkstat : End : Endif
+  indice = 0
+  If !mkstat
+   SAVACT = GACTION : GACTION = "SPE"
+   Call C_NBLIGPT From SPEZEPI
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "NBLIGPT" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+  Endif
+ Endif
+Endif
+
+####################################
+## Bloc liste 8
+####################################
+IMPTBL = 0
+
+## Zone ZTRIGESTOK
+mkstat = 0
+zoncou = "ZTRIGESTOK"
+indice = 0
+IMPENT = [M]ZTRIGESTOK
+If varinit([M]ZTRIGESTOK,indice)=0
+ IMPENT = 1
+Endif
+[M]ZTRIGESTOK = IMPENT
+
+## Zone ZTRIGESTKC
+mkstat = 0
+zoncou = "ZTRIGESTKC"
+indice = 0
+IMPENT = [M]ZTRIGESTKC
+If varinit([M]ZTRIGESTKC,indice)=0
+ IMPENT = 1
+Endif
+[M]ZTRIGESTKC = IMPENT
+
+## Zone ZTRIGESTHS
+mkstat = 0
+zoncou = "ZTRIGESTHS"
+indice = 0
+IMPENT = [M]ZTRIGESTHS
+If varinit([M]ZTRIGESTHS,indice)=0
+ IMPENT = 1
+Endif
+[M]ZTRIGESTHS = IMPENT
+
+####################################
+## Bloc tableau 4
+####################################
+IMPTBL = 1
+
+## Zone NBLIGT
+mkstat = 0
+zoncou = "NBLIGT"
+indice = 0
+status = 1
+zoncou = "NBLIGT"
+If varmode([M]NBLIGT,indice)=0
+ SAVACT = GACTION : GACTION = "SPE"
+ Call AS_NBLIGT From SPEZEPI
+ GACTION = SAVACT
+ If mkstat=1 : Raz [M]NBLIGT : Endif
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "NBLIGT" : Gosub ACTION From =IMPTRT
+ Endif
+ If !mkstat
+  NBLIG = [M]NBLIGT
+  For nolign=1 To NBLIG
+   indice = nolign-1
+   [M]NBLIGT = nolign
+   status = 75
+   Call SAI_NBLIGT(IMPFIC,ACTION,IMPTRT)
+   If mkstat : Break : Endif
+  Next nolign
+  If mkstat : End : Endif
+  indice = 0
+  If !mkstat
+   SAVACT = GACTION : GACTION = "SPE"
+   Call C_NBLIGT From SPEZEPI
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "NBLIGT" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+  Endif
+ Endif
+Endif
+
+####################################
+## Bloc tableau 5
+####################################
+IMPTBL = 1
+
+## Zone NBLIGP
+mkstat = 0
+zoncou = "NBLIGP"
+indice = 0
+status = 1
+zoncou = "NBLIGP"
+If varmode([M]NBLIGP,indice)=0
+ SAVACT = GACTION : GACTION = "SPE"
+ Call AS_NBLIGP From SPEZEPI
+ GACTION = SAVACT
+ If mkstat=1 : Raz [M]NBLIGP : Endif
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "NBLIGP" : Gosub ACTION From =IMPTRT
+ Endif
+ If !mkstat
+  NBLIG = [M]NBLIGP
+  For nolign=1 To NBLIG
+   indice = nolign-1
+   [M]NBLIGP = nolign
+   status = 75
+   Call SAI_NBLIGP(IMPFIC,ACTION,IMPTRT)
+   If mkstat : Break : Endif
+  Next nolign
+  If mkstat : End : Endif
+  indice = 0
+  If !mkstat
+   SAVACT = GACTION : GACTION = "SPE"
+   Call C_NBLIGP From SPEZEPI
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "NBLIGP" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+  Endif
+ Endif
+Endif
+
+####################################
+## Bloc tableau 6
+####################################
+IMPTBL = 1
+
+indice = 0
+status = 1
+zoncou = "NBLIGPAC"
+If !mkstat
+ NBLIG = [M]NBLIGPAC
+ For nolign=1 To NBLIG
+  indice = nolign-1
+  [M]NBLIGPAC = nolign
+  status = 75
+  Call SAI_NBLIGPAC(IMPFIC,ACTION,IMPTRT)
+  If mkstat : Break : Endif
+ Next nolign
+ If mkstat : End : Endif
+ indice = 0
+Endif
+
+####################################
+## Bloc tableau 7
+####################################
+IMPTBL = 1
+
+## Zone NBLIGDC
+mkstat = 0
+zoncou = "NBLIGDC"
+indice = 0
+status = 1
+zoncou = "NBLIGDC"
+If varmode([M]NBLIGDC,indice)=0
+ SAVACT = GACTION : GACTION = "SPE"
+ Call AS_NBLIGDC From SPEZEPI
+ GACTION = SAVACT
+ If mkstat=1 : Raz [M]NBLIGDC : Endif
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "NBLIGDC" : Gosub ACTION From =IMPTRT
+ Endif
+ If !mkstat
+  NBLIG = [M]NBLIGDC
+  For nolign=1 To NBLIG
+   indice = nolign-1
+   [M]NBLIGDC = nolign
+   status = 75
+   Call SAI_NBLIGDC(IMPFIC,ACTION,IMPTRT)
+   If mkstat : Break : Endif
+  Next nolign
+  If mkstat : End : Endif
+  indice = 0
+  If !mkstat
+   SAVACT = GACTION : GACTION = "SPE"
+   Call C_NBLIGDC From SPEZEPI
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "NBLIGDC" : GZNUM = 0 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+  Endif
+ Endif
+Endif
+
+mkstat = 0
+
+End
+
+####################################
+## Bloc tableau 2
+####################################
+Subprog SAI_NBLIGC(IMPFIC,ACTION,IMPTRT)
+Value Char IMPFIC
+Value Char ACTION
+Value Char IMPTRT
+
+Gosub DEFVAR
+
+IMPTBL = 1
+
+## Zone NBLIGC
+mkstat = 0
+zoncou = "NBLIGC"
+If !mkstat
+ SAVACT = GACTION : GACTION = "SPE"
+ Call C_NBLIGC From SPEZEPI
+ GACTION = SAVACT
+ If mkstat : GERR = 1 : GZONE = "NBLIGC" : GZNUM = 0 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+Endif
+
+## Zone COLLITMREF
+mkstat = 0
+zoncou = "COLLITMREF"
+If varmode([M]COLLITMREF,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "COLLITMREF" : Gosub ACTION From =IMPTRT
+ Endif
+ SAVACT = GACTION : GACTION = "VXADCUPC"
+ Call ADCCTRUPC([M]COLLITMREF(indice)) From VXADCUPC
+ GACTION = SAVACT
+ If mkstat : GERR = 1 : GZONE = "COLLITMREF" : GZNUM = 3651 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+ If !mkstat
+  Call CONTROLE("ITM","!",[M]COLLITMREF(indice),"",mkstat) From CONTOBJ
+  If mkstat : GERR = 1 : GZONE = "COLLITMREF" : GZNUM = 3651 : Endif
+  Gosub AFF From GSAISIE
+  If mkstat : End : Endif
+ Endif
+Endif
+
+## Zone NBLIGC
+mkstat = 0
+zoncou = "NBLIGC"
+status = 71
+SAVACT = GACTION : GACTION = "SPE"
+Call APRES_NBLIGC From SPEZEPI
+GACTION = SAVACT
+
+End
+
+####################################
+## Bloc tableau 3
+####################################
+Subprog SAI_NBLIGPT(IMPFIC,ACTION,IMPTRT)
+Value Char IMPFIC
+Value Char ACTION
+Value Char IMPTRT
+
+Gosub DEFVAR
+
+IMPTBL = 1
+
+## Zone NBLIGPT
+mkstat = 0
+zoncou = "NBLIGPT"
+If !mkstat
+ SAVACT = GACTION : GACTION = "SPE"
+ Call C_NBLIGPT From SPEZEPI
+ GACTION = SAVACT
+ If mkstat : GERR = 1 : GZONE = "NBLIGPT" : GZNUM = 0 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+Endif
+
+## Zone PRETRIITMREF
+mkstat = 0
+zoncou = "PRETRIITMREF"
+If varmode([M]PRETRIITMREF,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "PRETRIITMREF" : Gosub ACTION From =IMPTRT
+ Endif
+ SAVACT = GACTION : GACTION = "VXADCUPC"
+ Call ADCCTRUPC([M]PRETRIITMREF(indice)) From VXADCUPC
+ GACTION = SAVACT
+ If mkstat : GERR = 1 : GZONE = "PRETRIITMREF" : GZNUM = 3651 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+ If !mkstat
+  Call CONTROLE("ITM","!",[M]PRETRIITMREF(indice),"",mkstat) From CONTOBJ
+  If mkstat : GERR = 1 : GZONE = "PRETRIITMREF" : GZNUM = 3651 : Endif
+  Gosub AFF From GSAISIE
+  If mkstat : End : Endif
+  If !mkstat
+   SAVACT = GACTION : GACTION = "SPE"
+   Call C_PRETRIITMREF([M]PRETRIITMREF(indice)) From SPEZEPI
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "PRETRIITMREF" : GZNUM = 3651 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+  Endif
+ Endif
+Endif
+
+## Zone PRETRIVIS
+mkstat = 0
+zoncou = "PRETRIVIS"
+IMPENT = [M]PRETRIVIS(indice)
+If varinit([M]PRETRIVIS,indice)=0
+ IMPENT = 2
+Endif
+If varmode([M]PRETRIVIS,indice)=0
+ [M]PRETRIVIS(indice) = IMPENT
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "PRETRIVIS" : Gosub ACTION From =IMPTRT
+  IMPENT = [M]PRETRIVIS(indice)
+ Endif
+Endif
+[M]PRETRIVIS(indice) = IMPENT
+
+## Zone NBLIGPT
+mkstat = 0
+zoncou = "NBLIGPT"
+status = 71
+SAVACT = GACTION : GACTION = "SPE"
+Call APRES_NBLIGPT From SPEZEPI
+GACTION = SAVACT
+
+End
+
+####################################
+## Bloc tableau 4
+####################################
+Subprog SAI_NBLIGT(IMPFIC,ACTION,IMPTRT)
+Value Char IMPFIC
+Value Char ACTION
+Value Char IMPTRT
+
+Gosub DEFVAR
+
+IMPTBL = 1
+
+## Zone NBLIGT
+mkstat = 0
+zoncou = "NBLIGT"
+If !mkstat
+ SAVACT = GACTION : GACTION = "SPE"
+ Call C_NBLIGT From SPEZEPI
+ GACTION = SAVACT
+ If mkstat : GERR = 1 : GZONE = "NBLIGT" : GZNUM = 0 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+Endif
+
+## Zone TRIITMREF
+mkstat = 0
+zoncou = "TRIITMREF"
+If varmode([M]TRIITMREF,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "TRIITMREF" : Gosub ACTION From =IMPTRT
+ Endif
+ SAVACT = GACTION : GACTION = "VXADCUPC"
+ Call ADCCTRUPC([M]TRIITMREF(indice)) From VXADCUPC
+ GACTION = SAVACT
+ If mkstat : GERR = 1 : GZONE = "TRIITMREF" : GZNUM = 3651 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+ If !mkstat
+  Call CONTROLE("ITM","!",[M]TRIITMREF(indice),"",mkstat) From CONTOBJ
+  If mkstat : GERR = 1 : GZONE = "TRIITMREF" : GZNUM = 3651 : Endif
+  Gosub AFF From GSAISIE
+  If mkstat : End : Endif
+  If !mkstat
+   SAVACT = GACTION : GACTION = "SPE"
+   Call C_TRIITMREF([M]TRIITMREF(indice)) From SPEZEPI
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "TRIITMREF" : GZNUM = 3651 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+  Endif
+ Endif
+Endif
+
+## Zone TRIBPCNUM
+mkstat = 0
+zoncou = "TRIBPCNUM"
+If varmode([M]TRIBPCNUM,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "TRIBPCNUM" : Gosub ACTION From =IMPTRT
+ Endif
+ Call CONTROLE("BPC","!",[M]TRIBPCNUM(indice),"",mkstat) From CONTOBJ
+ If mkstat : GERR = 1 : GZONE = "TRIBPCNUM" : GZNUM = 25236 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+Endif
+
+## Zone CODARTCLT
+mkstat = 0
+zoncou = "CODARTCLT"
+If varmode([M]CODARTCLT,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "CODARTCLT" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+## Zone CODARTCLTOLD
+mkstat = 0
+zoncou = "CODARTCLTOLD"
+If varmode([M]CODARTCLTOLD,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "CODARTCLTOLD" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+## Zone ZITMCAT
+mkstat = 0
+zoncou = "ZITMCAT"
+IMPENT = [M]ZITMCAT(indice)
+If varinit([M]ZITMCAT,indice)=0
+ IMPENT = 1
+Endif
+If varmode([M]ZITMCAT,indice)=0
+ [M]ZITMCAT(indice) = IMPENT
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZITMCAT" : Gosub ACTION From =IMPTRT
+  IMPENT = [M]ZITMCAT(indice)
+ Endif
+Endif
+[M]ZITMCAT(indice) = IMPENT
+
+## Zone ITMEN
+mkstat = 0
+zoncou = "ITMEN"
+If varmode([M]ITMEN,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ITMEN" : Gosub ACTION From =IMPTRT
+ Endif
+ SAVACT = GACTION : GACTION = "VXADCUPC"
+ Call ADCCTRUPC([M]ITMEN(indice)) From VXADCUPC
+ GACTION = SAVACT
+ If mkstat : GERR = 1 : GZONE = "ITMEN" : GZNUM = 103053 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+ If !mkstat
+  Call CONTROLE("ITM","!A",[M]ITMEN(indice),"",mkstat) From CONTOBJ
+  If mkstat : GERR = 1 : GZONE = "ITMEN" : GZNUM = 103053 : Endif
+  Gosub AFF From GSAISIE
+  If mkstat : End : Endif
+ Endif
+Endif
+
+## Zone ZCOEFTRANS
+mkstat = 0
+zoncou = "ZCOEFTRANS"
+If varinit([M]ZCOEFTRANS,indice)=0
+ SAVACT = GACTION : GACTION = "SPE"
+ Call D_ZCOEFTRANS([M]ZCOEFTRANS(indice)) From SPEZEPI
+ GACTION = SAVACT
+Endif
+If !mkstat
+ If varmode([M]ZCOEFTRANS,indice)=0
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "ZCOEFTRANS" : Gosub ACTION From =IMPTRT
+  Endif
+ Endif
+Endif
+
+## Zone ZNONSTOCK
+mkstat = 0
+zoncou = "ZNONSTOCK"
+IMPENT = [M]ZNONSTOCK(indice)
+If varinit([M]ZNONSTOCK,indice)=0
+ IMPENT = 2
+Endif
+If varmode([M]ZNONSTOCK,indice)=0
+ [M]ZNONSTOCK(indice) = IMPENT
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZNONSTOCK" : Gosub ACTION From =IMPTRT
+  IMPENT = [M]ZNONSTOCK(indice)
+ Endif
+Endif
+[M]ZNONSTOCK(indice) = IMPENT
+
+## Zone ZVISIBLE
+mkstat = 0
+zoncou = "ZVISIBLE"
+IMPENT = [M]ZVISIBLE(indice)
+If varinit([M]ZVISIBLE,indice)=0
+ IMPENT = 2
+Endif
+If varmode([M]ZVISIBLE,indice)=0
+ [M]ZVISIBLE(indice) = IMPENT
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZVISIBLE" : Gosub ACTION From =IMPTRT
+  IMPENT = [M]ZVISIBLE(indice)
+ Endif
+Endif
+[M]ZVISIBLE(indice) = IMPENT
+
+## Zone ZMENUM
+mkstat = 0
+zoncou = "ZMENUM"
+WCHAR = [M]ZMENUM(indice)
+If varmode([M]ZMENUM,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZMENUM" : Gosub ACTION From =IMPTRT
+ Endif
+ SAVACT = GACTION : GACTION = "SPE"
+ Call C_ZMENUM([M]ZMENUM(indice)) From SPEZEPI
+ GACTION = SAVACT
+ If mkstat : GERR = 1 : GZONE = "ZMENUM" : GZNUM = 104538 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+ If !mkstat
+  If WCHAR<>[M]ZMENUM(indice) or IMPMOD
+   SAVACT = GACTION : GACTION = "SPE"
+   Call AM_ZMENUM([M]ZMENUM(indice)) From SPEZEPI
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "ZMENUM" : GZNUM = 104538 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+  Endif
+ Endif
+Endif
+
+## Zone ZGESTOK
+mkstat = 0
+zoncou = "ZGESTOK"
+IMPENT = [M]ZGESTOK(indice)
+If varinit([M]ZGESTOK,indice)=0
+ IMPENT = 1
+Endif
+If varmode([M]ZGESTOK,indice)=0
+ [M]ZGESTOK(indice) = IMPENT
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZGESTOK" : Gosub ACTION From =IMPTRT
+  IMPENT = [M]ZGESTOK(indice)
+ Endif
+Endif
+[M]ZGESTOK(indice) = IMPENT
+
+## Zone ZGESTKC
+mkstat = 0
+zoncou = "ZGESTKC"
+IMPENT = [M]ZGESTKC(indice)
+If varinit([M]ZGESTKC,indice)=0
+ IMPENT = 1
+Endif
+If varmode([M]ZGESTKC,indice)=0
+ [M]ZGESTKC(indice) = IMPENT
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZGESTKC" : Gosub ACTION From =IMPTRT
+  IMPENT = [M]ZGESTKC(indice)
+ Endif
+Endif
+[M]ZGESTKC(indice) = IMPENT
+
+## Zone ZGESTHS
+mkstat = 0
+zoncou = "ZGESTHS"
+IMPENT = [M]ZGESTHS(indice)
+If varinit([M]ZGESTHS,indice)=0
+ IMPENT = 1
+Endif
+If varmode([M]ZGESTHS,indice)=0
+ [M]ZGESTHS(indice) = IMPENT
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZGESTHS" : Gosub ACTION From =IMPTRT
+  IMPENT = [M]ZGESTHS(indice)
+ Endif
+Endif
+[M]ZGESTHS(indice) = IMPENT
+
+## Zone ZCODCHARGSTO
+mkstat = 0
+zoncou = "ZCODCHARGSTO"
+If varmode([M]ZCODCHARGSTO,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZCODCHARGSTO" : Gosub ACTION From =IMPTRT
+ Endif
+ Call CONTROLE("BPR","!Z",[M]ZCODCHARGSTO(indice),"",mkstat) From CONTOBJ
+ If mkstat : GERR = 1 : GZONE = "ZCODCHARGSTO" : GZNUM = 104769 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+Endif
+
+## Zone NBLIGT
+mkstat = 0
+zoncou = "NBLIGT"
+status = 71
+SAVACT = GACTION : GACTION = "SPE"
+Call APRES_NBLIGT From SPEZEPI
+GACTION = SAVACT
+
+End
+
+####################################
+## Bloc tableau 5
+####################################
+Subprog SAI_NBLIGP(IMPFIC,ACTION,IMPTRT)
+Value Char IMPFIC
+Value Char ACTION
+Value Char IMPTRT
+
+Gosub DEFVAR
+
+IMPTBL = 1
+
+## Zone NBLIGP
+mkstat = 0
+zoncou = "NBLIGP"
+If !mkstat
+ SAVACT = GACTION : GACTION = "SPE"
+ Call C_NBLIGP From SPEZEPI
+ GACTION = SAVACT
+ If mkstat : GERR = 1 : GZONE = "NBLIGP" : GZNUM = 0 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+Endif
+
+## Zone ZTYPPAL
+mkstat = 0
+zoncou = "ZTYPPAL"
+IMPENT = [M]ZTYPPAL(indice)
+If varinit([M]ZTYPPAL,indice)=0
+ IMPENT = 1
+Endif
+If varmode([M]ZTYPPAL,indice)=0
+ [M]ZTYPPAL(indice) = IMPENT
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZTYPPAL" : Gosub ACTION From =IMPTRT
+  IMPENT = [M]ZTYPPAL(indice)
+ Endif
+Endif
+[M]ZTYPPAL(indice) = IMPENT
+
+## Zone PRESTITMREF
+mkstat = 0
+zoncou = "PRESTITMREF"
+WCHAR = [M]PRESTITMREF(indice)
+If varmode([M]PRESTITMREF,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "PRESTITMREF" : Gosub ACTION From =IMPTRT
+ Endif
+ SAVACT = GACTION : GACTION = "VXADCUPC"
+ Call ADCCTRUPC([M]PRESTITMREF(indice)) From VXADCUPC
+ GACTION = SAVACT
+ If mkstat : GERR = 1 : GZONE = "PRESTITMREF" : GZNUM = 3651 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+ If !mkstat
+  Call CONTROLE("ITM","!",[M]PRESTITMREF(indice),"",mkstat) From CONTOBJ
+  If mkstat : GERR = 1 : GZONE = "PRESTITMREF" : GZNUM = 3651 : Endif
+  Gosub AFF From GSAISIE
+  If mkstat : End : Endif
+  If !mkstat
+   SAVACT = GACTION : GACTION = "SPE"
+   Call C_PRESTITMREF([M]PRESTITMREF(indice)) From SPEZEPI
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "PRESTITMREF" : GZNUM = 3651 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+   If !mkstat
+    If WCHAR<>[M]PRESTITMREF(indice) or IMPMOD
+     SAVACT = GACTION : GACTION = "SPE"
+     Call AM_PRESTITMREF([M]PRESTITMREF(indice)) From SPEZEPI
+     GACTION = SAVACT
+     If mkstat : GERR = 1 : GZONE = "PRESTITMREF" : GZNUM = 3651 : Endif
+     Gosub AFF From GSAISIE
+     If mkstat : End : Endif
+    Endif
+   Endif
+  Endif
+ Endif
+Endif
+
+## Zone ZTYPARTEPI
+mkstat = 0
+zoncou = "ZTYPARTEPI"
+IMPENT = [M]ZTYPARTEPI(indice)
+If varinit([M]ZTYPARTEPI,indice)=0
+ IMPENT = 1
+Endif
+If varmode([M]ZTYPARTEPI,indice)=0
+ [M]ZTYPARTEPI(indice) = IMPENT
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZTYPARTEPI" : Gosub ACTION From =IMPTRT
+  IMPENT = [M]ZTYPARTEPI(indice)
+ Endif
+Endif
+[M]ZTYPARTEPI(indice) = IMPENT
+
+## Zone ZTYPPRIX
+mkstat = 0
+zoncou = "ZTYPPRIX"
+IMPENT = [M]ZTYPPRIX(indice)
+If varinit([M]ZTYPPRIX,indice)=0
+ IMPENT = 1
+Endif
+If varmode([M]ZTYPPRIX,indice)=0
+ [M]ZTYPPRIX(indice) = IMPENT
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZTYPPRIX" : Gosub ACTION From =IMPTRT
+  IMPENT = [M]ZTYPPRIX(indice)
+ Endif
+Endif
+[M]ZTYPPRIX(indice) = IMPENT
+
+## Zone ZPRIX
+mkstat = 0
+zoncou = "ZPRIX"
+If varmode([M]ZPRIX,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZPRIX" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+## Zone ZCOEFFAC
+mkstat = 0
+zoncou = "ZCOEFFAC"
+If varinit([M]ZCOEFFAC,indice)=0
+ SAVACT = GACTION : GACTION = "SPE"
+ Call D_ZCOEFFAC([M]ZCOEFFAC(indice)) From SPEZEPI
+ GACTION = SAVACT
+Endif
+If !mkstat
+ If varmode([M]ZCOEFFAC,indice)=0
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "ZCOEFFAC" : Gosub ACTION From =IMPTRT
+  Endif
+ Endif
+Endif
+
+## Zone ZTYPPREST
+mkstat = 0
+zoncou = "ZTYPPREST"
+IMPENT = [M]ZTYPPREST(indice)
+WNUM = IMPENT
+If varinit([M]ZTYPPREST,indice)=0
+ IMPENT = 1
+Endif
+If varmode([M]ZTYPPREST,indice)=0
+ [M]ZTYPPREST(indice) = IMPENT
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZTYPPREST" : Gosub ACTION From =IMPTRT
+  IMPENT = [M]ZTYPPREST(indice)
+ Endif
+ SAVACT = GACTION : GACTION = "SPE"
+ Call C_ZTYPPREST(IMPENT) From SPEZEPI
+ GACTION = SAVACT
+ If mkstat : GERR = 1 : GZONE = "ZTYPPREST" : GZNUM = 103636 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+ If !mkstat
+  If WNUM<>IMPENT or IMPMOD
+   SAVACT = GACTION : GACTION = "SPE"
+   Call AM_ZTYPPREST(IMPENT) From SPEZEPI
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "ZTYPPREST" : GZNUM = 103636 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+  Endif
+ Endif
+Endif
+[M]ZTYPPREST(indice) = IMPENT
+
+## Zone ARTREF
+mkstat = 0
+zoncou = "ARTREF"
+IMPENT = [M]ARTREF(indice)
+If varinit([M]ARTREF,indice)=0
+ IMPENT = 1
+Endif
+If varmode([M]ARTREF,indice)=0
+ [M]ARTREF(indice) = IMPENT
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ARTREF" : Gosub ACTION From =IMPTRT
+  IMPENT = [M]ARTREF(indice)
+ Endif
+Endif
+[M]ARTREF(indice) = IMPENT
+
+## Zone ZTSTTRSP
+mkstat = 0
+zoncou = "ZTSTTRSP"
+IMPENT = [M]ZTSTTRSP(indice)
+If varinit([M]ZTSTTRSP,indice)=0
+ IMPENT = 1
+Endif
+If varmode([M]ZTSTTRSP,indice)=0
+ [M]ZTSTTRSP(indice) = IMPENT
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZTSTTRSP" : Gosub ACTION From =IMPTRT
+  IMPENT = [M]ZTSTTRSP(indice)
+ Endif
+Endif
+[M]ZTSTTRSP(indice) = IMPENT
+
+## Zone ZCODCLTCHARG
+mkstat = 0
+zoncou = "ZCODCLTCHARG"
+If varmode([M]ZCODCLTCHARG,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZCODCLTCHARG" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+## Zone ZSITE
+mkstat = 0
+zoncou = "ZSITE"
+If varmode([M]ZSITE,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZSITE" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+## Zone ZPAYS
+mkstat = 0
+zoncou = "ZPAYS"
+If varmode([M]ZPAYS,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZPAYS" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+## Zone ZBPSNUM
+mkstat = 0
+zoncou = "ZBPSNUM"
+If varmode([M]ZBPSNUM,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZBPSNUM" : Gosub ACTION From =IMPTRT
+ Endif
+ Call CONTROLE("BPS","!",[M]ZBPSNUM(indice),"",mkstat) From CONTOBJ
+ If mkstat : GERR = 1 : GZONE = "ZBPSNUM" : GZNUM = 3680 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+Endif
+
+## Zone NBLIGP
+mkstat = 0
+zoncou = "NBLIGP"
+status = 71
+SAVACT = GACTION : GACTION = "SPE"
+Call APRES_NBLIGP From SPEZEPI
+GACTION = SAVACT
+
+End
+
+####################################
+## Bloc tableau 6
+####################################
+Subprog SAI_NBLIGPAC(IMPFIC,ACTION,IMPTRT)
+Value Char IMPFIC
+Value Char ACTION
+Value Char IMPTRT
+
+Gosub DEFVAR
+
+IMPTBL = 1
+
+If !mkstat
+ SAVACT = GACTION : GACTION = "SPE"
+ Call C_NBLIGPAC From SPEZEPI
+ GACTION = SAVACT
+ If mkstat : GERR = 1 : GZONE = "NBLIGPAC" : GZNUM = 0 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+Endif
+
+## Zone EZADRDEP
+mkstat = 0
+zoncou = "EZADRDEP"
+If varinit([M]EZADRDEP,indice)=0
+ SAVACT = GACTION : GACTION = "SPE"
+ Call D_EZADRDEP([M]EZADRDEP(indice)) From SPEZEPI
+ GACTION = SAVACT
+Endif
+If !mkstat
+ If varmode([M]EZADRDEP,indice)=0
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "EZADRDEP" : Gosub ACTION From =IMPTRT
+  Endif
+  Call CONTROLE("BPD","!Z",[M]EZADRDEP(indice),num$(WBPCNUM),mkstat) From CONTOBJ
+  If mkstat : GERR = 1 : GZONE = "EZADRDEP" : GZNUM = 102983 : Endif
+  Gosub AFF From GSAISIE
+  If mkstat : End : Endif
+  If !mkstat
+   SAVACT = GACTION : GACTION = "SPE"
+   Call C_EZADRDEP([M]EZADRDEP(indice)) From SPEZEPI
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "EZADRDEP" : GZNUM = 102983 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+  Endif
+ Endif
+Endif
+
+## Zone EZSITEEXP
+mkstat = 0
+zoncou = "EZSITEEXP"
+If varmode([M]EZSITEEXP,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "EZSITEEXP" : Gosub ACTION From =IMPTRT
+ Endif
+ SAVACT = GACTION : GACTION = "ACONTFCY"
+ Call CONTSITE([M]EZSITEEXP(indice)) From SUBAGF
+ GACTION = SAVACT
+ If mkstat : GERR = 1 : GZONE = "EZSITEEXP" : GZNUM = 102976 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+ If !mkstat
+  Call CONTROLE("FCY","!",[M]EZSITEEXP(indice),"",mkstat) From CONTOBJ
+  If mkstat : GERR = 1 : GZONE = "EZSITEEXP" : GZNUM = 102976 : Endif
+  Gosub AFF From GSAISIE
+  If mkstat : End : Endif
+  If !mkstat
+   SAVACT = GACTION : GACTION = "SPE"
+   Call C_EZSITEEXP([M]EZSITEEXP(indice)) From SPEZEPI
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "EZSITEEXP" : GZNUM = 102976 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+  Endif
+ Endif
+Endif
+
+## Zone EZQTYMIN
+mkstat = 0
+zoncou = "EZQTYMIN"
+If varmode([M]EZQTYMIN,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "EZQTYMIN" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+## Zone EZQTYMAX
+mkstat = 0
+zoncou = "EZQTYMAX"
+If varmode([M]EZQTYMAX,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "EZQTYMAX" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+## Zone EZPRIX
+mkstat = 0
+zoncou = "EZPRIX"
+If varmode([M]EZPRIX,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "EZPRIX" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+status = 71
+SAVACT = GACTION : GACTION = "SPE"
+Call APRES_NBLIGPAC From SPEZEPI
+GACTION = SAVACT
+
+End
+
+####################################
+## Bloc tableau 7
+####################################
+Subprog SAI_NBLIGDC(IMPFIC,ACTION,IMPTRT)
+Value Char IMPFIC
+Value Char ACTION
+Value Char IMPTRT
+
+Gosub DEFVAR
+
+IMPTBL = 1
+
+## Zone NBLIGDC
+mkstat = 0
+zoncou = "NBLIGDC"
+If !mkstat
+ SAVACT = GACTION : GACTION = "SPE"
+ Call C_NBLIGDC From SPEZEPI
+ GACTION = SAVACT
+ If mkstat : GERR = 1 : GZONE = "NBLIGDC" : GZNUM = 0 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+Endif
+
+## Zone ZCODCHARG
+mkstat = 0
+zoncou = "ZCODCHARG"
+If varmode([M]ZCODCHARG,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZCODCHARG" : Gosub ACTION From =IMPTRT
+ Endif
+ Call CONTROLE("BPR","!",[M]ZCODCHARG(indice),"",mkstat) From CONTOBJ
+ If mkstat : GERR = 1 : GZONE = "ZCODCHARG" : GZNUM = 102965 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+Endif
+
+## Zone ZADRDEP
+mkstat = 0
+zoncou = "ZADRDEP"
+If varinit([M]ZADRDEP,indice)=0
+ SAVACT = GACTION : GACTION = "SPE"
+ Call D_ZADRDEP([M]ZADRDEP(indice)) From SPEZEPI
+ GACTION = SAVACT
+Endif
+If !mkstat
+ If varmode([M]ZADRDEP,indice)=0
+  If !mkstat
+   IMPMOD = 0 : IMPZON = "ZADRDEP" : Gosub ACTION From =IMPTRT
+  Endif
+  Call CONTROLE("BPD","!Z",[M]ZADRDEP(indice),num$([M:ZEP3]ZCODCHARG(nolign-1)),mkstat) From CONTOBJ
+  If mkstat : GERR = 1 : GZONE = "ZADRDEP" : GZNUM = 102984 : Endif
+  Gosub AFF From GSAISIE
+  If mkstat : End : Endif
+  If !mkstat
+   SAVACT = GACTION : GACTION = "SPE"
+   Call C_ZADRDEP([M]ZADRDEP(indice)) From SPEZEPI
+   GACTION = SAVACT
+   If mkstat : GERR = 1 : GZONE = "ZADRDEP" : GZNUM = 102984 : Endif
+   Gosub AFF From GSAISIE
+   If mkstat : End : Endif
+  Endif
+ Endif
+Endif
+
+## Zone ZSITEEXP
+mkstat = 0
+zoncou = "ZSITEEXP"
+If varmode([M]ZSITEEXP,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZSITEEXP" : Gosub ACTION From =IMPTRT
+ Endif
+ SAVACT = GACTION : GACTION = "SPE"
+ Call C_ZSITEEXP([M]ZSITEEXP(indice)) From SPEZEPI
+ GACTION = SAVACT
+ If mkstat : GERR = 1 : GZONE = "ZSITEEXP" : GZNUM = 102976 : Endif
+ Gosub AFF From GSAISIE
+ If mkstat : End : Endif
+Endif
+
+## Zone ZQTYMIN
+mkstat = 0
+zoncou = "ZQTYMIN"
+If varmode([M]ZQTYMIN,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZQTYMIN" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+## Zone ZQTYMAX
+mkstat = 0
+zoncou = "ZQTYMAX"
+If varinit([M]ZQTYMAX,indice)=0
+ [M]ZQTYMAX(indice) = 9999999
+Endif
+If varmode([M]ZQTYMAX,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "ZQTYMAX" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+## Zone DZPRIX
+mkstat = 0
+zoncou = "DZPRIX"
+If varmode([M]DZPRIX,indice)=0
+ If !mkstat
+  IMPMOD = 0 : IMPZON = "DZPRIX" : Gosub ACTION From =IMPTRT
+ Endif
+Endif
+
+## Zone NBLIGDC
+mkstat = 0
+zoncou = "NBLIGDC"
+status = 71
+SAVACT = GACTION : GACTION = "SPE"
+Call APRES_NBLIGDC From SPEZEPI
+GACTION = SAVACT
+
+End
+
+$DEFVAR
+Local Integer I , J , K , XOK , NOL , IMPENT , IMPMOD , IMPTBL , NBLIG
+Local Char    IMPMSK(GLONAMK) , IMPZON(GLONAVA) , NOMZONE(40)
+Local Char    PROGSUB(GLONADC), PROGSPE(GLONADC), PROGSPV(GLONADC)
+Local Char    PARAM(250)(1..20) , SAVACT(20)
+Local Char    WCHAR(255)
+Local Decimal WNUM
+Local Date    WDATE
+Local Clbfile WCLOB(9)
+
+IMPMSK = "ZEPALIS"
+Return
+

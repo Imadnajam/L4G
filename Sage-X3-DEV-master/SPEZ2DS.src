@@ -1,0 +1,153 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+#################################################### SPEZDS
+#################################################### 04/10/2018
+
+$ACTION
+#Infbox ACTION
+Case ACTION
+  When "OUVRE" : Gosub OUVRE
+  When "DEBUT" : Gosub DEBUT
+  When Default
+Endcase
+Return
+
+############################################## OUVRE
+
+$OUVRE
+If clalev([F:ZDSC])=0 : Local File ZDETSTOCOLL : Endif
+If clalev([F:ZSE])=0 : Local File ZPSEPALIS : Endif
+Global Char WPARAM(30)
+Global Integer GNBLIGC   : GNBLIGC = -1
+Return
+
+############################################## DEBUT
+
+$DEBUT
+WPARAM = PARAM(1)
+If(instr( 1, WPARAM, "TOTAL GENERAL" )>0)Then
+  #On est sur la ligne de total, donc on n'affiche pas la fenêtre
+  FIN = 1
+Else
+  #On est sur une ligne d'article, on va donc afficher la fenêtre
+  [M:Z2DS0]ZQTEOK=1
+  [M:Z2DS0]ZQTEKC=1
+  [M:Z2DS0]ZQTEATRANSF=1
+  Affzo [M:Z2DS0]
+  [M:Z2DS0]ZQTEOK=2
+  Affzo [M:Z2DS0]ZQTEOK
+  Call AM_ZQTEOK([M:Z2DS0]ZQTEOK)
+Endif
+Return
+
+############################################## ACTIONS CHAMPS
+
+Subprog AM_ZQTEOK(VALEUR)
+Variable Integer VALEUR
+If(VALEUR=2)Then
+  [M:Z2DS0]ZQTEKC=1
+  [M:Z2DS0]ZQTEATRANSF=1
+  Affzo [M:Z2DS0]
+  Call SPE_AFFICHE_COLL(1)
+Endif
+End
+
+Subprog AM_ZQTEKC(VALEUR)
+Variable Integer VALEUR
+If(VALEUR=2)Then
+  [M:Z2DS0]ZQTEOK=1
+  [M:Z2DS0]ZQTEATRANSF=1
+  Affzo [M:Z2DS0]
+  Call SPE_AFFICHE_COLL(2)
+Endif
+End
+
+Subprog AM_ZQTEATRANSF(VALEUR)
+Variable Integer VALEUR
+If(VALEUR=2)Then
+  [M:Z2DS0]ZQTEOK=1
+  [M:Z2DS0]ZQTEKC=1
+  Affzo [M:Z2DS0]
+  Call SPE_AFFICHE_COLL(3)
+Endif
+End
+
+############################################## PROCEDURE SPECIFIQUES
+
+Subprog SPE_AFFICHE_COLL(WTYPE)
+Value Integer WTYPE
+Local Char WCRITERE(250)
+Local Decimal WNBPALS : WNBPALS = 0
+  If(WTYPE=1)Then
+    WCRITERE  = "[F:ZDSC]ZQTEOK>0"
+  Elsif(WTYPE=2)Then
+    WCRITERE  = "[F:ZDSC]ZQTEKC>0"
+  Elsif(WTYPE=3)Then
+    WCRITERE  = "[F:ZDSC]ZQTEATRANSF>0"
+  Endif
+  Effzo [M:Z2DS1]
+  [M:Z2DS1]NBLIGC=0
+  For [F:ZDSC]ZDSC0 Where [F:ZDSC]BPCORD=[M:Z2AE0]ZBPCORD and [F:ZDSC]STOFCY=[M:Z2AE0]ZFCY and [F:ZDSC]ZARTTRI=WPARAM and evalue(WCRITERE)
+    [M:Z2DS1]ZCDATE_TRI([M:Z2DS1]NBLIGC) = [F:ZDSC]DATE_TRI
+    [M:Z2DS1]ZCZSOHNUM([M:Z2DS1]NBLIGC)  = [F:ZDSC]ZSOHNUM
+    [M:Z2DS1]ZCZSOPLIN([M:Z2DS1]NBLIGC)  = [F:ZDSC]ZSOPLIN
+    [M:Z2DS1]ZCZQTYCOLL([M:Z2DS1]NBLIGC) = [F:ZDSC]ZQTY
+    If(WTYPE=1)Then
+      #On affiche la qté OK
+      [M:Z2DS1]ZCZQTYSTO([M:Z2DS1]NBLIGC)  = [F:ZDSC]ZQTEOK
+      WNBPALS = WNBPALS + [F:ZDSC]ZQTEOK
+    Elsif(WTYPE=2)Then
+      #On affiche la qté KC
+      [M:Z2DS1]ZCZQTYSTO([M:Z2DS1]NBLIGC)  = [F:ZDSC]ZQTEKC
+      WNBPALS = WNBPALS + [F:ZDSC]ZQTEKC
+    Elsif(WTYPE=3)Then
+      #On affiche la qté à transformer
+      [M:Z2DS1]ZCZQTYSTO([M:Z2DS1]NBLIGC)  = [F:ZDSC]ZQTEATRANSF
+      WNBPALS = WNBPALS + [F:ZDSC]ZQTEATRANSF
+    Endif
+    [M:Z2DS1]NBLIGC = [M:Z2DS1]NBLIGC+1
+  Next
+  [M:Z2DS0]ZNBPALS = WNBPALS
+  GNBLIGC = -1
+  [M:Z2DS1]ZNBLIGC = GNBLIGC
+  Affzo [M:Z2DS0]
+  Affzo [M:Z2DS1]
+End
+
+Subprog AS_NBLIGC
+Local Char WCRITERE(250)
+If([M:Z2DS0]ZQTEOK=2)Then
+  WCRITERE  = "[F:ZSE]ZQTEOK>0"
+Elsif([M:Z2DS0]ZQTEKC=2)Then
+  WCRITERE  = "[F:ZSE]ZQTEKC>0"
+Elsif([M:Z2DS0]ZQTEATRANSF=2)Then
+  WCRITERE  = "[F:ZSE]ZQTEATRANSF>0"
+Endif
+  If(nolign-1<=[M:Z2DS1]NBLIGC-1)Then
+    GNBLIGC = nolign-1
+    [M:Z2DS1]ZNBLIGC = GNBLIGC
+    Affzo [M:Z2DS1]ZNBLIGC
+    Chgstl [M:Z2DS1]NBLIGC With ""
+    Chgstl [M:Z2DS1]NBLIGC(GNBLIGC) With "GDD2G"
+    #Lorsque l'on selectionne une ligne du tableau des articles collectes, on met à jour le tableau des article de prétri
+    Raz [M:Z2DS1]NBLIGP
+    Effzo [M:Z2DS1]10
+    [M:Z2DS1]NBLIGP = 0
+    Affzo [M:Z2DS1]NBLIGP
+    Local Integer INCOMPTEUR : INCOMPTEUR = 0
+    #Nous allons maintenant récupérer les liognes de prestation assosiées au choix de l'utilisateur
+    For[F:ZSE]ZSE0 Where [F:ZSE]ZSOHNUM=[M:Z2DS1]ZCZSOHNUM(GNBLIGC) and [F:ZSE]ZNUMLIG=[M:Z2DS1]ZCZSOPLIN(GNBLIGC) and [F:ZSE]ZQTYLIV=0 and evalue(WCRITERE)
+        [M:Z2DS1]ZARTPREST(INCOMPTEUR) = [F:ZSE]ZARTPREST
+        [M:Z2DS1]ZTYPPAL(INCOMPTEUR) = [F:ZSE]ZTYPPAL
+        [M:Z2DS1]ZQTEOK(INCOMPTEUR) = [F:ZSE]ZQTEOK
+        [M:Z2DS1]ZQTEKC(INCOMPTEUR) = [F:ZSE]ZQTEKC
+        [M:Z2DS1]ZQTEATRANSF(INCOMPTEUR) = [F:ZSE]ZQTEATRANSF
+        [M:Z2DS1]ZDATE(INCOMPTEUR) = [F:ZSE]ZDATE
+        [M:Z2DS1]ZFACTRELOC(INCOMPTEUR) = [F:ZSE]ZFACTRELOC
+        [M:Z2DS1]ZTYPPREST(INCOMPTEUR) = [F:ZSE]ZTYPPREST
+        INCOMPTEUR = INCOMPTEUR + 1
+    Next
+    [M:Z2DS1]NBLIGP = INCOMPTEUR
+    Affzo [M:Z2DS1]
+  Endif
+End
+

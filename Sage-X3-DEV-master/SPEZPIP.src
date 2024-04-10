@@ -1,0 +1,187 @@
+#<AdxTL>@(#)7.0.0.0 $Revision:   1.5  $
+########################################################## SPEZPIP
+########################################################## 13/09/2013
+
+$ACTION
+Case ACTION
+ When Default
+Endcase
+Return
+
+##########################################################
+#### ACTIONS CHAMPS
+##########################################################
+
+Subprog C_BANK(VALEUR)
+Variable Char VALEUR()
+If VALEUR<>""
+    If clalev([F:BAN])=0 : Local File BANK : Endif
+    Call LECTURE("BAN",VALEUR,"") From CONTOBJ
+    If [F:BAN]FCY<>"" & GFINRSP<>[F:BAN]FCY
+        GMESSAGE=mess([F:TPY]BANCSH,653,1)-mess(4,117,1)-[F:BAN]FCY
+        mkstat=2
+        End
+    Elsif [F:BAN]CPY<>"" & GSOCIETE<>[F:BAN]CPY
+        GMESSAGE=mess([F:TPY]BANCSH,653,1)-mess(5,117,1)-[F:BAN]FCY
+        mkstat=2
+        End
+    Elsif dim([F:BAN]ACS)>0 & [F:BAN]ACS<>""
+        Call CONTEXTE([F:BAN]ACS) From CPTSUB
+        If mkstat
+            End
+        Endif
+    Endif
+    If [M:ZPIP]CUR<>""
+        Call CONTBAN([M:ZPIP]DATPAY,VALEUR,[M:ZPIP]CUR) From CPTSUB
+    Endif
+Else
+    Call ERREUR("Valeur incorrecte.") From GESECRAN
+    mkstat=1
+Endif
+End
+
+Subprog C_PAYMOD(VALEUR)
+Variable Integer VALEUR
+Read [F:ZUC]ZUC0=GUSER;[F:PIH]ZCPTFCY
+If fstat
+    GMESSAGE="Erreur de lecture des données Utilisateur-Site comptoir."
+    mkstat=2
+    End
+Endif
+If VALEUR=1
+    If [F:ZUC]ZUCBAN=""
+        GMESSAGE="Pas de banque comptoir enregistrée sur ce site."
+        mkstat=2
+        End
+    Endif
+Elsif VALEUR=2
+    If [F:ZUC]ZUCCAI=""
+        GMESSAGE="Pas de caisse comptoir enregistrée sur ce site."
+        mkstat=2
+        End
+    Endif
+Elsif VALEUR=3
+    If [F:ZUC]ZUCMAN=""
+        GMESSAGE="Pas de banque mandat comptoir enregistrée sur ce site."
+        mkstat=2
+        End
+    Endif
+Endif
+End
+
+Subprog AM_PAYMOD(VALEUR)
+Variable Integer    VALEUR()
+If clalev([F:ZUC])=0 : Local File ZUSRCPT : Endif
+[M:ZPIP]CHQNUM=""
+[M:ZPIP]MANNUM=""
+Affzo [M:ZPIP]CHQNUM
+Affzo [M:ZPIP]MANNUM
+If VALEUR=1
+  Read [F:ZUC]ZUC0=GUSER;[F:PIH]ZCPTFCY
+  If fstat
+    Call ERREUR("Erreur de lecture du site comptoir de votre profil.") From GESECRAN
+    [M:ZPIP]BANK = ""
+    Actzo [M:ZPIP]BANK
+  Else
+    [M:ZPIP]BANK = [F:ZUC]ZUCBAN
+    Affzo [M:ZPIP]BANK
+  Endif
+    Actzo [M:ZPIP]CHQNUM
+    Grizo [M:ZPIP]MANNUM
+Elsif VALEUR=2
+    Grizo [M:ZPIP]CHQNUM
+    Grizo [M:ZPIP]MANNUM
+Elsif VALEUR=3
+  #On doit aller récupérer la banque du Mandat
+  Read [F:ZUC]ZUC0=GUSER;[F:PIH]ZCPTFCY
+  If fstat
+    Call ERREUR("Erreur de lecture du site comptoir de votre profil.") From GESECRAN
+    [M:ZPIP]BANK = ""
+    Actzo [M:ZPIP]BANK
+  Else
+    [M:ZPIP]BANK = [F:ZUC]ZUCMAN
+    Affzo [M:ZPIP]BANK
+  Endif
+  Grizo [M:ZPIP]CHQNUM
+  Actzo [M:ZPIP]MANNUM
+Endif
+End
+
+Subprog C_CUR(VALEUR)
+Variable Char VALEUR()
+Call CONTDEV(VALEUR,[M:ZPIP]DATPAY) From TRTDEV
+If fstat | mkstat
+    End
+Endif
+If [M:ZPIP]BANK<>""
+    Call CONTBAN([M:ZPIP]DATPAY,[M:ZPIP]BANK,[M:ZPIP]CUR) From CPTSUB
+Endif
+End
+
+Subprog AM_CUR(VALEUR)
+Variable Char VALEUR()
+Local Integer STAT
+Call CONVERT([M:ZPIP]CURINV,VALEUR,GSOCIETE,[M:ZPIP]RATTYP,date$,[M:ZPIP]AMTINV,[M:ZPIP]AMOUNT,[L]STAT) From TRTDEV
+Affzo [M:ZPIP]AMOUNT
+End
+
+Subprog C_AMOUNT(VALEUR)
+Variable Decimal VALEUR
+If VALEUR=0
+    Call ERREUR("Valeur nulle incorrecte.") From GESECRAN
+    mkstat=1
+Endif
+End
+
+Subprog AM_AMOUNT(VALEUR)
+Variable Decimal VALEUR
+Local Integer STAT
+Call CONVERT([M:ZPIP]CUR,[M:ZPIP]CURINV,GSOCIETE,[M:ZPIP]RATTYP,date$,VALEUR,[M:ZPIP]AMOUNT,[L]STAT) From TRTDEV
+End
+
+Subprog C_DATPAY(VALEUR)
+Variable Date VALEUR
+If VALEUR=[0/0/0]
+    Call ERREUR("Valeur incorrecte.") From GESECRAN
+    mkstat=1
+    End
+Endif
+Local Decimal EXERCICE, PERIODE
+# Version 5
+# Call CONTPER(VALEUR,[M:ZPIP]FCY) From CPTSUB
+Call SETMAINREF(GSOCIETE,GTYPGEN,GTYPANA) From CPTDIV
+Call CONTPER(VALEUR,GTYPGEN,[M:ZPIP]FCY) From CPTSUB
+If mkstat
+    End
+Endif
+If [M:ZPIP]BANK<>"" & [M:ZPIP]CUR<>""
+    Call CONTBAN(VALEUR,[M:ZPIP]BANK,[M:ZPIP]CUR) From CPTSUB
+Endif
+End
+
+Subprog C_CASH(VALEUR)
+Variable Char    VALEUR()
+If VALEUR=""
+    Call ERREUR("Valeur incorrecte.") From GESECRAN
+    mkstat=1
+Endif
+End
+
+Subprog AS_PAYMOD(VALEUR)
+Variable Integer VALEUR
+If clalev([F:ZUC])=0 : Local File ZUSRCPT : Endif
+Read [F:ZUC]ZUC0=GUSER;[F:PIH]ZCPTFCY
+If(fstat=0)Then
+  Raz GMENLOC
+  If([F:ZUC]ZUCBAN="")Then
+    GMENLOC(1)=1
+  Endif
+  If([F:ZUC]ZUCCAI="")Then
+    GMENLOC(2)=1
+  Endif
+  If([F:ZUC]ZUCMAN="")Then
+    GMENLOC(3)=1
+  Endif
+Endif
+End
+

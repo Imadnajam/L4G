@@ -1,0 +1,57 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### ZSELBPSAF
+##################################################### créé le 27/03/2020
+##################################################### modifié le 27/03/2020
+
+###################################################################################### ACTION
+$ACTION
+#Infbox ACTION
+Case ACTION
+ When "SEL_TABLE" : Gosub SEL_TABLE
+ When Default
+Endcase
+Return
+
+###################################################################################### SEL_TABLE
+$SEL_TABLE
+#  Infbox PARAM(1)
+  If clalev([F:ZSFAF])=0 : Local File ZSELBPSAF [F:ZSFAF] : Endif
+  Raz CRITERE
+  #On défini la table par défaut, celle qui va servir pour la sélection
+  Default File [F:ZSFAF]
+  #On défini le nombre de colonne de la fenêtre de sélection
+  NBCOL = 8
+  #On défini le nom de chaque colonne
+  TIT(1) = "code fournisseur"
+  TIT(2) = "Fournisseur"
+  TIT(3) = "Adresse 1"
+  TIT(4) = "Adresse 2"
+  TIT(5) = "CP"
+  TIT(6) = "Ville"
+  TIT(7) = "Pays"
+  TIT(8) = "Téléphone"
+  #On défini les champs à afficher
+  COL(1) = "BPSNUM"
+  COL(2) = "BPSNAM"
+  COL(3) = "BPAADDLIG(0)"
+  COL(4) = "BPAADDLIG(1)"
+  COL(5) = "POSCOD"
+  COL(6) = "CTY"
+  COL(7) = "CRYNAM"
+  COL(8) = "TEL"
+  #On indique le titre de la sélection
+  TIT(0) = "Sélection d'un fournisseur"
+  START = "BPSNUM"
+  #On indique au système de gérer les pages
+  DEFPAG = 1
+  #Critère de sélection
+  If(PARAM(1)<>"")Then
+    CRITERE = PARAM(1)
+  Endif
+  #Trier
+  ORDRE = "BPSNUM"
+  #Ordre Décroissant
+  #SENS = 2
+  ORDCHO="BPSNUM"
+  EXPSTART="BPSNUM>=''"
+Return

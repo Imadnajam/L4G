@@ -1,0 +1,396 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+# Superviseur
+# Gestion du masque ZDEP0 
+
+$_AFF
+If GIMPORT
+ Gosub AFF From GSAISIE
+Else
+ If GMESSAGE <>""
+  Gosub ERR From GSAISIE
+ Else
+  Raz GERR , GZNUM
+ Endif
+Endif
+Return
+
+$HORODAT
+Local Date    A_DATE
+Local Char    A_HEURE(10) , A_USER(10)
+Local Char    A_STAMP(15)
+A_DATE  = [14/04/2020]
+A_HEURE = "11:32:08"
+A_USER  = "JBS"
+A_STAMP = "20200414113208"
+Return
+
+$TITRES
+Return
+
+$VISU
+Local Integer A_REPONSE
+Global Integer GPRE_VIEW
+If dim(A_WINDPREV)<=0 : Local Char A_WINDPREV(30) : Endif
+Local Mask ZDEP0 [ZDEP0]
+Gosub HORODAT
+Local Inpbox "ZDEP0" From GFONCTION At A_STAMP With A_WINDPREV Mask [ZDEP0] As [SIM_]
+Grizo [ZDEP0]5
+Boxact [SIM_]
+Gosub TITRES
+Boxinp [SIM_] Using A_REPONSE
+Close Local Inpbox [SIM_]
+Close Local Mask [ZDEP0]
+Kill GPRE_VIEW
+Return
+
+$HARDCOP
+Local Integer X1(0..14),X2(0..14),Y1(0..14),Y2(0..14)
+X1(0)=1 : X2(0)=82 : Y1(0)=1 : Y2(0)=8
+Return
+
+$ON_ZDEPNUM
+Onevent CONTROL Call C_ZDEPNUM(zc) From W1ZDEP0
+Onevent BEFORE_AREA Gosub AV_ZDEPNUM From W1ZDEP0
+Onevent BEFORE_INPUT Call AS_ZDEPNUM(zc) From W1ZDEP0
+Return
+
+$AV_ZDEPNUM
+Call ACCES2("SLBETAT") From OBJDIV
+Gosub _AFF
+Return
+
+Subprog AS_ZDEPNUM(VALEUR)
+Variable Char    VALEUR()
+Local Integer INDIC : INDIC = indice
+Raz mkstat
+If !GWEBSERV
+ ## Action %ACCSAI
+ Call ACCES("SLBETAT") From OBJDIV
+ If mkstat=2
+  [M]ZDEPNUM(INDIC) = VALEUR
+  Affzo ZDEPNUM(INDIC) : mkstat = 2
+ Endif
+Endif
+Gosub _AFF
+End
+
+Subprog C_ZDEPNUM(VALEUR)
+Variable Char    VALEUR()
+If !GWEBSERV
+ ## Action CONTVCR
+ Call CONTVCR(VALEUR) From TRTDIV
+ If mkstat : GERR = 1 : GZONE = "ZDEPNUM" : GZNUM = 104287 : Endif
+Endif
+Gosub _AFF
+End
+
+$ON_ZDEPNAM
+Onevent BEFORE_AREA Gosub AV_ZDEPNAM From W1ZDEP0
+Onevent BEFORE_INPUT Call AS_ZDEPNAM(zc) From W1ZDEP0
+Onevent CONTROL Call C_ZDEPNAM(zc) From W1ZDEP0
+Return
+
+$AV_ZDEPNAM
+Call ACCES2("SLBETAT") From OBJDIV
+Gosub _AFF
+Return
+
+Subprog AS_ZDEPNAM(VALEUR)
+Variable Char    VALEUR()
+Local Integer INDIC : INDIC = indice
+Raz mkstat
+If !GWEBSERV
+ ## Action %ACCSAI
+ Call ACCES("SLBETAT") From OBJDIV
+ If mkstat=2
+  [M]ZDEPNAM(INDIC) = VALEUR
+  Affzo ZDEPNAM(INDIC) : mkstat = 2
+ Endif
+Endif
+Gosub _AFF
+End
+
+Subprog C_ZDEPNAM(VALEUR)
+Variable Char    VALEUR()
+## Action %OBLIG
+If vireblc(VALEUR,2)=""
+ mkstat = 1 : GMESSAGE = mess(10,123,1)
+Endif
+If mkstat : GERR = 1 : GZONE = "ZDEPNAM" : GZNUM = 281 : Endif
+Gosub _AFF
+End
+
+$ON_ZASYNCHRO
+Onevent BEFORE_AREA Gosub AV_ZASYNCHRO From W1ZDEP0
+Onevent INIT_AREA Call D_ZASYNCHRO(zc) From W1ZDEP0
+Return
+
+$AV_ZASYNCHRO
+Call ACCES2("SLBETAT") From OBJDIV
+Gosub _AFF
+Return
+
+Subprog D_ZASYNCHRO(VALEUR)
+Variable Integer VALEUR
+If varinit([M]ZASYNCHRO,indice)=0
+ VALEUR = 1
+Endif
+Gosub _AFF
+End
+
+$ON_ZFCY
+Onevent CONTROL Call C_ZFCY(zc) From W1ZDEP0
+Onevent BEFORE_INPUT Call AS_ZFCY(zc) From W1ZDEP0
+Onevent BEFORE_AREA Gosub AV_ZFCY From W1ZDEP0
+Return
+
+$AV_ZFCY
+Call ACCES2("SLBETAT") From OBJDIV
+Gosub _AFF
+Return
+
+Subprog AS_ZFCY(VALEUR)
+Variable Char    VALEUR()
+Local Integer INDIC : INDIC = indice
+Raz mkstat
+Call TEXTE(1427,GBOUT1) From OBJDIV
+Call TEXTE(6028,GBOUTS) From OBJDIV
+Call TEXTE(12276,GBOUTP) From OBJDIV
+Call TEXTE(16134,GBOUTA) From OBJDIV
+Onkey 129 Titled GBOUT1 Call B1_ZFCY(zc) From W1ZDEP0
+Onkey   2 Titled GBOUTS Call S_ZFCY(zc) From W1ZDEP0
+Onkey 144 Titled GBOUTP Call P_ZFCY(zc) From W1ZDEP0
+Onkey 146 Titled GBOUTA Call SA_ZFCY(zc) From W1ZDEP0
+If !GWEBSERV
+ ## Action %ACCSAI
+ Call ACCES("SLBETAT") From OBJDIV
+ If mkstat=2
+  [M]ZFCY(INDIC) = VALEUR
+  Affzo ZFCY(INDIC) : mkstat = 2
+ Endif
+Endif
+Gosub _AFF
+End
+
+Subprog C_ZFCY(VALEUR)
+Variable Char    VALEUR()
+## Action ACONTFCY
+Call CONTSITE(VALEUR) From SUBAGF
+If mkstat : GERR = 1 : GZONE = "ZFCY" : GZNUM = 105429 : Endif
+If !mkstat
+ ## Action %CNTOBJ
+ Call CONTSEL("FCY","!",VALEUR,"",mkstat) From CONTOBJ
+ If mkstat : GERR = 1 : GZONE = "ZFCY" : GZNUM = 105429 : Endif
+Endif
+Gosub _AFF
+End
+
+Subprog S_ZFCY(VALEUR)
+Variable Char    VALEUR()
+Local Char PARMSK(250)(1..16)
+PARMSK(1) = "FCY"
+PARMSK(2) = "!"
+Call S_TAB_CHAR(VALEUR,PARMSK,"SELOBJ","SELOBJ","") From GACTION
+Gosub _AFF
+End
+
+Subprog B1_ZFCY(VALEUR)
+Variable Char    VALEUR()
+Call OBJET("FCY",VALEUR,"") From GOBJET
+Gosub _AFF
+End
+
+Subprog SA_ZFCY(VALEUR)
+Variable Char    VALEUR()
+Local Char PARMSK(250)(1..16) , SAVACT(20)
+SAVACT = GACTION : GACTION = "SELOBJAW"
+PARMSK(1) = "FCY"
+Call SAISIE_CHAR(VALEUR,PARMSK,"DSELOBJAW","SELOBJAW","XWDSELOBJAW") From GSAISIE
+GACTION = SAVACT
+Gosub _AFF
+End
+
+Subprog P_ZFCY(VALEUR)
+Variable Char    VALEUR()
+Local Char PAROBJ(250)
+PAROBJ = ""
+Call VISU("FCY",VALEUR,PAROBJ) From SUBAOP
+Gosub _AFF
+End
+
+$ON_ZDEPINC
+Onevent BEFORE_AREA Gosub AV_ZDEPINC From W1ZDEP0
+Onevent BEFORE_INPUT Call AS_ZDEPINC(zc) From W1ZDEP0
+Onevent INIT_AREA Call D_ZDEPINC(zc) From W1ZDEP0
+Return
+
+$AV_ZDEPINC
+Call ACCES2("SLBETAT") From OBJDIV
+Gosub _AFF
+Return
+
+Subprog D_ZDEPINC(VALEUR)
+Variable Integer VALEUR
+If varinit([M]ZDEPINC,indice)=0
+ VALEUR = 1
+Endif
+Gosub _AFF
+End
+
+Subprog AS_ZDEPINC(VALEUR)
+Variable Integer VALEUR
+Local Integer INDIC : INDIC = indice
+Raz mkstat
+If VALEUR<1
+ VALEUR = 1
+Endif
+If !GWEBSERV
+ ## Action %ACCSAI
+ Call ACCES("SLBETAT") From OBJDIV
+ If mkstat=2
+  [M]ZDEPINC(INDIC) = VALEUR
+  Affzo ZDEPINC(INDIC) : mkstat = 2
+ Endif
+Endif
+Gosub _AFF
+End
+
+$ON_ZLOGEPI
+Onevent BEFORE_AREA Gosub AV_ZLOGEPI From W1ZDEP0
+Onevent BEFORE_INPUT Call AS_ZLOGEPI(zc) From W1ZDEP0
+Return
+
+$AV_ZLOGEPI
+Call ACCES2("SLBETAT") From OBJDIV
+Gosub _AFF
+Return
+
+Subprog AS_ZLOGEPI(VALEUR)
+Variable Char    VALEUR()
+Local Integer INDIC : INDIC = indice
+Raz mkstat
+If !GWEBSERV
+ ## Action %ACCSAI
+ Call ACCES("SLBETAT") From OBJDIV
+ If mkstat=2
+  [M]ZLOGEPI(INDIC) = VALEUR
+  Affzo ZLOGEPI(INDIC) : mkstat = 2
+ Endif
+Endif
+Gosub _AFF
+End
+
+$ON_ZACTIF
+Onevent BEFORE_AREA Gosub AV_ZACTIF From W1ZDEP0
+Onevent BEFORE_INPUT Call AS_ZACTIF(zc) From W1ZDEP0
+Onevent INIT_AREA Call D_ZACTIF(zc) From W1ZDEP0
+Return
+
+$AV_ZACTIF
+Call ACCES2("SLBETAT") From OBJDIV
+Gosub _AFF
+Return
+
+Subprog D_ZACTIF(VALEUR)
+Variable Integer VALEUR
+If varinit([M]ZACTIF,indice)=0
+ VALEUR = 1
+Endif
+Gosub _AFF
+End
+
+Subprog AS_ZACTIF(VALEUR)
+Variable Integer VALEUR
+Local Integer INDIC : INDIC = indice
+Raz mkstat
+If VALEUR<1
+ VALEUR = 1
+Endif
+If !GWEBSERV
+ ## Action %ACCSAI
+ Call ACCES("SLBETAT") From OBJDIV
+ If mkstat=2
+  [M]ZACTIF(INDIC) = VALEUR
+  Affzo ZACTIF(INDIC) : mkstat = 2
+ Endif
+Endif
+Gosub _AFF
+End
+
+$ON_ZFCYCOLLMAN
+Onevent BEFORE_AREA Gosub AV_ZFCYCOLLMAN From W1ZDEP0
+Onevent BEFORE_INPUT Call AS_ZFCYCOLLMAN(zc) From W1ZDEP0
+Onevent INIT_AREA Call D_ZFCYCOLLMAN(zc) From W1ZDEP0
+Return
+
+$AV_ZFCYCOLLMAN
+Call ACCES2("SLBETAT") From OBJDIV
+Gosub _AFF
+Return
+
+Subprog D_ZFCYCOLLMAN(VALEUR)
+Variable Integer VALEUR
+If varinit([M]ZFCYCOLLMAN,indice)=0
+ VALEUR = 1
+Endif
+Gosub _AFF
+End
+
+Subprog AS_ZFCYCOLLMAN(VALEUR)
+Variable Integer VALEUR
+Local Integer INDIC : INDIC = indice
+Raz mkstat
+If VALEUR<1
+ VALEUR = 1
+Endif
+If !GWEBSERV
+ ## Action %ACCSAI
+ Call ACCES("SLBETAT") From OBJDIV
+ If mkstat=2
+  [M]ZFCYCOLLMAN(INDIC) = VALEUR
+  Affzo ZFCYCOLLMAN(INDIC) : mkstat = 2
+ Endif
+Endif
+Gosub _AFF
+End
+
+$ON_ZNBCHG
+Onevent INIT_AREA Call D_ZNBCHG(zc) From W1ZDEP0
+Return
+
+Subprog D_ZNBCHG(VALEUR)
+Variable Decimal VALEUR
+If varinit([M]ZNBCHG,indice)=0
+ VALEUR = W
+Endif
+Gosub _AFF
+End
+
+$ON_ZNBCLTCHG
+Onevent INIT_AREA Call D_ZNBCLTCHG(zc) From W1ZDEP0
+Return
+
+Subprog D_ZNBCLTCHG(VALEUR)
+Variable Decimal VALEUR
+If varinit([M]ZNBCLTCHG,indice)=0
+ VALEUR = W
+Endif
+Gosub _AFF
+End
+
+$ON_ZNBCHANTIER
+Onevent INIT_AREA Call D_ZNBCHANTIER(zc) From W1ZDEP0
+Return
+
+Subprog D_ZNBCHANTIER(VALEUR)
+Variable Decimal VALEUR
+If varinit([M]ZNBCHANTIER,indice)=0
+ VALEUR = W
+Endif
+Gosub _AFF
+End
+
+$CHG_STY
+Return
+
+

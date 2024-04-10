@@ -1,0 +1,153 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$ 
+##################################################### SPEZAMP
+##################################################### créé le 13/02/2018
+##################################################### modifié le 13/02/2018
+
+###################################################################################### ACTION
+$ACTION
+#Infbox ACTION
+Case ACTION
+ When "OUVRE" : Gosub OUVRE
+ When "DEBUT" : Gosub DEBUT
+ When "OK" : Gosub OK
+ When Default
+Endcase
+Return
+
+###################################################################################### OUVRE
+$OUVRE
+If clalev([F:ZT2])=0 : Local File ZARTTRICC  [F:ZT2] : Endif
+If clalev([F:ZME])=0 : Local File ZMODPREST  [F:ZME] : Endif
+If clalev([F:ZML])=0 : Local File ZMODPRESTL [F:ZML] : Endif
+If clalev([F:ZAR])=0 : Local File ZARTPREST  [F:ZAR] : Endif
+If clalev([F:ZAT])=0 : Local File ZARTTRI    [F:ZAT] : Endif
+Return
+
+###################################################################################### DEBUT
+$DEBUT
+[M:ZAMP]ZCODMOD = ""
+Affzo [M:ZAMP]ZCODMOD
+[M:ZAMP]ZMODNAME= ""
+Affzo [M:ZAMP]ZMODNAME
+[M:ZAMP]ZAPNUM = [M:ZEP3]ZAPNUM2([M:ZEP3]ZNBLIGT)
+Affzo [M:ZAMP]ZAPNUM
+[M:ZAMP]ZATNUM = [M:ZEP3]ZATNUM([M:ZEP3]ZNBLIGT)
+Affzo [M:ZAMP]ZATNUM
+[M:ZAMP]ITMREF = [M:ZEP3]TRIITMREF([M:ZEP3]ZNBLIGT)
+Affzo [M:ZAMP]ITMREF
+Return
+
+###################################################################################### OK
+$OK
+#3 cas de figure peuvent se présenter
+#Cas n° 1
+#Il n'y a pas d'article de prestation associé à l'article de tri
+Local Integer WERR : WERR = 1
+Local Integer WCREATELINES : WCREATELINES = 0
+Trbegin [F:ZAR],[F:ZAT]
+If([M:ZEP3]NBLIGP=0)Then
+#  Infbox "Cas n°1 - pas d'article de prestation associé à l'article de tri"
+  WCREATELINES = 1
+Else
+  Local Integer WPARAMCLTCHG : WPARAMCLTCHG = 0
+  #On va regarder s'il existe un paramétrage spécifique pour des clients chargeurs du chargeur
+  #<-----MIS EN COMMENTAIRE LE 22/01/2019 à la demande de SLB-----
+  #For[F:ZT2]ZT20 Where [F:ZT2]ZCODCHARG=[M:BPC0]BPCNUM and [F:ZT2]ZAPNUM=[M:ZAMP]ZAPNUM
+  #  WPARAMCLTCHG = 1
+  #Next
+  #-------------------------------------------------------------->
+  If(WPARAMCLTCHG=0)Then
+#    Infbox "Cas n°2 - Pas de paramétrages spécifiques clients chargeur"
+    #Par contre il existe des lignes de prestation attachées à l'article de tri.
+    #On commence par les supprimer
+    Local Integer WNOL
+    #On est dans le cas où l'on supprime plusieurs lignes
+    For WNOL=0 To [M:ZEP3]NBLIGP-1
+      Call DELETE_ART_PREST([M:ZEP3]ZARNUM(WNOL)) From SPEZEPI
+    Next WNOL
+    #On met à 0 le tableau des prix par dépot chargeur
+    Raz [M:ZEP3]NBLIGDC
+    [M:ZEP3]NBLIGDC = 0
+    Effzo [M:ZEP3]35
+    Affzo [M:ZEP3]NBLIGDC
+    GNBLIGDC = -1
+    [M:ZEP3]ZNBLIGDC = GNBLIGDC
+    Affzo [M:ZEP3]
+    #On met à 0 le tableau des prix par adresse chargeur
+    Raz [M:ZEP3]NBLIGPAC
+    [M:ZEP3]NBLIGPAC = 0
+    Effzo [M:ZEP3]30
+    Affzo [M:ZEP3]NBLIGPAC
+    GNBLIGPAC = -1
+    [M:ZEP3]ZNBLIGPAC = GNBLIGPAC
+    Affzo [M:ZEP3]
+    Call AS_NBLIGT From SPEZEPI
+    WCREATELINES = 1
+  Else
+#    Infbox "Cas n°3 - Il existe des paramétrages spécifiques clients chargeur"
+    Infbox "Impossible ! Il existe des paramétrages spécifiques affectés à des clients chargeurs. Il faut les supprimer avant."
+  Endif
+Endif
+If(WCREATELINES=1)Then
+  #On va récupérer les lignes du modèle de prestation
+  [M:ZEP3]NBLIGP = 0
+  Local Integer WNOL : WNOL = 0
+  [M:ZEP3]ZNBLIGP = WNOL
+  For [F:ZML]ZML0 Where [F:ZML]ZMENUM=[M:ZAMP]ZCODMOD
+    [M:ZEP3]ZARNUM(WNOL)       = ""
+    [M:ZEP3]ZATNUM2(WNOL)      = [M:ZAMP]ZATNUM
+    [M:ZEP3]ZTYPPAL(WNOL)      = [F:ZML]ZTYPPAL
+    [M:ZEP3]PRESTITMREF(WNOL)  = [F:ZML]ITMREF
+    [M:ZEP3]ZTYPARTEPI(WNOL)   = [F:ZML]ZTYPARTEPI
+    [M:ZEP3]ZTYPPRIX(WNOL)     = [F:ZML]ZTYPPRIX
+    [M:ZEP3]ZPRIX(WNOL)        = [F:ZML]ZPRIX
+    [M:ZEP3]ZCOEFFAC(WNOL)     = [F:ZML]ZCOEFFAC
+    [M:ZEP3]ZTYPPREST(WNOL)    = [F:ZML]ZTYPPREST
+    [M:ZEP3]ARTREF(WNOL)       = [F:ZML]ARTREF
+    [M:ZEP3]ZTSTTRSP(WNOL)     = [F:ZML]ZTSTTRSP
+    [M:ZEP3]ZCODCLTCHARG(WNOL) = [F:ZML]ZCODCLTCHARG
+    [M:ZEP3]ZSITE(WNOL)        = [F:ZML]ZSITE
+    [M:ZEP3]ZPAYS(WNOL)        = [F:ZML]ZPAYS
+    [M:ZEP3]ZBPSNUM(WNOL)      = [F:ZML]ZBPSNUM
+    nolign = WNOL + 1
+    [M:ZEP3]ZNBLIGP = WNOL
+    Call APRES_NBLIGP From SPEZEPI
+    WNOL = WNOL + 1
+  Next
+#  [M:ZEP3]NBLIGP = WNOL
+  nolign = [M:ZEP3]ZNBLIGT+1
+  Call AS_NBLIGT From SPEZEPI
+  #On va maintenant ajouter le lien au modèle sur l'article de tri
+  Read [F:ZAT]ZAT0=[M:ZEP3]ZATNUM([M:ZEP3]ZNBLIGT)
+  If(fstat=0)Then
+    [F:ZAT]ZMENUM = [M:ZAMP]ZCODMOD
+    [M:ZEP3]ZMENUM([M:ZEP3]ZNBLIGT) = [M:ZAMP]ZCODMOD
+    Affzo [M:ZEP3]ZMENUM([M:ZEP3]ZNBLIGT)
+    Rewrite [F:ZAT]
+    If(fstat<>0)Then
+      WERR=0
+    Endif
+  Else
+    WERR=0
+  Endif
+Endif
+If(WERR=1)Then
+  Commit
+Else
+  Rollback
+Endif
+Return
+
+Subprog AM_ZCODMOD(VALEUR)
+Variable Char    VALEUR()
+Read[F:ZME]ZME0=VALEUR
+If(fstat=0)Then
+  [M:ZAMP]ZMODNAME = [F:ZME]MODNAME
+Else
+  [M:ZAMP]ZMODNAME = ""
+Endif
+Affzo [M:ZAMP]ZMODNAME
+End
+
+
+######################################################################################

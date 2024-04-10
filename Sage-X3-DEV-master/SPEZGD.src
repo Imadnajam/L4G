@@ -1,0 +1,169 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### SPEZGD
+##################################################### créé le 11/05/2020
+##################################################### modifié le 11/05/2020
+
+$ACTION
+#Infbox ACTION
+Case ACTION
+  When "OUVRE"       : Gosub OUVRE
+  When "DEBUT"       : Gosub DEBUT
+  When "BOUTON"      : Gosub BOUTON
+  When "BB3_NBLIG"   : Gosub BB3_NBLIG
+Endcase
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           LABELS                                                  #
+#---------------------------------------------------------------------------------------------------#
+
+##################################################### OUVRE
+$OUVRE
+If clalev([F:ZDENT])=0   : Local File ZDECONSENT       [F:ZDENT]    : Endif  #Vue des entête
+If clalev([F:ZDEPMTV])=0 : Local File ZDECONSTRSF      [F:ZDEPMTV]  : Endif  #Vue du détails
+Global Integer WLIGENT : WLIGENT = -1
+Return
+
+##################################################### DEBUT
+$DEBUT
+WLIGENT = -1
+Chgstl [M:ZGD0]NBLIG With ""
+#On initialise les zones du premier bloc
+[M:ZGD0]FFCYREC="" : Affzo [M:ZGD0]FFCYREC
+[M:ZGD0]FDATEEND = date$-7 : Affzo [M:ZGD0]FDATEEND
+[M:ZGD0]FETATDEC = 1 : Affzo [M:ZGD0]FETATDEC
+[M:ZGD0]FZCMCNUM = "" : Affzo [M:ZGD0]FZCMCNUM
+Call SPE_APPLY_FILTER([M:ZGD0]FFCYREC,[M:ZGD0]FDATEEND,[M:ZGD0]FETATDEC,[M:ZGD0]FZCMCNUM)
+Return
+
+##################################################### BOUTON
+$BOUTON
+If(BOUT="R")Then
+  #L'utilisateur a cliqué sur le bouton RAFRAICHIR
+  Call SPE_APPLY_FILTER([M:ZGD0]FFCYREC,[M:ZGD0]FDATEEND,[M:ZGD0]FETATDEC,[M:ZGD0]FZCMCNUM)
+  WLIGENT = -1
+  Chgstl [M:ZGD0]NBLIG With ""
+Elsif(BOUT="E")Then
+  #L'utilisateur a cliqué sur le bouton EFFACER
+  Gosub DEBUT
+Endif
+Return
+
+##################################################### BB3_NBLIG
+$BB3_NBLIG
+Call AS_NBLIG
+Return
+
+Subprog SPE_APPLY_FILTER(WFCY,WDATE,WETAT,WZCMCNUM)
+  Value Char WFCY
+  Value Date WDATE
+  Value Integer WETAT
+  Value Char WZCMCNUM
+  #On efface les 2 tableaux
+  Effzo [M:ZGD0]10
+  Effzo [M:ZGD0]NBLIG
+  [M:ZGD0]NBLIG = 0 : Affzo [M:ZGD0]NBLIG
+  Effzo [M:ZGD0]15
+  Effzo [M:ZGD0]NBLIGD
+  [M:ZGD0]NBLIGD = 0 : Affzo [M:ZGD0]NBLIGD
+  WLIGENT = -1
+  #On va maintenant alimenter le premier tableau
+  Local Char WFILTRE(250) : WFILTRE = "1=1"
+  If(WFCY<>"")Then
+    WFILTRE += " & [F:ZDENT]FCYREC='" + WFCY + "'"
+  Endif
+  If(WDATE<>[0/0/0])Then
+    WFILTRE += " & [F:ZDENT]DATEEPM>=[" + format$("D:DD[/]MM[/]YYYY", WDATE) + "]"
+  Endif
+  If(WETAT>1)Then
+    WFILTRE += " & [F:ZDENT]ETATDEC=" + num$(WETAT)
+  Endif
+  If(WZCMCNUM<>"")Then
+    WFILTRE += " & [F:ZDENT]ZCMCNUM='" + WZCMCNUM + "'"
+  Endif
+  For [F:ZDENT]ZDENT0 Where evalue(WFILTRE)
+    [M:ZGD0]EFCYREC([M:ZGD0]NBLIG)     = [F:ZDENT]FCYREC
+    [M:ZGD0]EZCMCNUM([M:ZGD0]NBLIG)    = [F:ZDENT]ZCMCNUM
+    [M:ZGD0]EZNUMEPM([M:ZGD0]NBLIG)    = [F:ZDENT]ZNUMEPM
+    [M:ZGD0]EZDEPNUM([M:ZGD0]NBLIG)    = [F:ZDENT]ZDEPNUM
+    [M:ZGD0]EZDEPNAM([M:ZGD0]NBLIG)    = [F:ZDENT]ZDEPNAM
+    [M:ZGD0]EDATEEPM([M:ZGD0]NBLIG)    = [F:ZDENT]DATEEPM
+    [M:ZGD0]EDATEVAL([M:ZGD0]NBLIG)    = [F:ZDENT]DATEVAL
+    [M:ZGD0]EZCHAUFEPI([M:ZGD0]NBLIG)  = [F:ZDENT]ZCHAUFEPI
+    [M:ZGD0]EDATECOL([M:ZGD0]NBLIG)    = [F:ZDENT]DATECOL
+    [M:ZGD0]EDATEENL([M:ZGD0]NBLIG)    = [F:ZDENT]DATEENL
+    [M:ZGD0]EDATERECEP([M:ZGD0]NBLIG)  = [F:ZDENT]DATERECEP
+    [M:ZGD0]EZCHANTIER([M:ZGD0]NBLIG)  = [F:ZDENT]ZCHANTIER
+    [M:ZGD0]EZCHANUM([M:ZGD0]NBLIG)    = [F:ZDENT]ZCHANUM
+    [M:ZGD0]EZCHANAM([M:ZGD0]NBLIG)    = [F:ZDENT]ZCHANAM
+    [M:ZGD0]EETATDEC([M:ZGD0]NBLIG)    = [F:ZDENT]ETATDEC
+    [M:ZGD0]NBLIG += 1
+    If([M:ZGD0]NBLIG>=500)Then
+      Call MESSAGE ("Seules les 500 premières lignes seront affichées") From GESECRAN
+      Break
+    Endif
+  Next
+  Affzo [M:ZGD0]10
+End
+
+######################################################################################
+## Etiquette ajoutée par le superviseur (écran ZGESTDECONS0) 11/05/2020 17:49:37 (JBS)
+######################################################################################
+Subprog AM_FFCYREC(VALEUR)
+Variable Char    VALEUR()
+Call SPE_APPLY_FILTER(VALEUR,[M:ZGD0]FDATEEND,[M:ZGD0]FETATDEC,[M:ZGD0]FZCMCNUM)
+End
+
+Subprog AM_FDATEEND(VALEUR)
+Variable Date    VALEUR
+Call SPE_APPLY_FILTER([M:ZGD0]FFCYREC,VALEUR,[M:ZGD0]FETATDEC,[M:ZGD0]FZCMCNUM)
+End
+
+Subprog AM_FETATDEC(VALEUR)
+Variable Integer VALEUR
+Call SPE_APPLY_FILTER([M:ZGD0]FFCYREC,[M:ZGD0]FDATEEND,VALEUR,[M:ZGD0]FZCMCNUM)
+End
+
+Subprog AM_FZCMCNUM(VALEUR)
+Variable Char    VALEUR()
+Call SPE_APPLY_FILTER([M:ZGD0]FFCYREC,[M:ZGD0]FDATEEND,[M:ZGD0]FETATDEC,VALEUR)
+End
+
+Subprog AS_NBLIG
+  WLIGENT = nolign-1
+#  Infbox num$(WLIGENT)
+  Chgstl [M:ZGD0]NBLIG With ""
+  Chgstl [M:ZGD0]NBLIG(WLIGENT) With "BACKGREEN"
+  #Nous allons maintenant effacer le tableau des détails
+  Effzo [M:ZGD0]15
+  Effzo [M:ZGD0]NBLIGD
+  [M:ZGD0]NBLIGD = 0 : Affzo [M:ZGD0]NBLIGD
+  #Remplissage du tableau des détails
+  For[F:ZDEPMTV]ZDEPMTV0 Where [F:ZDEPMTV]ZCMCNUM=[M:ZGD0]EZCMCNUM(WLIGENT)
+    #Infbox "je passe"
+    [M:ZGD0]DZCMCNUM([M:ZGD0]NBLIGD)     = [F:ZDEPMTV]ZCMCNUM
+    [M:ZGD0]DZNUMEPM([M:ZGD0]NBLIGD)     = [F:ZDEPMTV]ZNUMEPM
+    [M:ZGD0]DZCODCHARG([M:ZGD0]NBLIGD)   = [F:ZDEPMTV]ZCODCHARG
+    [M:ZGD0]DZCODCLT([M:ZGD0]NBLIGD)     = [F:ZDEPMTV]ZCODCLT
+    [M:ZGD0]DZRGTNOMFIN([M:ZGD0]NBLIGD)  = [F:ZDEPMTV]ZRGTNOMFIN
+    [M:ZGD0]DTRIAFAIRE([M:ZGD0]NBLIGD)   = [F:ZDEPMTV]TRIAFAIRE
+    [M:ZGD0]DZARTDECONS([M:ZGD0]NBLIGD)  = [F:ZDEPMTV]ZARTDECONS
+    [M:ZGD0]DZITMREF([M:ZGD0]NBLIGD)     = [F:ZDEPMTV]ZITMREF
+    [M:ZGD0]DQTY([M:ZGD0]NBLIGD)         = [F:ZDEPMTV]QTY
+    [M:ZGD0]DDATERECTRI([M:ZGD0]NBLIGD)  = [F:ZDEPMTV]DATERECTRI
+    [M:ZGD0]DDECONS([M:ZGD0]NBLIGD)      = [F:ZDEPMTV]DECONS
+    [M:ZGD0]DDATEDECONS([M:ZGD0]NBLIGD)  = [F:ZDEPMTV]DATEDECONS
+    [M:ZGD0]DDATTRSFEPI([M:ZGD0]NBLIGD)  = [F:ZDEPMTV]DATTRSFEPI
+    [M:ZGD0]DHEUTRSFEPI([M:ZGD0]NBLIGD)  = [F:ZDEPMTV]HEUTRSFEPI
+    [M:ZGD0]DZIDEPI([M:ZGD0]NBLIGD)      = [F:ZDEPMTV]ZIDEPI
+    [M:ZGD0]DNUMPIECECHG([M:ZGD0]NBLIGD) = [F:ZDEPMTV]NUMPIECECHG
+    [M:ZGD0]DDATEDECONSC([M:ZGD0]NBLIGD) = [F:ZDEPMTV]DATEDECONSCH
+    [M:ZGD0]DZBLCHG([M:ZGD0]NBLIGD)      = [F:ZDEPMTV]ZBLCHG
+    [M:ZGD0]DCHANAM([M:ZGD0]NBLIGD)      = [F:ZDEPMTV]CHANAM
+    [M:ZGD0]DCHACP([M:ZGD0]NBLIGD)       = [F:ZDEPMTV]CHACP
+    [M:ZGD0]DCHACITY([M:ZGD0]NBLIGD)     = [F:ZDEPMTV]CHACITY
+    [M:ZGD0]NBLIGD += 1
+  Next
+  Affzo [M:ZGD0]15
+End
+

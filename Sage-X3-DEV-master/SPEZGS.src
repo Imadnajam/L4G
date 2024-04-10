@@ -1,0 +1,68 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### SPEZGS
+##################################################### créé le 17/03/2020
+##################################################### modifié le 17/03/2020
+
+$ACTION
+#infbox ACTION
+Case ACTION
+  When "OUVRE"   : Gosub OUVRE
+  When "DEBUT"   : Gosub DEBUT
+  When "OK"      : Gosub OK
+Endcase
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           LABELS                                                  #
+#---------------------------------------------------------------------------------------------------#
+
+######################################################################### OUVRE
+$OUVRE
+If clalev([F:ZCMC2])=0  : Local File ZCOLMULTICHG   [F:ZCMC2]  : Endif
+Return
+
+######################################################################### DEBUT
+$DEBUT
+If(func SPEZCMC.GET_LOCK_CMC()=0)Then
+  WSOLDEPX = 0
+  #On commence par initialiser les zones
+  Effzo [M:ZGS]
+  [M:ZGS]DATESOLDE = date$
+  [M:ZGS]HEURESOLDE = time$
+  [M:ZGS]MOTIFSOLDE = "ERR"
+  [M:ZGS]LOGINSOLDE = "X3-" + GUSER
+  Affzo [M:ZGS]
+Else
+  FIN = 1
+Endif
+Return
+
+######################################################################### OK
+$OK
+  #L'utilisateur vient de cliquer sur le bouton permettant de solder la collecte multi-chargeur
+  #Seul les profil ADMIN et BP ont accès à ce bouton
+  If(GPROFIL="ADMIN" or GPROFIL="BP")Then
+    Read[F:ZCMC2]ZCMC=[M:ZCMC0]ZCMCNUM
+    If(fstat=0)Then
+      [F:ZCMC2]DATESOLDE  = [M:ZGS]DATESOLDE
+      [F:ZCMC2]MOTIFSOLDE = [M:ZGS]MOTIFSOLDE
+      [F:ZCMC2]HEURESOLDE = [M:ZGS]HEURESOLDE
+      [F:ZCMC2]LOGINSOLDE = [M:ZGS]LOGINSOLDE
+      [F:ZCMC2]OBSSOLDE   = [M:ZGS]OBSSOLDE
+      [F:ZCMC2]SYNCHEPI   = 1
+      [F:ZCMC2]SEMAREC    = 2
+      Rewrite[F:ZCMC2]
+      If(fstat=0)Then
+        WSOLDEPX = 1
+      Else
+        Call ERREUR("Impossible de solder la collecte multi-chargeur. Veuillez essayer ultérieurement.") From GESECRAN
+      Endif
+    Endif
+  Else
+    Call MESSAGE("Vous n'êtes pas autorisé(e) à utiliser cette fonction.") From GESECRAN
+  Endif
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           SUBPROGS                                                #
+#---------------------------------------------------------------------------------------------------#

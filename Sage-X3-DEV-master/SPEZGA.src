@@ -1,0 +1,895 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### SPEZGA
+##################################################### créé le 30/03/2020
+##################################################### modifié le 30/03/2020
+
+$ACTION
+#Infbox ACTION
+Case ACTION
+  When "OUVRE"     : Gosub OUVRE
+  When "DEBUT"     : Gosub DEBUT
+  When "SETBOUT"   : Gosub SETBOUT
+  When "BOUTON"    : Gosub BOUTON
+Endcase
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           LABELS                                                  #
+#---------------------------------------------------------------------------------------------------#
+
+######################################################################### OUVRE
+$OUVRE
+  # Ouverture des tables
+  If clalev([F:ZTE])=0   : Local File ZTEMPEPI     [F:ZTE]   : Endif
+  If clalev([F:ZZS])=0   : Local File ZZSTOCK      [F:ZZS]   : Endif
+  If clalev([F:ZZSA])=0  : Local File ZZSTOCKARCH  [F:ZZSA]  : Endif
+  If clalev([F:ZZHL])=0  : Local File ZZHISTOLIGNE [F:ZZHL]  : Endif
+  If clalev([F:ZZHF])=0  : Local File ZZHISTOFAC   [F:ZZHF]  : Endif
+  If clalev([F:ZZAT])=0  : Local File ZZATRIER     [F:ZZAT]  : Endif
+  If clalev([F:ZEGP])=0  : Local File ZEPIGENPIE   [F:ZEGP]  : Endif
+  If clalev([F:AMZ])=0   : Local File AMSKZON      [F:AMZ]   : Endif
+  If clalev([F:ZDAHP])=0 : Local File ZDETACTHP    [F:ZDAHP] : Endif
+  If clalev([F:ZSAOK])=0 : Local File ZSUPACTOK    [F:ZSAOK] : Endif
+  If clalev([F:ZCOL])=0  : Local File ZCOLMULTICHG [F:ZCOL]  : Endif
+  If clalev([F:ZCHG])=0  : Local File ZCHGMULTICHG [F:ZCHG]  : Endif
+  If clalev([F:ZREC])=0  : Local File ZRECMULTICHG [F:ZREC]  : Endif
+  If clalev([F:ZTRI])=0  : Local File ZTRIMULTICHG [F:ZTRI]  : Endif
+  Global Integer GNBLIGLA : GNBLIGLA = -1
+  Global Char GSTYLEGL(30) : GSTYLEGL = "ZTOTPAL"
+  Global Char GNUMACTION(30) : GNUMACTION = ""
+  Global Integer GSUPACT : GSUPACT = 1
+Return
+
+######################################################################### DEBUT
+$DEBUT
+  #On commence par effacer le mask
+  Call SPE_EFFACE_MASK()
+Return
+
+######################################################################### SETBOUT
+$SETBOUT
+If(GSUPACT<>2)Then
+  #On est dans le cas où il faut désactiver les bouton de suppression et d'annulation
+  #car on ne peut plus rien faire pour cette action à part modifier des éléments de l'action à ses risques et périls
+  Call VIREBOUT(CHMEN,"VW") From GOBJET
+  Gosub SET_BOUT_SPE From GSAISIE
+Endif
+If(GNUMACTION="")Then
+  Call VIREBOUT(CHMEN,"Y") From GOBJET
+  Gosub SET_BOUT_SPE From GSAISIE
+Endif
+Return
+
+######################################################################### BOUTON
+$BOUTON
+Local Integer WREP
+Local Integer ZERROR : ZERROR = 0
+If(GUSER="JBS")Then
+  If(BOUT="U")Then #ENREGISTRER L'ACTION
+    Call OUINON("Etes-vous sûr(e) de vouloir enregistrer les modifications apportées à l'action ?",WREP) From GESECRAN
+    If(WREP=2)Then
+      Call SPE_SAVE_ACTION()
+    Endif
+  Elsif(BOUT="V" or BOUT="W")Then #(V)SUPPRIMER L'ACTION ou (W)ANNULER L'ACTION
+    Infbox "Code action : " + num$([M:ZGA]ZACT)
+    Local Char WLIBMESS1(100)
+    Local Char WLIBMESS2(100)
+    If(BOUT="V")Then  #SUPPRESSION DE L'ACTION
+      WLIBMESS1 = "Etes-vous sûr(e) de vouloir supprimer l'action ?"
+      WLIBMESS2 = "Suppression de l'action en cours..."
+   Elsif(BOUT="W")Then #ANNULATION DE L'ACTION
+      WLIBMESS1 = "Etes-vous sûr(e) de vouloir annuler l'action ?"
+      WLIBMESS2 = "Annulation de l'action en cours..."
+    Endif
+    Call OUINON(WLIBMESS1,WREP) From GESECRAN
+    If(WREP=2)Then
+      #Avant de se lancer dans l'exécution du traitement, on va controler qu'il n'y a pas de pièce EPL existante
+      #S'il y en a, on va le signifier à l'utilisateur et lui seul prendra la décision de continuer ou pas
+      If([M:ZGA]NBLIG>0)Then
+        WREP = 1
+        Call OUINON("ATTENTION ! Il existe des pièces EPL toujours attachées à cette action. ëtes vous sûr(e) de vouloir poursuivre ?",WREP) From GESECRAN
+      Endif
+      If(WREP=2)Then
+        Call TEMPON(WLIBMESS2) From GESECRAN
+        Trbegin [F:ZTE],[F:ZZS],[F:ZZSA],[F:ZZHL],[F:ZZHF],[F:ZZAT],[F:ZCOL],[F:ZCHG],[F:ZTRI]
+        ZERROR = func SPE_CANCEL_ACTION([M:ZGA]AZACTNUM)
+        If(ZERROR=0 and BOUT="V")Then
+          ZERROR = func SPE_DELETE_ACTION([M:ZGA]AZACTNUM)
+        Endif
+        If(ZERROR=0)Then
+          #Le traitement s'est déroulé sans erreurs, nous allons donc valider l'ensemble des modifications
+          Commit
+          Call MESSAGE("Validation globale des modifications.") From GESECRAN
+          GSUPACT = func SPE_GET_PROFILE_ACTION([M:ZGA]AZACTNUM)
+          Call SPE_GET_ACTION([M:ZGA]ZACTNUM)
+        Else
+          #Des erreurs se sont produites lors du traitement, nous allons annuler l'ensemble des modifications apportées
+          Rollback
+          Call ERREUR("Impossible d'effectuer l'opération, [Erreur n° " + num$(ZERROR) + "]") From GESECRAN
+        Endif
+        Call TEMPOFF From GESECRAN
+      Endif
+    Endif
+  Elsif(BOUT="X")Then #RAFRAICHIR
+    Call SPE_GET_ACTION([M:ZGA]AZACTNUM)
+  Elsif(BOUT="Y")Then #AFFICHER LE DETAILS DES EMBALLAGES
+    Call SPE_GET_DET_ACTION([M:ZGA]AZACTNUM)
+  Endif
+Else
+  Call ERREUR("Impossible ! Pour l'instant seul JBS peut effectuer ces actions.") From GESECRAN
+Endif
+Return
+
+######################################################################### Annulation - Réparation
+$SPE_TRAIT_REP # Réparation - Code erreur commençant par 100XXX
+#Fonction non encore développée
+RESULT = 100000
+Return
+
+######################################################################### Annulation - Relocalisation
+$SPE_TRAIT_REL # Relocalisation - Code erreur commençant par 200XXX
+#Fonction non encore développée
+RESULT = 200000
+Return
+
+######################################################################### Annulation - Transformation
+$SPE_TRAIT_TRA # Transformation - Code erreur commençant par 300XXX
+#Fonction non encore développée
+RESULT = 300000
+Return
+
+######################################################################### Annulation - Entrée diverse
+$SPE_TRAIT_EDI # Entrée diverse - Code erreur commençant par 500XXX
+#Fonction non encore développée
+RESULT = 500000
+Return
+
+######################################################################### Annulation - Sortie diverse
+$SPE_TRAIT_SDI # Sortie diverse - Code erreur commençant par 600XXX
+#Fonction non encore développée
+RESULT = 600000
+Return
+
+######################################################################### Annulation - Destruction / Rachat
+$SPE_TRAIT_DES # Destruction / Rachat - Code erreur commençant par 700XXX
+#Fonction non encore développée
+RESULT = 700000
+Return
+
+######################################################################### Annulation - Transfert de stock
+$SPE_TRAIT_TDS # Transfert de stock - Code erreur commençant par 800XXX
+#Fonction non encore développée
+RESULT = 800000
+Return
+
+######################################################################### Annulation - Achat ext. chargeur
+$SPE_TRAIT_AEC # Achat ext. chargeur - Code erreur commençant par 900XXX
+#Fonction non encore développée
+RESULT = 900000
+Return
+
+######################################################################### Annulation - Trier des palettes
+$SPE_TRAIT_TRI # Trier des palettes - Code erreur commençant par 110XXX
+#Pour une action de tri, 3 cas peuvent se présenter
+# 1 - Le tri est issu d'un EPX
+#     Dans ce cas, il faut supprimer les enregistrements lié à l'action des tables suivantes
+#     1 - [F:ZZS]  - ZZSTOCK       - L'action se trouve dans le champ ZORIGIN
+#     2 - [F:ZZSA] - ZZSTOCKARCH   - L'action se trouve dans le champ ZORIGIN
+#     3 - [F:ZZAT] - ZZATRIER      - L'action se trouve dans le champ ZACTNUM
+#     4 - [F:ZZHL] - ZZHISTOLIGNE  - L'action se trouve dans le champ ZACTNUM
+#     5 - [F:ZZHF] - ZZHISTOFAC    - L'action se trouve dans le champ ZACTNUM
+#     Il faut ensuite dévalider le tri dans l'EPX
+#     Et enfin supprimer l'action
+# 2 - Le tri est issu du lot de palettes à trier
+#     Il faut remettre la quantité de palettes triées dans le lot de palettes à trier
+#     Supprimer les enregistrements lié à l'action des tables suivantes
+#     1 - [F:ZZS]  - ZZSTOCK       - L'action se trouve dans le champ ZORIGIN
+#     2 - [F:ZZSA] - ZZSTOCKARCH   - L'action se trouve dans le champ ZORIGIN
+#     4 - [F:ZZHL] - ZZHISTOLIGNE  - L'action se trouve dans le champ ZACTNUM
+#     5 - [F:ZZHF] - ZZHISTOFAC    - L'action se trouve dans le champ ZACTNUM
+#     Et enfin supprimer l'action
+# 3 - Le tri est un tri HP
+#     Dans ce cas, il faut supprimer les enregistrements lié à l'action des tables suivantes
+#     1 - [F:ZZS]  - ZZSTOCK       - L'action se trouve dans le champ ZORIGIN
+#     2 - [F:ZZSA] - ZZSTOCKARCH   - L'action se trouve dans le champ ZORIGIN
+#     3 - [F:ZZAT] - ZZATRIER      - L'action se trouve dans le champ ZACTNUM
+#     4 - [F:ZZHL] - ZZHISTOLIGNE  - L'action se trouve dans le champ ZACTNUM
+#     5 - [F:ZZHF] - ZZHISTOFAC    - L'action se trouve dans le champ ZACTNUM
+#     Et enfin supprimer l'action
+Return
+
+######################################################################### Annulation - Réception de palettes
+$SPE_TRAIT_REC # Réception de palettes - Code erreur commençant par 120XXX
+#L'annulation d'une réception consiste à supprimer tous les enregistrements liés à l'action dans les tables suivantes :
+# 1 - [F:ZZS]  - ZZSTOCK       - L'action se trouve dans le champ ZORIGIN
+# 2 - [F:ZZSA] - ZZSTOCKARCH   - L'action se trouve dans le champ ZORIGIN
+# 3 - [F:ZZAT] - ZZATRIER      - L'action se trouve dans le champ ZACTNUM
+# 4 - [F:ZZHL] - ZZHISTOLIGNE  - L'action se trouve dans le champ ZACTNUM
+# 5 - [F:ZZHF] - ZZHISTOFAC    - L'action se trouve dans le champ ZACTNUM
+Delete [F:ZZS] Where [F:ZZS]ZORIGIN = WZACTNUM
+If(fstat=0)Then
+  Delete [F:ZZSA] Where [F:ZZSA]ZORIGIN = WZACTNUM
+  If(fstat=0)Then
+    Delete [F:ZZAT] Where [F:ZZAT]ZACTNUM = WZACTNUM
+    If(fstat=0)Then
+      If([M:ZGA]VCRNUM<>"")Then
+        #Dans le cas où la réception est issue d'un EPX le champ ZACTNUM contient le N° d'EPX et non le code de l'action
+        Delete [F:ZZHL] Where [F:ZZHL]ZACTNUM = WZACTNUM or [F:ZZHL]ZACTNUM = [M:ZGA]VCRNUM
+      Else
+        Delete [F:ZZHL] Where [F:ZZHL]ZACTNUM = WZACTNUM
+      Endif
+      If(fstat=0)Then
+        Delete [F:ZZHF] Where [F:ZZHF]ZACTNUM = WZACTNUM
+        If(fstat=0)Then
+          #On va regarder si l'action de réception vient d'un EPX ou pas. Si c'est le cas, on va dévalider
+          #l'étape de réception de l'EPX et supprimer l'action qui n'a plus de sens
+          Read[F:ZCOL]ZCMC=[M:ZGA]VCRNUM
+          If(fstat=0)Then
+            Delete [F:ZTE] Where [F:ZTE]ZACTNUM = WZACTNUM
+            If(fstat=0)Then
+              [F:ZCOL]DATEVAL = [0/0/0]
+              [F:ZCOL]HEUVALRECEP = ""
+              Rewrite[F:ZCOL]
+              If(fstat<>0)Then
+                RESULT = 120007
+              Endif
+            Else
+              RESULT = 120006
+            Endif
+          Endif
+        Else
+          RESULT = 120005
+        Endif
+      Else
+        RESULT = 120004
+      Endif
+    Else
+      RESULT = 120003
+    Endif
+  Else
+    RESULT = 120002
+  Endif
+Else
+  RESULT = 120001
+Endif
+Return
+
+######################################################################### Annulation - Entrée diverse Palettes à trier
+$SPE_TRAIT_EDP # Entrée diverse Palettes à trier - Code erreur commençant par 140XXX
+#Fonction non encore développée
+RESULT = 140000
+Return
+
+######################################################################### Annulation - Sortie diverse Palettes à trier
+$SPE_TRAIT_SDP # Sortie diverse Palettes à trier - Code erreur commençant par 150XXX
+#Fonction non encore développée
+RESULT = 150000
+Return
+
+######################################################################### Annulation - Transfert Palettes à trier
+$SPE_TRAIT_TDP # Transfert Palettes à trier - Code erreur commençant par 160XXX
+#Fonction non encore développée
+RESULT = 160000
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           SUBPROGS                                                #
+#---------------------------------------------------------------------------------------------------#
+Subprog SPE_EFFACE_MASK()
+  Effzo [M:ZGA]10
+  Effzo [M:ZGA]15
+  Effzo [M:ZGA]20
+  Effzo [M:ZGA]25
+  Effzo [M:ZGA]30
+  Effzo [M:ZGA]35
+  Effzo [M:ZGA]40
+  Effzo [M:ZGA]45
+  [M:ZGA]NBLIG       = 0
+  [M:ZGA]NBLIGA      = 0
+  [M:ZGA]NBLIGAT     = 0
+  [M:ZGA]NBLIGLA     = 0
+  [M:ZGA]NBLIGT      = 0
+  [M:ZGA]NBLIGD      = 0
+  [M:ZGA]ANBLIGLA    = 0
+  [M:ZGA]ZNBTOTPAL   = 0
+  [M:ZGA]ZNBTOTPALKC = 0
+  [M:ZGA]ZNBTOTPALHS = 0
+  GNBLIGLA           = -1
+End
+
+Funprog SPE_GET_APPLY_ALL_LINES(WCODZON)
+Value Char WCODZON
+Local Integer WRESULT : WRESULT = 1
+Read[F:AMZ]CODE="ZGESTACT";WCODZON
+If(fstat=0)Then
+  If([F:AMZ]STYZON=GSTYLEGL)Then
+    WRESULT = 2
+  Endif
+Endif
+End WRESULT
+
+Subprog SPE_SET_APPLY_MODIF(WCODZON,WVALEUR,WTYPE)
+Value Char WCODZON
+Value Char WVALEUR
+Value Integer WTYPE #1 : alphanumérique, 2 : numérique, 3 : Date
+#Si le style de la zone est égale à la variable globale GSTYLEGL, alors on répercute
+#la modification sur l'ensemble des lignes de l'action
+If(func SPE_GET_APPLY_ALL_LINES(WCODZON)=2)Then
+  #On est dans le cas où il faut appliquer la modification à l'ensemble des lignes de l'action
+  Local Integer WNUMLIG
+  For WNUMLIG=0 To [M:ZGA]NBLIGLA-1
+    If(WTYPE=1)Then
+      Assign ("[M:ZGA]F"+WCODZON+"(WNUMLIG)")With WVALEUR
+    Elsif(WTYPE=2)Then
+      Assign ("[M:ZGA]F"+WCODZON+"(WNUMLIG)")With val(WVALEUR)
+    Elsif(WTYPE=3)Then
+      Assign ("[M:ZGA]F"+WCODZON+"(WNUMLIG)")With gdat$(val(mid$(WVALEUR,1,2)),val(mid$(WVALEUR,4,2)),val(mid$(WVALEUR,7,4)))
+    Endif
+  Next
+Else
+  #On est dans le cas où il ne faut pas appliquer la modification à l'ensemble des lignes
+  If([M:ZGA]ANBLIGLA<>-1)Then
+    If(WTYPE=1)Then
+      Assign ("[M:ZGA]F"+WCODZON+"([M:ZGA]ANBLIGLA)")With WVALEUR
+    Elsif(WTYPE=2)Then
+      Assign ("[M:ZGA]F"+WCODZON+"([M:ZGA]ANBLIGLA)")With val(WVALEUR)
+    Elsif(WTYPE=3)Then
+      Assign ("[M:ZGA]F"+WCODZON+"([M:ZGA]ANBLIGLA)")With gdat$(val(mid$(WVALEUR,1,2)),val(mid$(WVALEUR,4,2)),val(mid$(WVALEUR,7,4)))
+    Endif
+  Endif
+Endif
+Affzo [M:ZGA]15
+End
+
+Subprog SPE_SAVE_ACTION()
+  #Cette procédure permet de sauvegarder les modifications apportées par l'utilisateur à l'action
+  Local Integer WERR : WERR = 0
+  Local Integer WNUMLIG
+  #Nous allons effectuer la sauvegarde au sein d'une transaction
+  Trbegin [F:ZTE]
+  #Nous allons parcourrir l'ensemble du tableau des lignes d'action
+  For WNUMLIG=0 To [M:ZGA]NBLIGLA-1
+    Read[F:ZTE]ZTE5=[M:ZGA]FZACTNUM(WNUMLIG);[M:ZGA]FZNUMLIG(WNUMLIG)
+    If(fstat=0)Then
+      [F:ZTE]ZFCY         = [M:ZGA]FZFCY(WNUMLIG)
+      [F:ZTE]ZBPCORD      = [M:ZGA]FZBPCORD(WNUMLIG)
+      [F:ZTE]ZUSER        = [M:ZGA]FZUSER(WNUMLIG)
+      [F:ZTE]ZITMREF      = [M:ZGA]FZITMREF(WNUMLIG)
+      [F:ZTE]ZQTY         = [M:ZGA]FZQTY(WNUMLIG)
+      [F:ZTE]ZACT         = [M:ZGA]FZACT(WNUMLIG)
+      [F:ZTE]ZCOMPTEUR    = [M:ZGA]FZCOMPTEUR(WNUMLIG)
+      [F:ZTE]ZDATACT      = [M:ZGA]FZDATACT(WNUMLIG)
+      [F:ZTE]ZREFERENCE   = [M:ZGA]FZREFERENCE(WNUMLIG)
+      [F:ZTE]ZBPAADD      = [M:ZGA]FZBPAADD(WNUMLIG)
+      [F:ZTE]ZBPCORDF     = [M:ZGA]FZBPCORDF(WNUMLIG)
+      [F:ZTE]ZFCYF        = [M:ZGA]FZFCYF(WNUMLIG)
+      [F:ZTE]ZFCYREC      = [M:ZGA]FZFCYREC(WNUMLIG)
+      [F:ZTE]ZCHAUFFEUR   = [M:ZGA]FZCHAUFFEUR(WNUMLIG)
+      [F:ZTE]VCRNUM       = [M:ZGA]FVCRNUM(WNUMLIG)
+      [F:ZTE]VCRTYP       = [M:ZGA]FVCRTYP(WNUMLIG)
+      [F:ZTE]ZACTOK       = [M:ZGA]FZACTOK(WNUMLIG)
+      [F:ZTE]ZTRANSCHG    = [M:ZGA]FZTRANSCHG(WNUMLIG)
+      [F:ZTE]ZPAYS        = [M:ZGA]FZPAYS(WNUMLIG)
+      [F:ZTE]ZQTEKCUTIL   = [M:ZGA]FZQTEKCUTIL(WNUMLIG)
+      [F:ZTE]ZQTEHS       = [M:ZGA]FZQTEHS(WNUMLIG)
+      [F:ZTE]ZAPPRO       = [M:ZGA]FZAPPRO(WNUMLIG)
+      [F:ZTE]ZDATEFFET    = [M:ZGA]FZDATEFFET(WNUMLIG)
+      [F:ZTE]ZTYPPAL      = [M:ZGA]FZTYPPAL(WNUMLIG)
+      [F:ZTE]ZEXEACT      = [M:ZGA]FZEXEACT(WNUMLIG)
+      [F:ZTE]ZEXEACTH     = [M:ZGA]FZEXEACTH(WNUMLIG)
+      [F:ZTE]ZCODCLT      = [M:ZGA]FZCODCLT(WNUMLIG)
+      [F:ZTE]VCRLIN       = [M:ZGA]FVCRLIN(WNUMLIG)
+      [F:ZTE]ZDEPNUM      = [M:ZGA]FZDEPNUM(WNUMLIG)
+      [F:ZTE]ZITMREFDEST  = [M:ZGA]FZITMREFDEST(WNUMLIG)
+      [F:ZTE]ZTRIUSINE    = [M:ZGA]FZTRIUSINE(WNUMLIG)
+      [F:ZTE]TRIAFAIRE    = [M:ZGA]FTRIAFAIRE(WNUMLIG)
+      Rewrite[F:ZTE]
+      WERR = fstat
+    Else
+      WERR = 500
+    Endif
+  Next WNUMLIG
+  If(WERR=0)Then
+    Commit
+    Call MESSAGE ("Les modifications ont été appliquées avec succès.") From GESECRAN
+  Else
+    Rollback
+    Call ERREUR ("Impossible ! Des erreurs ce sont produites pendant la mise à jour. Erreur n°" + num$(WERR)) From GESECRAN
+  Endif
+End
+
+Subprog SPE_GET_DET_ACTION(WZACTNUM)
+  Value Char WZACTNUM
+  Local Integer WNOL : WNOL = 0
+  Effzo[M:ZGA]45
+  [M:ZGA]NBLIGD = 0
+  Call TEMPON("Récupération de l'historique des emballages...") From GESECRAN
+  Chgstl [M:ZGA]NBLIGD With "TDBBLU"
+  For[F:ZDAHP]ZDAHP0 Where [F:ZDAHP]ZACTNUM=WZACTNUM
+    [M:ZGA]GZACTNUM([M:ZGA]NBLIGD)     = [F:ZDAHP]ZACTNUM
+    [M:ZGA]GZSEQ([M:ZGA]NBLIGD)        = [F:ZDAHP]ZSEQ
+    [M:ZGA]GZACT([M:ZGA]NBLIGD)        = [F:ZDAHP]ZACT
+    [M:ZGA]GZACTNUMORI([M:ZGA]NBLIGD)  = [F:ZDAHP]ZACTNUMORI
+    [M:ZGA]GZDATACT([M:ZGA]NBLIGD)     = [F:ZDAHP]ZDATACT
+    [M:ZGA]GZHEUACT([M:ZGA]NBLIGD)     = [F:ZDAHP]ZHEUACT
+    [M:ZGA]GZFCY([M:ZGA]NBLIGD)        = [F:ZDAHP]ZFCY
+    [M:ZGA]GZITMREF([M:ZGA]NBLIGD)     = [F:ZDAHP]ZITMREF
+    [M:ZGA]GZTYPPAL([M:ZGA]NBLIGD)     = [F:ZDAHP]ZTYPPAL
+    [M:ZGA]GCREUSR([M:ZGA]NBLIGD)      = [F:ZDAHP]CREUSR
+    [M:ZGA]GZDEPNUM([M:ZGA]NBLIGD)     = [F:ZDAHP]ZDEPNUM
+    [M:ZGA]GZCMCNUM([M:ZGA]NBLIGD)     = [F:ZDAHP]ZCMCNUM
+    If([F:ZDAHP]ZACTNUM=[F:ZDAHP]ZACTNUMORI)Then
+      Chgstl [M:ZGA]NBLIGD([M:ZGA]NBLIGD) With "GRAS"
+    Endif
+    [M:ZGA]NBLIGD += 1
+    Affzo [M:ZGA]NBLIGD
+  Next
+  Affzo[M:ZGA]45
+  Call TEMPOFF From GESECRAN
+End
+
+Subprog SPE_GET_ACTION(WZACTNUM)
+  Value Char WZACTNUM
+  #On commence par effacer le mask
+  Call SPE_EFFACE_MASK()
+  #On va maintenant parcourir l'ensemble des lignes de l'action
+  For[F:ZTE]ZTE5 Where [F:ZTE]ZACTNUM=WZACTNUM
+    [M:ZGA]FZNUMLIG([M:ZGA]NBLIGLA)      = [F:ZTE]ZNUMLIG
+    [M:ZGA]FZITMREF([M:ZGA]NBLIGLA)      = [F:ZTE]ZITMREF
+    [M:ZGA]FZQTY([M:ZGA]NBLIGLA)         = [F:ZTE]ZQTY
+    [M:ZGA]FZFCY([M:ZGA]NBLIGLA)         = [F:ZTE]ZFCY
+    [M:ZGA]FZBPCORD([M:ZGA]NBLIGLA)      = [F:ZTE]ZBPCORD
+    [M:ZGA]FZCOMPTEUR([M:ZGA]NBLIGLA)    = [F:ZTE]ZCOMPTEUR
+    [M:ZGA]FZDATACT([M:ZGA]NBLIGLA)      = [F:ZTE]ZDATACT
+    [M:ZGA]FZREFERENCE([M:ZGA]NBLIGLA)   = [F:ZTE]ZREFERENCE
+    [M:ZGA]FZBPAADD([M:ZGA]NBLIGLA)      = [F:ZTE]ZBPAADD
+    [M:ZGA]FZBPCORDF([M:ZGA]NBLIGLA)     = [F:ZTE]ZBPCORDF
+    [M:ZGA]FZFCYF([M:ZGA]NBLIGLA)        = [F:ZTE]ZFCYF
+    [M:ZGA]FZFCYREC([M:ZGA]NBLIGLA)      = [F:ZTE]ZFCYREC
+    [M:ZGA]FZCHAUFFEUR([M:ZGA]NBLIGLA)   = [F:ZTE]ZCHAUFFEUR
+    [M:ZGA]FVCRNUM([M:ZGA]NBLIGLA)       = [F:ZTE]VCRNUM
+    [M:ZGA]FVCRTYP([M:ZGA]NBLIGLA)       = [F:ZTE]VCRTYP
+    [M:ZGA]FZACTOK([M:ZGA]NBLIGLA)       = [F:ZTE]ZACTOK
+    [M:ZGA]FZTRANSCHG([M:ZGA]NBLIGLA)    = [F:ZTE]ZTRANSCHG
+    [M:ZGA]FZPAYS([M:ZGA]NBLIGLA)        = [F:ZTE]ZPAYS
+    [M:ZGA]FZQTEKCUTIL([M:ZGA]NBLIGLA)   = [F:ZTE]ZQTEKCUTIL
+    [M:ZGA]FZQTEHS([M:ZGA]NBLIGLA)       = [F:ZTE]ZQTEHS
+    [M:ZGA]FZAPPRO([M:ZGA]NBLIGLA)       = [F:ZTE]ZAPPRO
+    [M:ZGA]FZACTNUM([M:ZGA]NBLIGLA)      = [F:ZTE]ZACTNUM
+    [M:ZGA]FZDATEFFET([M:ZGA]NBLIGLA)    = [F:ZTE]ZDATEFFET
+    [M:ZGA]FZTYPPAL([M:ZGA]NBLIGLA)      = [F:ZTE]ZTYPPAL
+    [M:ZGA]FZEXEACT([M:ZGA]NBLIGLA)      = [F:ZTE]ZEXEACT
+    [M:ZGA]FZEXEACTH([M:ZGA]NBLIGLA)     = [F:ZTE]ZEXEACTH
+    [M:ZGA]FZCODCLT([M:ZGA]NBLIGLA)      = [F:ZTE]ZCODCLT
+    [M:ZGA]FVCRLIN([M:ZGA]NBLIGLA)       = [F:ZTE]VCRLIN
+    [M:ZGA]FZDEPNUM([M:ZGA]NBLIGLA)      = [F:ZTE]ZDEPNUM
+    [M:ZGA]FZITMREFDEST([M:ZGA]NBLIGLA)  = [F:ZTE]ZITMREFDEST
+    [M:ZGA]FZTRIUSINE([M:ZGA]NBLIGLA)    = [F:ZTE]ZTRIUSINE
+    [M:ZGA]FTRIAFAIRE([M:ZGA]NBLIGLA)    = [F:ZTE]TRIAFAIRE
+    [M:ZGA]FZACT([M:ZGA]NBLIGLA)         = [F:ZTE]ZACT
+    [M:ZGA]ZNBTOTPAL += [F:ZTE]ZQTY
+    [M:ZGA]ZNBTOTPALKC += [F:ZTE]ZQTEKCUTIL
+    [M:ZGA]ZNBTOTPALHS += [F:ZTE]ZQTEHS
+    [M:ZGA]NBLIGLA += 1
+  Next
+  nolign = 1
+  [M:ZGA]ANBLIGLA=0
+  GNBLIGLA = 1
+  Affzo [M:ZGA]
+  Call AS_NBLIGLA()
+End
+
+Funprog SPE_GET_PROFILE_ACTION(WZACTNUM)
+Value Char WZACTNUM
+Local Integer RESULT : RESULT = 1
+  Read[F:ZSAOK]ZSAOK0=WZACTNUM
+  If(fstat=0)Then
+    If([F:ZSAOK]ANNUL_POSS=2)Then
+      #Normalement dans ce cas l'action peut encore être annulée. Par contre si le type d'action est réception liée
+      #à un EPX, il va falloir faire des tests complémentaires
+      #En effet, ce test n'est pas valable s'il existe dans l'EPX des tris à faire et que ces tris ont été fait
+      If([M:ZGA]ZACT=12)Then
+        RESULT = 2
+        For[F:ZCHG]ZMC0 Where [F:ZCHG]ZCMCNUM=[M:ZGA]VCRNUM
+          If([F:ZCHG]TRIAFAIRE=2)Then
+            For[F:ZTRI]ZTMC0 Where [F:ZTRI]ZCMCNUM=[F:ZCHG]ZCMCNUM and [F:ZTRI]ZCODCHARG=[F:ZCHG]ZCODCHARG and [F:ZTRI]ZCODCLT=[F:ZCHG]ZCODCLT
+              RESULT = 1
+              Break 2
+            Next
+          Endif
+        Next
+        #De même si la réception dépend d'un EPX possédant un N° EPM, on ne peut pas annuler cette action
+        Read[F:ZCOL]ZCMC=[M:ZGA]VCRNUM
+        If(fstat=0)Then
+          If([F:ZCOL]ZNUMEPM<>"")Then
+            RESULT = 4
+          Endif
+        Else
+          RESULT = 1
+        Endif
+      Else
+        RESULT = 2
+      Endif
+    Endif
+  Else
+    RESULT = 3
+  Endif
+  If(RESULT=2)Then
+    #L'annulation ou la suppression de l'action est encore possible
+    [M:ZGA]ZINFOGEN = "Cette action peut encore être annulée ou supprimée."
+    Chgstl[M:ZGA]ZINFOGEN With "ZDIFFTRIPO"
+  Elsif(RESULT=1)Then
+    #L'annulation ou la suppression de l'action n'est désormais plus possible
+    [M:ZGA]ZINFOGEN = "Cette action ne peut plus être annulée ou supprimée car il existe au moins une action postérieure utilisant des emballages de l'action " + WZACTNUM + "."
+    Chgstl[M:ZGA]ZINFOGEN With "ZDIFFTRINE"
+  Elsif(RESULT=3)Then
+    [M:ZGA]ZINFOGEN = ""
+  Elsif(RESULT=4)Then
+    [M:ZGA]ZINFOGEN = "Cette action ne peut plus être annulée ou supprimée car elle a été synchronisée avec EPALIS"
+    Chgstl[M:ZGA]ZINFOGEN With "ZDIFFTRINE"
+  Endif
+  Affzo [M:ZGA]ZINFOGEN
+End RESULT
+
+################################################################################
+#Cette fonction permet l'annulation d'une action passée en paramètre.
+#Résultat de la fonction :
+# 0 : L'annulation s'est correctement déroulée
+# différent de 0 : des problèmes sont survenus, le traitement doit être stoppé
+################################################################################
+Funprog SPE_CANCEL_ACTION(WZACTNUM)
+Value Char WZACTNUM
+Local Integer RESULT : RESULT = 0
+Local Integer WTYPACT : WTYPACT = 0
+#La variable WTYPACT pourra prendre la valeur suivante
+# Values of local menu 6260 - 'Type Action (EPALIS)'
+# 1 - Réparation
+# 2 - Relocalisation
+# 3 - Transformation
+# 4 - --------------------------------------
+# 5 - Entrée diverse
+# 6 - Sortie diverse
+# 7 - Destruction / Rachat
+# 8 - Transfert de stock
+# 9 - Achat ext. chargeur
+# 10 - --------------------------------------
+# 11 - Trier des palettes
+# 12 - Réception de palettes
+# 13 - Transfert de stock (Entrée)
+# 14 - Entrée diverse Palettes à trier
+# 15 - Sortie diverse Palettes à trier
+# 16 - Transfert Palettes à trier
+#On commence par récupérer le type de l'action
+Read[F:ZTE]ZTE4=WZACTNUM
+If(fstat=0)Then
+  WTYPACT = [F:ZTE]ZACT
+  Case WTYPACT
+    When 1  : Gosub SPE_TRAIT_REP # Réparation                       - Code erreur commençant par 100XXX
+    When 2  : Gosub SPE_TRAIT_REL # Relocalisation                   - Code erreur commençant par 200XXX
+    When 3  : Gosub SPE_TRAIT_TRA # Transformation                   - Code erreur commençant par 300XXX
+    When 5  : Gosub SPE_TRAIT_EDI # Entrée diverse                   - Code erreur commençant par 500XXX
+    When 6  : Gosub SPE_TRAIT_SDI # Sortie diverse                   - Code erreur commençant par 600XXX
+    When 7  : Gosub SPE_TRAIT_DES # Destruction / Rachat             - Code erreur commençant par 700XXX
+    When 8  : Gosub SPE_TRAIT_TDS # Transfert de stock               - Code erreur commençant par 800XXX
+    When 9  : Gosub SPE_TRAIT_AEC # Achat ext. chargeur              - Code erreur commençant par 900XXX
+    When 11 : Gosub SPE_TRAIT_TRI # Trier des palettes               - Code erreur commençant par 110XXX
+    When 12 : Gosub SPE_TRAIT_REC # Réception de palettes            - Code erreur commençant par 120XXX
+    When 14 : Gosub SPE_TRAIT_EDP # Entrée diverse Palettes à trier  - Code erreur commençant par 140XXX
+    When 15 : Gosub SPE_TRAIT_SDP # Sortie diverse Palettes à trier  - Code erreur commençant par 150XXX
+    When 16 : Gosub SPE_TRAIT_TDP # Transfert Palettes à trier       - Code erreur commençant par 160XXX
+  Endcase
+Else
+  #Impossible de récupérer les informations de l'action
+  RESULT = 1
+Endif
+End RESULT
+
+################################################################################
+#Cette fonction permet la suppression d'une action passée en paramètre.
+#Résultat de la fonction :
+# 0 : La suppression s'est correctement déroulée
+# différent de 0 : des problèmes sont survenus, le traitement doit être stoppé
+################################################################################
+Funprog SPE_DELETE_ACTION(WZACTNUM)
+Value Char WZACTNUM
+Local Integer RESULT : RESULT = 0
+#Dans cette fonction, nous allons juste supprimer les enregistrement de la table ZTEMPEPI
+Delete [F:ZTE] Where [F:ZTE]ZACTNUM = WZACTNUM
+If(fstat<>0)Then
+  RESULT = 101
+Endif
+End RESULT
+
+Subprog AM_AZACTNUM(VALEUR)
+Variable Char    VALEUR()
+  Call TEMPON("Analyse de l'action n° " + VALEUR +  " en cours...") From GESECRAN
+  #On va récupérer l'ensemble des lignes liées à l'action renseignée par l'utilisateur
+  Call SPE_GET_ACTION(VALEUR)
+  #On va maintenant indiquer tout de suite si on peut on pas supprimer ou annuler l'action
+  #sachant que la conditio d'annulation/supppression est qu'il ne faut pas qu'une action ait utilisé
+  #au moins une palette après l'action considérée.
+  #Pour cela, on val utiliser la vue ZSUPACTOK
+  GSUPACT = func SPE_GET_PROFILE_ACTION(VALEUR)
+  Call TEMPOFF From GESECRAN
+End
+
+Subprog AM_ZBPCORD(VALEUR)
+Variable Char    VALEUR()
+Call SPE_SET_APPLY_MODIF("ZBPCORD",num$(VALEUR),1)
+End
+
+Subprog AM_ZUSER(VALEUR)
+Variable Char    VALEUR()
+Call SPE_SET_APPLY_MODIF("ZUSER",num$(VALEUR),1)
+End
+
+Subprog AM_ZITMREF(VALEUR)
+Variable Char    VALEUR()
+Call SPE_SET_APPLY_MODIF("ZITMREF",num$(VALEUR),1)
+End
+
+Subprog AM_ZQTY(VALEUR)
+Variable Decimal VALEUR
+Call SPE_SET_APPLY_MODIF("ZQTY",num$(VALEUR),2)
+End
+
+Subprog AM_ZACT(VALEUR)
+Variable Integer VALEUR
+Call SPE_SET_APPLY_MODIF("ZACT",num$(VALEUR),2)
+End
+
+Subprog AM_ZCOMPTEUR(VALEUR)
+Variable Char    VALEUR()
+Call SPE_SET_APPLY_MODIF("ZCOMPTEUR",num$(VALEUR),1)
+End
+
+Subprog AM_ZDATACT(VALEUR)
+Variable Date    VALEUR
+Call SPE_SET_APPLY_MODIF("ZDATACT",num$(VALEUR),3)
+End
+
+Subprog AM_ZREFERENCE(VALEUR)
+Variable Char    VALEUR()
+Call SPE_SET_APPLY_MODIF("ZREFERENCE",num$(VALEUR),1)
+End
+
+Subprog AM_ZBPAADD(VALEUR)
+Variable Char    VALEUR()
+Call SPE_SET_APPLY_MODIF("ZBPAADD",num$(VALEUR),1)
+End
+
+Subprog AM_ZBPCORDF(VALEUR)
+Variable Char    VALEUR()
+Call SPE_SET_APPLY_MODIF("ZBPCORDF",num$(VALEUR),1)
+End
+
+Subprog AM_ZFCYF(VALEUR)
+Variable Char    VALEUR()
+Call SPE_SET_APPLY_MODIF("ZFCYF",num$(VALEUR),1)
+End
+
+Subprog AM_ZFCYREC(VALEUR)
+Variable Char    VALEUR()
+Call SPE_SET_APPLY_MODIF("ZFCYREC",num$(VALEUR),1)
+End
+
+Subprog AM_ZCHAUFFEUR(VALEUR)
+Variable Char    VALEUR()
+Call SPE_SET_APPLY_MODIF("ZCHAUFFEUR",num$(VALEUR),1)
+End
+
+Subprog AM_VCRNUM(VALEUR)
+Variable Char    VALEUR()
+Call SPE_SET_APPLY_MODIF("VCRNUM",num$(VALEUR),1)
+End
+
+Subprog AM_VCRTYP(VALEUR)
+Variable Char    VALEUR()
+Call SPE_SET_APPLY_MODIF("VCRTYP",num$(VALEUR),1)
+End
+
+Subprog AM_ZACTOK(VALEUR)
+Variable Integer VALEUR
+Call SPE_SET_APPLY_MODIF("ZACTOK",num$(VALEUR),2)
+End
+
+Subprog AM_ZTRANSCHG(VALEUR)
+Variable Integer VALEUR
+Call SPE_SET_APPLY_MODIF("ZTRANSCHG",num$(VALEUR),2)
+End
+
+Subprog AM_ZPAYS(VALEUR)
+Variable Char    VALEUR()
+Call SPE_SET_APPLY_MODIF("ZPAYS",num$(VALEUR),1)
+End
+
+Subprog AM_ZQTEKCUTIL(VALEUR)
+Variable Decimal VALEUR
+Call SPE_SET_APPLY_MODIF("ZQTEKCUTIL",num$(VALEUR),2)
+End
+
+Subprog AM_ZQTEHS(VALEUR)
+Variable Decimal VALEUR
+Call SPE_SET_APPLY_MODIF("ZQTEHS",num$(VALEUR),2)
+End
+
+Subprog AM_ZAPPRO(VALEUR)
+Variable Char    VALEUR()
+Call SPE_SET_APPLY_MODIF("ZAPPRO",num$(VALEUR),1)
+End
+
+Subprog AM_ZACTNUM(VALEUR)
+Variable Char    VALEUR()
+Call SPE_SET_APPLY_MODIF("ZACTNUM",num$(VALEUR),1)
+End
+
+Subprog AM_ZDATEFFET(VALEUR)
+Variable Date    VALEUR
+Call SPE_SET_APPLY_MODIF("ZDATEFFET",num$(VALEUR),3)
+End
+
+Subprog AM_ZTYPPAL(VALEUR)
+Variable Integer VALEUR
+Call SPE_SET_APPLY_MODIF("ZTYPPAL",num$(VALEUR),2)
+End
+
+Subprog AM_ZEXEACT(VALEUR)
+Variable Date    VALEUR
+Call SPE_SET_APPLY_MODIF("ZEXEACT",num$(VALEUR),3)
+End
+
+Subprog AM_ZEXEACTH(VALEUR)
+Variable Char    VALEUR()
+Call SPE_SET_APPLY_MODIF("ZEXEACTH",num$(VALEUR),1)
+End
+
+Subprog AM_ZNUMLIG(VALEUR)
+Variable Decimal VALEUR
+Call SPE_SET_APPLY_MODIF("ZNUMLIG",num$(VALEUR),2)
+End
+
+Subprog AM_ZCODCLT(VALEUR)
+Variable Char    VALEUR()
+Call SPE_SET_APPLY_MODIF("ZCODCLT",num$(VALEUR),1)
+End
+
+Subprog AM_VCRLIN(VALEUR)
+Variable Decimal VALEUR
+Call SPE_SET_APPLY_MODIF("VCRLIN",num$(VALEUR),2)
+End
+
+Subprog AM_ZDEPNUM(VALEUR)
+Variable Char    VALEUR()
+Call SPE_SET_APPLY_MODIF("ZDEPNUM",num$(VALEUR),1)
+End
+
+Subprog AM_ZITMREFDEST(VALEUR)
+Variable Char    VALEUR()
+Call SPE_SET_APPLY_MODIF("ZITMREFDEST",num$(VALEUR),1)
+End
+
+Subprog AM_ZTRIUSINE(VALEUR)
+Variable Integer VALEUR
+Call SPE_SET_APPLY_MODIF("ZTRIUSINE",num$(VALEUR),2)
+End
+
+Subprog AM_TRIAFAIRE(VALEUR)
+Variable Integer VALEUR
+Call SPE_SET_APPLY_MODIF("TRIAFAIRE",num$(VALEUR),2)
+End
+
+Subprog AS_NBLIGLA
+  If(nolign-1<=[M:ZGA]NBLIGLA-1)Then
+    GNBLIGLA = nolign-1
+    [M:ZGA]ANBLIGLA = GNBLIGLA
+    Affzo [M:ZGA]ANBLIGLA
+    Chgstl [M:ZGA]NBLIGLA With ""
+    Chgstl [M:ZGA]NBLIGLA(GNBLIGLA) With "GDD2G"
+    #On va maintenant transférer toutes les informations de la ligne sélectionnées vers les champs de détails
+    [M:ZGA]ZNUMLIG      = [M:ZGA]FZNUMLIG(GNBLIGLA)
+    [M:ZGA]ZTYPPAL      = [M:ZGA]FZTYPPAL(GNBLIGLA)
+    [M:ZGA]ZITMREF      = [M:ZGA]FZITMREF(GNBLIGLA)
+    [M:ZGA]ZQTY         = [M:ZGA]FZQTY(GNBLIGLA)
+    [M:ZGA]ZFCY         = [M:ZGA]FZFCY(GNBLIGLA)
+    [M:ZGA]ZBPCORD      = [M:ZGA]FZBPCORD(GNBLIGLA)
+    [M:ZGA]ZCOMPTEUR    = [M:ZGA]FZCOMPTEUR(GNBLIGLA)
+    [M:ZGA]ZDATACT      = [M:ZGA]FZDATACT(GNBLIGLA)
+    [M:ZGA]ZREFERENCE   = [M:ZGA]FZREFERENCE(GNBLIGLA)
+    [M:ZGA]ZBPAADD      = [M:ZGA]FZBPAADD(GNBLIGLA)
+    [M:ZGA]ZBPCORDF     = [M:ZGA]FZBPCORDF(GNBLIGLA)
+    GBPCNUM             = [M:ZGA]ZBPCORDF
+    [M:ZGA]ZFCYF        = [M:ZGA]FZFCYF(GNBLIGLA)
+    [M:ZGA]ZFCYREC      = [M:ZGA]FZFCYREC(GNBLIGLA)
+    [M:ZGA]ZCHAUFFEUR   = [M:ZGA]FZCHAUFFEUR(GNBLIGLA)
+    [M:ZGA]VCRNUM       = [M:ZGA]FVCRNUM(GNBLIGLA)
+    [M:ZGA]VCRTYP       = [M:ZGA]FVCRTYP(GNBLIGLA)
+    [M:ZGA]ZACTOK       = [M:ZGA]FZACTOK(GNBLIGLA)
+    [M:ZGA]ZTRANSCHG    = [M:ZGA]FZTRANSCHG(GNBLIGLA)
+    [M:ZGA]ZPAYS        = [M:ZGA]FZPAYS(GNBLIGLA)
+    [M:ZGA]ZQTEKCUTIL   = [M:ZGA]FZQTEKCUTIL(GNBLIGLA)
+    [M:ZGA]ZQTEHS       = [M:ZGA]FZQTEHS(GNBLIGLA)
+    [M:ZGA]ZAPPRO       = [M:ZGA]FZAPPRO(GNBLIGLA)
+    [M:ZGA]ZACTNUM      = [M:ZGA]FZACTNUM(GNBLIGLA)
+    [M:ZGA]ZDATEFFET    = [M:ZGA]FZDATEFFET(GNBLIGLA)
+    [M:ZGA]ZEXEACT      = [M:ZGA]FZEXEACT(GNBLIGLA)
+    [M:ZGA]ZEXEACTH     = [M:ZGA]FZEXEACTH(GNBLIGLA)
+    [M:ZGA]ZCODCLT      = [M:ZGA]FZCODCLT(GNBLIGLA)
+    [M:ZGA]VCRLIN       = [M:ZGA]FVCRLIN(GNBLIGLA)
+    [M:ZGA]ZDEPNUM      = [M:ZGA]FZDEPNUM(GNBLIGLA)
+    [M:ZGA]ZITMREFDEST  = [M:ZGA]FZITMREFDEST(GNBLIGLA)
+    [M:ZGA]ZTRIUSINE    = [M:ZGA]FZTRIUSINE(GNBLIGLA)
+    [M:ZGA]TRIAFAIRE    = [M:ZGA]FTRIAFAIRE(GNBLIGLA)
+    [M:ZGA]ZACT         = [M:ZGA]FZACT(GNBLIGLA)
+    Affzo[M:ZGA]10 : Affzo[M:ZGA]20
+    #On va maintenant alimenter les tableaux de la partie inférieure
+    #Bons de livraisons / Bons de réceptions
+    Effzo[M:ZGA]25
+    [M:ZGA]NBLIG=0 : Affzo [M:ZGA]NBLIG
+    Local Char WCOLORLINE(30) : WCOLORLINE = ""
+    For[F:ZEGP]ZEGP0 Where [F:ZEGP]NUM_ACTION=[M:ZGA]FZACTNUM(GNBLIGLA)
+      [M:ZGA]BNUMPIECE([M:ZGA]NBLIG)   = [F:ZEGP]NUM_PIECE
+      [M:ZGA]BETAT([M:ZGA]NBLIG)       = [F:ZEGP]ETAT
+      If([F:ZEGP]ETAT=2)Then
+        WCOLORLINE = "GDD3"
+      Elsif([F:ZEGP]ETAT=3)Then
+        WCOLORLINE = "BACKORANGE"
+      Elsif([F:ZEGP]ETAT=4)Then
+        WCOLORLINE = "BACKRED"
+      Endif
+      Chgstl [M:ZGA]NBLIG([M:ZGA]NBLIG) With WCOLORLINE
+      [M:ZGA]NBLIG += 1
+      Affzo [M:ZGA]NBLIGD
+    Next
+    Affzo[M:ZGA]25
+    #Stock des emballages archivés
+    Effzo[M:ZGA]40
+    [M:ZGA]NBLIGA=0 : Affzo [M:ZGA]NBLIGA
+    For[F:ZZSA]ZZAT0 Where [F:ZZSA]ZORIGIN=[M:ZGA]FZACTNUM(GNBLIGLA)
+      [M:ZGA]ENUMPAL([M:ZGA]NBLIGA)   = [F:ZZSA]ZSEQ
+      [M:ZGA]EITMREF([M:ZGA]NBLIGA)   = [F:ZZSA]ZITMREF
+      [M:ZGA]EZTYPPAL([M:ZGA]NBLIGA)  = [F:ZZSA]ZTYPAL
+      [M:ZGA]EQTY([M:ZGA]NBLIGA)      = [F:ZZSA]ZQTY
+      [M:ZGA]NBLIGA += 1
+    Next
+    Affzo[M:ZGA]40
+    #Stock des emabllages triés
+    Effzo[M:ZGA]30
+    [M:ZGA]NBLIGT=0 : Affzo [M:ZGA]NBLIGT
+    For[F:ZZS]ZZAT0 Where [F:ZZS]ZORIGIN=[M:ZGA]FZACTNUM(GNBLIGLA)
+      [M:ZGA]CNUMPAL([M:ZGA]NBLIGT)   = [F:ZZS]ZSEQ
+      [M:ZGA]CITMREF([M:ZGA]NBLIGT)   = [F:ZZS]ZITMREF
+      [M:ZGA]CZTYPPAL([M:ZGA]NBLIGT)  = [F:ZZS]ZTYPAL
+      [M:ZGA]CQTY([M:ZGA]NBLIGT)      = [F:ZZS]ZQTY
+      [M:ZGA]NBLIGT += 1
+    Next
+    Affzo[M:ZGA]30
+    #Stock des emabllages à trier
+    Effzo[M:ZGA]35
+    [M:ZGA]NBLIGAT=0 : Affzo [M:ZGA]NBLIGAT
+    For[F:ZZAT]ZZAT0 Where [F:ZZAT]ZACTNUM=[M:ZGA]FZACTNUM(GNBLIGLA)
+      [M:ZGA]DNUMPAL([M:ZGA]NBLIGAT)   = [F:ZZAT]ZSEQ
+      [M:ZGA]DITMREF([M:ZGA]NBLIGAT)   = [F:ZZAT]ZITMREF
+      [M:ZGA]DQTY([M:ZGA]NBLIGAT)      = [F:ZZAT]ZQTY
+      [M:ZGA]NBLIGAT += 1
+    Next
+    Affzo[M:ZGA]35
+  Endif
+End
+
+Subprog AM_ZFCY(VALEUR)
+Variable Char    VALEUR()
+End
+
+Subprog C_AZACTNUM(VALEUR)
+Variable Char    VALEUR()
+#On va controler que l'action existe bien dans la base
+Read[F:ZTE]ZTE4=VALEUR
+If(fstat<>0)Then
+  #On efface le mask
+  Call SPE_EFFACE_MASK()
+  Call ERREUR("Impossible ! Cette action n'existe.") From GESECRAN
+  mkstat = 2
+Else
+  GNUMACTION = VALEUR
+Endif
+End

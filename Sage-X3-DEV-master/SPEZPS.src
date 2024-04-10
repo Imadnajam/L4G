@@ -1,0 +1,1207 @@
+#<AdxTL>@(#)9.0.0.0 $Revision$
+################################################### SPEZPS
+################################################### 28/02/2011
+
+GBIDC1=""
+GBIDC2=""
+GBIDC3=""
+Call OBJET("ZPS",GBIDC1,GBIDC2) From GOBJET
+End
+
+###################################################
+###################################################
+
+$ACTION
+#Infbox ACTION
+Case ACTION
+ When "OUVRE"     : Gosub OUVRE
+ When "AFFMASK"   : Gosub AFFMASK
+ When "DEFLIG"    : Gosub DEFLIG
+ When "SETBOUT"   : Gosub SETBOUT
+ When "EXEBOUT"   : Gosub EXEBOUT
+ When "VERIF_CRE" : Gosub VERIF_CRE
+ When "INICRE"    : Gosub INICRE
+ When "CREATION"  : Gosub CREATION
+ When "LIENS"     : Gosub LIENS
+ When "AVANT_MOD" : Gosub AVANT_MOD
+ When "VERIF_MOD" : Gosub VERIF_MOD
+ When "INIMOD"    : Gosub INIMOD
+ When "MODIF"     : Gosub MODIF
+ When "ANNULE"    : Gosub ANNULE
+ When "ABANDON"   : Gosub ABANDON
+ When "FERME"     : Gosub FERME
+ When "RAZCRE"    : Gosub RAZCRE
+ When "RAZDUP"    : Gosub RAZDUP
+ When "APRES_CRE" : Gosub APRES_CRE
+ When "FILTRE"    : Gosub FILTRE
+ When "FILGAUCHE" : Gosub FILGAUCHE
+ When "AP_ANNULE" : Gosub AP_ANNULE
+ When Default
+Endcase
+Return
+
+################################################### AP_ANNULE
+
+$AP_ANNULE
+    #Si on supprime l'enregistrement, on va également supprimer les enregistrements
+    #de la table ZPSEPALIS
+    Delete [F:ZSE] Where [F:ZSE]ZPSNUM=[M:ZPS0]ZPSNUM
+Return
+
+################################################### AB1_SOHNUM
+
+$AB1_SOHNUM
+ABFIC="ZPS" : CLEPRIM="ZPSNUM"
+WINPROG="WGOZPS"
+PROGOBJ="WOZPS"
+Gosub SET_CLE From GOBJSUB
+CLECUR = 1
+TUNNEL = 1
+Gosub DEFVAR From =WINPROG
+Return
+
+################################################### BB1_SOHNUM
+
+$BB1_SOHNUM
+TYPGES=0 : CRE=1 : MODI=1 : SUPPR=1 : AUTENA=1 : ERRMES="" : RELIT=0
+VERROU=1 : ABREV="ZPS" : OK=1 : SITCUR=[M:YPS0]SALFCY : AFFICHE=1
+CLECUR2="" : OBJLIS="ZPS"
+Local Integer ONUM(0..199)
+Gosub RELIT From GOBJSUB
+Return
+
+################################################### OUVRE
+
+$OUVRE
+If clalev([F:ZPD])=0 : Local File ZPSORDERD [ZPD] : Endif
+If clalev([F:BPC])=0 : Local File BPCUSTOMER [BPC]: Endif
+If clalev([F:BPR])=0 : Local File BPARTNER [BPR]  : Endif
+If clalev([F:BPD])=0 : Local File BPDLVCUST [BPD] : Endif
+If clalev([F:ITM])=0 : Local File ITMMASTER [ITM] : Endif
+If clalev([F:TCU])=0 : Local File TABCUR [TCU]    : Endif
+If clalev([F:AOE])=0 : Local File AOBJEXT [AOE]   : Endif
+If clalev([F:SOH])=0 : Local File SORDER [SOH]    : Endif
+If clalev([F:SOQ])=0 : Local File SORDERQ [SOQ]   : Endif
+If clalev([F:TUN])=0 : Local File TABUNIT [TUN]   : Endif
+If clalev([F:AUS])=0 : Local File AUTILIS [AUS]   : Endif
+If clalev([F:FCY])=0 : Local File FACILITY [FCY]   : Endif
+If clalev([F:SPK])=0 : Local File SPRICLINK   [F:SPK]: Endif
+If clalev([F:ITS])=0 : Local File ITMSALES  [F:ITS]: Endif
+If clalev([F:ITU])=0 : Local File ITMBPC  [F:ITU]: Endif
+If clalev([F:ITF])=0 : Local File ITMFACILIT  [F:ITF]: Endif
+If clalev([F:ZSE])=0 : Local File ZPSEPALIS [ZSE] : Endif
+If clalev([F:SDD])=0 : Local File SDELIVERYD [F:SDD] : Endif
+
+Call TARIFCHGT(5) From TRTPRICE
+Call COLREM("C",1,"") From TRTPRICE
+
+Gosub DECLARE From TABLEAUX
+
+Global Decimal W_AMTNOTLIN
+
+Return
+
+#################################################### FILTRE
+
+$FILTRE
+Default File [F:ZPS]
+Local Char WREGION : WREGION = ""
+##On récupère la région du site par défaut de l'utilisateur
+#If(GFCYDEF(5)<>"")Then
+#  Read [F:FCY]FCY0=GFCYDEF(5)
+#  If(fstat=0)Then
+#    WREGION = [F:FCY]ZFCYAREA
+#  Endif
+#Endif
+#On récupère la région en fonction du paramètre utilisateur GZREGION
+WREGION = GZREGION
+If(WREGION<>"")Then
+    If(CRITERE<>"")Then
+        CRITERE += "&"
+    Endif
+    CRITERE += '[F:ZPS]ZFCYAREA="' + WREGION + '" & [F:ZPS]ZPCNAT<>2'
+Endif
+Return
+
+################################################# FILGAUCHE
+$FILGAUCHE
+If(currbox="GAU_CHE")Then
+  If(CRITERE<>"") Then
+      CRITERE += '&[F:ZPS]ZFLGEPALIS<>2'
+  Else
+      CRITERE = '[F:ZPS]ZFLGEPALIS<>2'
+  Endif
+Elsif(currbox="GAU_CHE1")Then
+  FILGAUSUP(1) += '&[F:ZPS]ZFLGEPALIS=2'
+Endif
+Return
+
+################################################### RAZDUP
+
+$RAZDUP
+  [M:ZPS1]ZFLGSOLDE = 1
+  [M:ZPS1]ZFLGVALIDE = 1
+  [M:ZPS1]ZFLGSOLMAN = 1
+  [M:ZPS1]ZPSSOLDE = [0/0/0]
+  [M:ZPS1]ZPSVAL = [0/0/0]
+  [M:ZPS0]ZPSDAT = date$
+  [M:ZPS1]STOFCY = ""
+  #On vide les quantités commandées de toutes les lignes
+  For I=0 To [M:ZPS2]NBLIG-1
+    [M:ZPS2]QTYCDE(I) = 0
+  Next
+  Affzo [M:ZPS0]
+  Affzo [M:ZPS1]
+  Affzo [M:ZPS2]
+  Affzo [M:ZPS3]
+  Actzo [M:ZPS0]
+  Actzo [M:ZPS1]
+  Actzo [M:ZPS2]
+  Actzo [M:ZPS3]
+  Gosub INIT_MASK
+Return
+
+################################################### INIT_MASK
+
+$INIT_MASK
+#On regarde si l'utilisateur à le droit de créer des pré-commandes nationales.
+#si ce n'est pas les on grise le champ
+Local Char WREGION : WREGION = ""
+Local Integer WCREATENAT : WCREATENAT = 1
+##On récupère la région du site par défaut de l'utilisateur
+#If(GFCYDEF(5)<>"")Then
+#  Read [F:FCY]FCY0=GFCYDEF(5)
+#  If(fstat=0)Then
+#    WREGION = [F:FCY]ZFCYAREA
+#  Endif
+#Endif
+#On récupère la région en fonction du paramètre utilisateur GZREGION
+WREGION = GZREGION
+#On regarde si l'utilisateur à le droit de créer des pré-commandes nationales
+If(GPROFIL<>"ADMIN")Then
+  Read [F:AUS]CODUSR=GUSER
+  If(fstat=0)Then
+    WCREATENAT = [F:AUS]ZPCNAT
+  Endif
+Else
+  #Si l'utilisateur a le profil administrateur, il a le droit de créer des pré-commandes nationales
+  WCREATENAT = 2
+Endif
+If(WREGION<>"")Then
+  [M:ZPS0]ZFCYAREA = WREGION
+  Affzo [M:ZPS0]ZFCYAREA
+  Diszo [M:ZPS0]ZFCYAREA
+Else
+  Actzo [M:ZPS0]ZFCYAREA
+Endif
+If(WCREATENAT<>2)Then
+  Diszo [M:ZPS0]ZFCYAREA
+  [M:ZPS0]ZPCNAT = 1
+  Affzo [M:ZPS0]ZPCNAT
+  Diszo [M:ZPS0]ZPCNAT
+Endif
+[M:ZPS1]DEMDLVDAT = date$
+Affzo [M:ZPS1]DEMDLVDAT
+Return
+
+################################################### AFFMASK
+
+$AFFMASK
+If !GWEBSERV
+    Chgfmt [M:ZPS2]ZPDLIN With "-N:8#"
+Endif
+Return
+
+################################################### DEFLIG
+
+$DEFLIG
+Default Mask [ZPS2]
+Default File [ZPD]
+CRIT='[F:ZPD]ZPSNUM="'+[M:ZPS0]ZPSNUM+'"'
+FICLIG="ZPSORDERD"
+ABLIG="ZPD"
+ZONLIG="ZPDLIN"
+Return
+
+################################################### SETBOUT
+
+$SETBOUT
+If [M:ZPS0]ZPSNUM="" | [M:ZPS1]ZPSVAL<>[0/0/0] | [M:ZPS1]ZPSSOLDE<>[0/0/0] | [M:ZPS2]NBLIG=0
+    # Pas d'enregistrement courant ou déjà traitée
+#    Call VIREBOUT(CHAINE,"s") From GOBJET
+    Call VIREBOUT(CHAINE,"v") From GOBJET
+    # Si validée, on ne peut pas la supprimer
+    If [M:ZPS1]ZPSVAL<>[0/0/0] | [M:ZPS1]ZPSSOLDE<>[0/0/0]
+        Call VIREBOUT(CHAINE,"A") From GOBJET
+    Endif
+Endif
+If([M:ZPS1]ZPSSOLDE<>[0/0/0])Then
+  Call VIREBOUT(CHAINE,"s") From GOBJET
+Endif
+#On supprime le bouton suppimer si la précommande a fait l'objet d'une commande
+If([M:ZPS0]ZPSNUM<>"")Then
+    Read [F:SOQ]ZPS1=[M:ZPS0]ZPSNUM
+    If(fstat=0) Then
+        #On est dans le cas où il existe des enregistrements
+        Call VIREBOUT(CHAINE,"A") From GOBJET
+    Endif
+    #On regarde également les livraisons liées
+    Read [F:SDD]ZPS1=[M:ZPS0]ZPSNUM
+    If(fstat=0) Then
+        #On est dans le cas où il existe des enregistrements
+        Call VIREBOUT(CHAINE,"A") From GOBJET
+    Endif
+Endif
+If(([M:ZPS0]ZFLGEPALIS=2 and GUSER<>"ADMIN") and GUSER<>"MICRO")Then
+    Call VIREBOUT(CHAINE,"M") From GOBJET
+    Call VIREBOUT(CHAINE,"C") From GOBJET
+    Call VIREBOUT(CHAINE,"A") From GOBJET
+    Call VIREBOUT(CHAINE,"s") From GOBJET
+Endif
+Return
+
+################################################### EXEBOUT
+
+$EXEBOUT
+Case BOUT
+ When "s" : # Solde de la pré-commande
+    Local Integer WREP : WREP=1
+    Call OUINON("Vous allez solder cette pré-commande. Elle ne sera plus utilisable. Voulez-vous continuer ?",WREP) From GESECRAN
+    If WREP=1
+        Return
+    Endif
+    [M:ZPS1]ZPSSOLDE = date$
+    [F:ZPS]ZPSSOLDE = date$
+    [F:ZPS]UPDDAT = date$
+    [F:ZPS]UPDUSR = GUSER
+    [M:ZPS1]ZFLGSOLDE = 2
+    [F:ZPS]ZFLGSOLDE = 2
+    [F:ZPS]ZFLGSOLMAN = 2
+    [M:ZPS1]ZFLGSOLMAN = 2
+    Rewrite [F:ZPS]
+    If fstat
+        Call MESSAGE("[" + num$(fstat) + "] " + "Erreur de mise à jour de la pré-commande. Quittez et recommencez.") From GESECRAN
+        Return
+    Else
+        # on grise tout sauf le numéro
+        Affzo [M:ZPS1]ZPSSOLDE
+        Affzo [M:ZPS1]ZFLGSOLDE
+        Grizo [M:ZPS0]
+        Actzo [M:ZPS0]ZPSNUM
+        Grizo [M:ZPS1]
+        Grizo [M:ZPS2]
+        Grizo [M:ZPS3]
+    Endif
+ When "v" : # Validation de la pré-commande et transfert en commande
+    Local Integer WREP : WREP=1
+    Call OUINON("Confirmez-vous la validation de cette pré-commande ?",WREP) From GESECRAN
+    If WREP=1
+        Return
+    Endif
+    [M:ZPS1]ZPSVAL = date$
+    [F:ZPS]ZPSVAL = date$
+    [F:ZPS]UPDDAT = date$
+    [F:ZPS]UPDUSR = GUSER
+    [M:ZPS1]ZFLGVALIDE = 2
+    [F:ZPS]ZFLGVALIDE = 2
+    Rewrite [F:ZPS]
+    If fstat
+        Call MESSAGE("[" + num$(fstat) + "] " + "Erreur de mise à jour de la pré-commande. Quittez et recommencez.") From GESECRAN
+        Return
+    Else
+        # on grise tout sauf le numéro
+        Affzo [M:ZPS1]ZPSVAL
+        Affzo [M:ZPS1]ZFLGVALIDE
+        Grizo [M:ZPS0]
+        Actzo [M:ZPS0]ZPSNUM
+        Grizo [M:ZPS1]
+        Grizo [M:ZPS2]
+        Grizo [M:ZPS3]
+    Endif
+Endcase
+Return
+
+################################################# RAZCRE
+
+$RAZCRE
+Diszo [M:ZPS0]ZPSNUM
+Gosub INIT_MASK
+Return
+
+################################################# VERIF_CRE
+
+$VERIF_CRE
+# Au moins une ligne
+If [M:ZPS2]NBLIG=0
+    GERR=1
+    GMESSAGE=mess(61,199,1)
+    OK=0
+    Return
+Endif
+Return
+
+################################################# APRES_CRE
+
+$APRES_CRE
+  Gosub RELIT From GOBJSUB
+Return
+
+################################################# INICRE
+
+$INICRE
+Local Integer WSTAT, WNOL
+Local Char WYPSNUM(15)
+If([M:ZPS0]ZFLGEPALIS<>2)Then
+    Call NUMERO("ZPS","",[M:ZPS0]ZPSDAT,"",WYPSNUM,WSTAT) From SUBANM
+Else
+    Call NUMERO("ZEPP",[M:ZPS1]STOFCY,date$,"",WYPSNUM,WSTAT) From SUBANM
+Endif
+If GOK<0 : Return : Endif
+If WSTAT=0
+    [M:ZPS0]ZPSNUM = WYPSNUM
+    [F:ZPS]ZPSNUM = WYPSNUM
+    Affzo [M:ZPS0]ZPSNUM
+    For WNOL=0 To [M:ZPS2]NBLIG-1
+        [M:ZPS2]ZPSNUM(WNOL) = [M:ZPS0]ZPSNUM
+    Next
+    [M:ZPS0]CREUSR = GUSER
+    [M:ZPS0]CREDAT = date$
+    [F:ZPS]CREUSR = GUSER
+    [F:ZPS]CREDAT = date$
+Else
+    GERR=1
+    GMESSAGE=mess(60,199,1)
+    GOK=0
+    Return
+Endif
+
+Return
+
+################################################### CREATION
+
+$CREATION
+Gosub CREATION From TABLEAUX
+Return
+
+################################################### LIENS
+
+$LIENS
+Gosub LIENS From TABLEAUX
+#On va remplir le champ calculé permettant de connaitre la quantité restante
+For I=0 To [M:ZPS2]NBLIG-1
+#  [M:ZPS2]QTYREST(I) = [M:ZPS2]QTY(I)-([M:ZPS2]QTYCDE(I)+[M:ZPS2]QTYLIV(I))
+  [M:ZPS2]QTYREST(I) = [M:ZPS2]QTY(I)-([M:ZPS2]QTYCDE(I))
+Next
+Affzo [M:ZPS2]
+#On regarde si on est dans le cas ou c'est une commande ouverte dont la date de fin de validité est
+#supérieure à la date du jour
+If([M:ZPS0]ZDATVAL<date$ and [M:ZPS0]ZDATVAL<>[0/0/0] and [M:ZPS0]ZPSNUM<>"" and [M:ZPS1]ZFLGSOLMAN<>2 and [M:ZPS1]ZFLGSOLDE<>2)Then
+    [M:ZPS1]ZPSSOLDE = [M:ZPS0]ZDATVAL
+    [M:ZPS1]ZFLGSOLMAN = 2
+    Affzo [M:ZPS1]ZPSSOLDE
+    Affzo [M:ZPS1]ZFLGSOLMAN
+    [F:ZPS]ZPSSOLDE = [M:ZPS0]ZDATVAL
+    [F:ZPS]ZFLGSOLMAN = 2
+    Rewrite [F:ZPS]
+Endif
+#If [M:ZPS1]ZPSVAL<>[0/0/0] | [M:ZPS1]ZPSSOLDE<>[0/0/0]
+#If [M:ZPS1]ZPSSOLDE<>[0/0/0] or ([M:ZPS0]ZFLGEPALIS=2 and GUSER<>"ADMIN" and GUSER<>"MICRO")
+If [M:ZPS1]ZPSSOLDE<>[0/0/0] or ([M:ZPS0]ZFLGEPALIS=2 and GUSER<>"ADMIN")
+    # on grise tout sauf le numéro
+#    Grizo [M:ZPS0]
+    Diszo [M:ZPS0]
+#    Actzo [M:ZPS0]ZPSNUM
+    Grizo [M:ZPS1]
+    Grizo [M:ZPS2]
+    If([M:ZPS0]ZFLGEPALIS<>2)Then
+        Grizo [M:ZPS3]
+    Else
+        Actzo [M:ZPS3]
+        Grizo [M:ZPS3]ZAXE1
+        Grizo [M:ZPS3]ZAXE2
+    Endif
+Else
+    #On regarde si il y a des commande liée à cette pré-commande
+    #si c'est le cas, on grise tout sauf la date de fin de validité
+    Read [F:SOQ]ZPS1=[M:ZPS0]ZPSNUM
+    If(fstat<>0) Then
+        #On est dans le cas où il n'existe pas d'enregistrement
+        Actzo [M:ZPS0]
+        Diszo [M:ZPS0]ZPSNUM
+        Actzo [M:ZPS1]
+        Actzo [M:ZPS2]
+        Actzo [M:ZPS3]
+    Else
+        #On est dans le cas où il existe des commandes liées à la précommande
+        #On va regarder s'il n'y a pas de livraisons liées
+        Read [F:SDD]ZPS1=[M:ZPS0]ZPSNUM
+        If(fstat<>0) Then
+            #On est dans le cas où il n'existe pas d'enregistrement
+            Actzo [M:ZPS0]
+            Diszo [M:ZPS0]ZPSNUM
+            Actzo [M:ZPS1]
+            Actzo [M:ZPS2]
+            Actzo [M:ZPS3]
+        Else
+          #Grizo [M:ZPS0]
+          Diszo [M:ZPS0]
+          Actzo [M:ZPS0]ZDATVAL
+          Grizo [M:ZPS1]
+          Grizo [M:ZPS2]
+          Grizo [M:ZPS3]
+        Endif
+    Endif
+Endif
+#On va maintenant remplir le tableau des commandes liées
+Local Integer WNOL : WNOL = 0
+Effzo [M:ZPS1]15
+[M:ZPS1]NBLIG = 0
+For [F:SOQ]ZPS1 Where [F:SOQ]ZPSNUM=[M:ZPS0]ZPSNUM
+    [M:ZPS1]ZSOHNUM(WNOL) = [F:SOQ]SOHNUM
+    [M:ZPS1]ZSOPLIN(WNOL) = [F:SOQ]SOPLIN
+    [M:ZPS1]ZITMREF(WNOL) = [F:SOQ]ITMREF
+    [M:ZPS1]ZQTY(WNOL) = [F:SOQ]QTY
+    [M:ZPS1]ZORDDAT(WNOL) = [F:SOQ]ORDDAT
+    WNOL = WNOL + 1
+    [M:ZPS1]NBLIG = [M:ZPS1]NBLIG + 1
+Next
+Affzo [M:ZPS1]15
+Actzo [M:ZPS1]15
+
+
+#On va maintenant remplir le tableau des livraisons liées
+Local Integer WNOL : WNOL = 0
+Effzo [M:ZPS3]20
+[M:ZPS3]NBLIGSDH = 0
+For [F:SDD]ZPS1 Where [F:SDD]ZPSNUM=[M:ZPS0]ZPSNUM
+    [M:ZPS3]ZSDHNUM(WNOL) = [F:SDD]SDHNUM
+    [M:ZPS3]ZSDDLIN(WNOL) = [F:SDD]SDDLIN
+    [M:ZPS3]ZITMREFSDD(WNOL) = [F:SDD]ITMREF
+    [M:ZPS3]ZQTYSDH(WNOL) = [F:SDD]QTY
+    [M:ZPS3]ZSHIDAT(WNOL) = [F:SDD]SHIDAT
+    WNOL = WNOL + 1
+    [M:ZPS3]NBLIGSDH = [M:ZPS3]NBLIGSDH + 1
+Next
+Affzo [M:ZPS3]20
+Actzo [M:ZPS3]20
+
+
+# On se place dans TABCUR pour le calcul du prix total ligne
+Read [F:TCU]TCU0=[M:ZPS1]CUR
+If fstat
+    Raz [F:TCU]
+Endif
+[M:ZPS2]WCUR = [M:ZPS1]CUR
+[M:ZPS2]TOTAMTNOT = sum([M:ZPS2]AMTNOTLIN(0..[M:ZPS2]NBLIG-1))
+Diszo [M:ZPS1]SOHNUM
+# Permet de gérer le filtre sur BPDLVCUST pour le controle de l'adresse de livraison
+GBPCNUM=[M:ZPS0]BPCORD
+#On récupère la région en fonction du paramètre utilisateur GZREGION
+WREGION = GZREGION
+If(WREGION<>"")Then
+  Diszo [M:ZPS0]ZFCYAREA
+Else
+  Actzo [M:ZPS0]ZFCYAREA
+Endif
+If([M:ZPS0]ZFLGEPALIS=2)Then
+    Chgfmt [M:ZPS1]BPAADD With "-K:10X"
+    Chgfmt [M:ZPS1]ZBPAADD With "-K:10X"
+    Chgfmt [M:ZPS1]MDL With "-K:10X"
+    Chgfmt [M:ZPS1]ZMDL With "-K:10X"
+    Chgfmt [M:ZPS1]STOFCY With "K:10X"
+    Chgfmt [M:ZPS2]QTYREST With "N:9.2#"
+    Chgfmt [M:ZPS2]GROPRI With "-N:9.2#"
+    Chgfmt [M:ZPS2]AMTNOTLIN With "-N:9.2#"
+    Chgfmt [M:ZPS2]QTYCDE With "-N:9.2#"
+    Chgfmt [M:ZPS2]QTYLIV With "N:9.2#"
+    Chgfmt [M:ZPS2]QTYKC With "N:9.2#"
+    Chgfmt [M:ZPS2]QTYOK With "N:9.2#"
+Else
+    Chgfmt [M:ZPS1]BPAADD With "K:10X"
+    Chgfmt [M:ZPS1]ZBPAADD With "K:10X"
+    Chgfmt [M:ZPS1]MDL With "K:10X"
+    Chgfmt [M:ZPS1]ZMDL With "K:10X"
+    Chgfmt [M:ZPS1]STOFCY With "-K:10X"
+    Chgfmt [M:ZPS2]QTYREST With "-N:9.2#"
+    Chgfmt [M:ZPS2]GROPRI With "N:9.2#"
+    Chgfmt [M:ZPS2]AMTNOTLIN With "N:9.2#"
+    Chgfmt [M:ZPS2]QTYCDE With "N:9.2#"
+    Chgfmt [M:ZPS2]QTYLIV With "-N:9.2#"
+    Chgfmt [M:ZPS2]QTYKC With "-N:9.2#"
+    Chgfmt [M:ZPS2]QTYOK With "-N:9.2#"
+Endif
+Affzo [M:ZPS2]
+#On initialise la fate de début et de fin du filtre des commandes EPALIS
+[M:ZPS3]ZDATDEB = date$-90
+[M:ZPS3]ZDATFIN = [0/0/0]
+Affzo [M:ZPS3]ZDATDEB
+Affzo [M:ZPS3]ZDATFIN
+Local Char WVAR
+Call CL_ZAPPFIL(WVAR)
+##On va maintenant remplir le tableau des commandes EPALIS liées
+#Local Integer WNOL : WNOL = 0
+#Effzo [M:ZPS3]15
+#[M:ZPS3]NBLIGSOH = 0
+#For [F:ZSE]ZSE0 Where [F:ZSE]ZPSNUM=[M:ZPS0]ZPSNUM
+#    [M:ZPS3]ZSOHNUM(WNOL) = [F:ZSE]ZSOHNUM
+#    [M:ZPS3]ZNUMLIG(WNOL) = [F:ZSE]ZNUMLIG
+#    [M:ZPS3]ZARTTRI(WNOL) = [F:ZSE]ZARTTRI
+#    [M:ZPS3]ZARTPREST(WNOL) = [F:ZSE]ZARTPREST
+#    [M:ZPS3]ZQTY(WNOL) = [F:ZSE]ZQTY
+#    [M:ZPS3]ZDATE(WNOL) = [F:ZSE]ZDATE
+#    WNOL = WNOL + 1
+#    [M:ZPS3]NBLIGSOH = [M:ZPS3]NBLIGSOH + 1
+#Next
+#Affzo [M:ZPS3]15
+#On parcourt le tableau et on va mettre en rouge clair les lignes dont la quantité livrée + la qté commandée = Qté
+For I=0 To [M:ZPS2]NBLIG-1
+#  If([M:ZPS2]QTY(I)<=([M:ZPS2]QTYCDE(I)+[M:ZPS2]QTYLIV(I)))Then
+  If([M:ZPS2]QTY(I)<=([M:ZPS2]QTYCDE(I)))Then
+    Chgstl [M:ZPS2]NBLIG(I) With "BACKRED"
+#  Elsif(([M:ZPS2]QTYCDE(I)+[M:ZPS2]QTYLIV(I))>0)Then
+  Elsif(([M:ZPS2]QTYCDE(I))>0)Then
+    Chgstl [M:ZPS2]NBLIG(I) With "BACKGREEN"
+  Else
+    Chgstl [M:ZPS2]NBLIG(I) With ""
+  Endif
+  Affzo [M:ZPS2]NBLIG(I)
+Next
+Return
+
+################################################### AVANT_MOD
+
+$AVANT_MOD
+If GWEBSERV
+    If [F:ZPS]SOHNUM<>""
+        OK=0
+        GERR = 1
+        GMESSAGE = "Pré-commande déjà transformée en commande."
+    Endif
+Endif
+Return
+
+################################################### VERIF_MOD
+
+$VERIF_MOD
+# Au moins une ligne
+If [M:ZPS2]NBLIG=0
+    GERR=1
+    GMESSAGE=mess(61,199,1)
+    OK=0
+    Return
+Endif
+Return
+
+################################################### INIMOD
+
+$INIMOD
+For WNOL=0 To [M:ZPS2]NBLIG-1
+    [M:ZPS2]ZPSNUM(WNOL) = [M:ZPS0]ZPSNUM
+Next
+Return
+
+################################################### MODIF
+
+$MODIF
+Gosub MODIF From TABLEAUX
+Return
+
+################################################### ANNULE
+
+$ANNULE
+Gosub ANNULE From TABLEAUX
+Return
+
+################################################### ABANDON
+
+$ABANDON
+If GREP="C"
+    Effzo [M:ZPS0]
+    Effzo [M:ZPS1]
+    Effzo [M:ZPS2]
+    Effzo [M:ZPS3]
+    Actzo [M:ZPS0]ZPSNUM
+Endif
+Return
+
+################################################### FERME
+
+$FERME
+Kill W_AMTNOTLIN
+Return
+
+###################################################
+#### ACTIONS CHAMPS
+###################################################
+
+################################################### ZPS0
+
+Subprog AM_BPCORD(VALEUR)
+Variable Char    VALEUR()
+# Récup infos depuis BPCUSTOMER
+Read [F:BPC]BPC0=VALEUR
+If fstat=0
+    [M:ZPS0]BPCNAM = [F:BPC]BPCNAM
+    [M:ZPS1]BPCINV = [F:BPC]BPCINV
+    [M:ZPS1]BPCPYR = [F:BPC]BPCPYR
+    [M:ZPS1]CHGTYP = [F:BPC]CHGTYP
+    [M:ZPS1]VACBPR = [F:BPC]VACBPR
+    [M:ZPS1]PTE    = [F:BPC]PTE
+Endif
+# Récup infos depuis BPDLVCUST
+Filter [F:BPD] Where [F:BPD]BPCNUM=VALEUR
+Read [F:BPD]BPD0 First
+If fstat=0
+    [M:ZPS1]BPAADD = [F:BPD]BPAADD
+    [M:ZPS1]BPTNUM = [F:BPD]BPTNUM
+    [M:ZPS1]MDL    = [F:BPD]MDL
+    [M:ZPS1]STOFCY = [F:BPD]STOFCY
+Endif
+Filter [F:BPD]
+# Récup infos depuis BPARTNER
+Read [F:BPR]BPR0=VALEUR
+If fstat=0
+    [M:ZPS1]CUR = [F:BPR]CUR
+    # On se place dans TABCUR pour le calcul du prix total ligne
+    Read [F:TCU]TCU0=[F:BPR]CUR
+    If fstat
+        Raz [F:TCU]
+    Endif
+    [M:ZPS1]LAN = [F:BPR]LAN
+    [M:ZPS2]WCUR = [M:ZPS1]CUR
+Endif
+# Raffraichissement des écrans
+Affzo [M:ZPS0]BPCNAM
+Affzo [M:ZPS1]
+Affzo [M:ZPS2]
+Affzo [M:ZPS3]
+# Permet de gérer le filtre sur BPDLVCUST pour le controle de l'adresse de livraison
+GBPCNUM=VALEUR
+End
+
+Subprog D_YPSDAT(VALEUR)
+Variable Date    VALEUR
+If([M:ZPS0]YPSDAT=[0/0/0])Then
+    VALEUR=date$
+Endif
+End
+
+################################################### YPS1
+
+Subprog AS_YPSINT(VALEUR)
+Variable Date    VALEUR
+If GWEBSERV
+    VALEUR=date$
+Else
+    mkstat=2
+Endif
+End
+
+Subprog C_BPAADD(VALEUR)
+Variable Char    VALEUR()
+#Read [F:BPD]BPD0=[M:ZPS0]BPCORD;VALEUR
+#If fstat>1
+#    GERR=1
+#    GMESSAGE="Adresse de livraison inexistante."
+#    mkstat=2
+#Endif
+End
+
+Subprog AM_BPAADD(VALEUR)
+Variable Char    VALEUR()
+#Local Integer WREP : WREP=2
+#If !GWEBSERV
+#    Call OUINON("Voulez-vous récupérer les données de l'adresse de livraison ?",WREP) From GESECRAN
+#Endif
+#If WREP=2
+    Read [F:BPD]BPD0=[M:ZPS0]BPCORD;VALEUR
+    If fstat=0
+        [M:ZPS1]BPTNUM = [F:BPD]BPTNUM
+        [M:ZPS1]MDL    = [F:BPD]MDL
+        [M:ZPS1]STOFCY = [F:BPD]STOFCY
+        Affzo [M:ZPS1]BPTNUM, MDL, STOFCY
+    Endif
+#Endif
+End
+
+Subprog IB_SOHNUM
+If [M:ZPS1]SOHNUM="" : Raz GBOUT1 : Endif
+End
+
+Subprog IB_DEMDLVDAT
+[M:ZPS1]DEMDLVDAT = date$
+Affzo [M:ZPS1]DEMDLVDAT
+End
+
+################################################### YPS2
+
+Subprog AVANT_NBLIG
+Local Integer WNOL : WNOL=nolign-1
+W_AMTNOTLIN = [M:ZPS2]AMTNOTLIN(WNOL)
+End
+
+Subprog APRES_NBLIG
+Local Integer WNOL : WNOL=nolign-1
+[M:ZPS2]TOTAMTNOT += ([M:ZPS2]AMTNOTLIN(WNOL)-W_AMTNOTLIN)
+Affzo [M:ZPS2]TOTAMTNOT
+End
+
+Subprog AM_ITMREF(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL=nolign-1
+Local Integer WNUM_UC : WNUM_UC=0
+Read [F:ITM]ITM0=VALEUR
+If fstat=0
+    Call CHARGE_DEFITMDES("DES1AXX",GLANGUE,VALEUR,[M:ZPS2]ITMDES1(WNOL),"[F:ITM]") From TRTX3
+#    [M:ZPS2]ITMDES1(WNOL) = [F:ITM]ITMDES1
+    [M:ZPS2]SAU(WNOL) = [F:ITM]SAU
+    [M:ZPS2]VACITM(WNOL) = [F:ITM]VACITM
+    Affzo [M:ZPS2]ITMDES1(WNOL), VACITM(WNOL)
+    Affzo [M:ZPS2]SAU(WNOL)
+Endif
+Local Decimal WPRIXBRUT
+Call RECH_TARIF_VENTE([M:ZPS0]BPCORD,[M:ZPS1]BPAADD,[M:ZPS1]DEMDLVDAT,"",VALEUR,"UN",[M:ZPS2]QTY(WNOL),WPRIXBRUT)
+nolign=WNOL+1
+[M:ZPS2]GROPRI(WNOL)=WPRIXBRUT
+Affzo [M:ZPS2]GROPRI(WNOL)
+#On va mettre le texte vente de l'article client dans le champ ZPDTEX
+Read [F:ITU]ITU0=VALEUR;[M:ZPS0]BPCORD
+If(fstat=0)Then
+    [M:ZPS2]ZPDTEX(WNOL) = [F:ITU]ITSTEX
+    Affzo [M:ZPS2]ZPDTEX(WNOL)
+Endif
+End
+
+Subprog AM_SAU(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL = nolign-1
+Local Integer WNUM_UC
+Read [F:ITM]ITM0=[M:ZPS2]ITMREF(WNOL)
+If fstat =0
+Endif
+End
+
+Subprog AM_QTY(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL=nolign-1
+[M:ZPS2]QTY(WNOL)=VALEUR
+If([M:ZPS0]ZFLGEPALIS<>2)Then
+  Local Decimal WPRIXBRUT
+  Call RECH_TARIF_VENTE([M:ZPS0]BPCORD,[M:ZPS1]BPAADD,[M:ZPS1]DEMDLVDAT,"",[M:ZPS2]ITMREF(WNOL),"UN",VALEUR,WPRIXBRUT)
+  nolign=WNOL+1
+  [M:ZPS2]GROPRI(WNOL)=WPRIXBRUT
+  Affzo [M:ZPS2]GROPRI(WNOL)
+  Gosub RECALCUL_PRIXNET
+Endif
+End
+
+Subprog RECH_TARIF_VENTE(WCLIENT,WADRLIVR,WDATE,WSITE,WARTICLE,WUNITE,WQUANTITE,WPRIX)
+Value Char WCLIENT()
+Value Char WADRLIVR()
+Value Date WDATE
+Value Char WSITE()
+Value Char WARTICLE()
+Value Char WUNITE()
+Value Decimal WQUANTITE
+Variable Decimal WPRIX
+
+Read [F:BPR]BPR0=WCLIENT
+If fstat
+    Raz [F:BPR]
+Endif
+Read [F:BPC]BPC0=WCLIENT
+If fstat
+    Raz [F:BPC]
+Endif
+Read [F:BPD]BPD0=WCLIENT;WADRLIVR
+If fstat
+    Raz [F:BPD]
+Endif
+
+If clalev([M:SOH0])=0 : Local Mask SOH0 [SOH0] : Raz [M:SOH0] : Endif
+If clalev([M:SOH1])=0 : Local Mask SOH1 [SOH1] : Raz [M:SOH1] : Endif
+If clalev([M:SOH2])=0 : Local Mask SOH2 [SOH2] : Raz [M:SOH2] : Endif
+If clalev([M:SOH3])=0 : Local Mask SOH3 [SOH3] : Raz [M:SOH3] : Endif
+If clalev([M:SOH4])=0 : Local Mask SOH4 [SOH4] : Raz [M:SOH4] : Endif
+Default Mask [SOH4]
+Default Mask [SOH3]
+Default Mask [SOH2]
+Default Mask [SOH1]
+Default Mask [SOH0]
+
+Gosub SIM_SPC_GLOB From TRTPRICE
+Call TARIFCHGT(5) From TRTPRICE
+Call COLREM("C",1,"") From TRTPRICE
+
+Global Integer MGEFFAC
+Global Char GPNTITMREF(15)
+Local Char VAT(3)(0..2)
+GPNTITMREF=""
+MGEFFAC=1
+
+[M:SOH0]BPCORD=WCLIENT
+[M:SOH0]ORDDAT=WDATE
+[M:SOH0]CUR=[F:BPR]CUR
+[M:SOH0]SALFCY=WSITE
+[M:SOH1]PRITYP=1
+[M:SOH1]BPAADD=WADRLIVR
+[M:SOH2]DEMDLVDAT=WDATE
+    [M:SOH2]MDL = [M:ZPS1]MDL #"13"
+[M:SOH4]DDEMDLVDAT(0)=WDATE
+[M:SOH4]ITMREF(0)=WARTICLE
+[M:SOH4]DSTOFCY(0)=WSITE
+[M:SOH4]DBPAADD=WADRLIVR
+Call ALITAXEV([F:BPC]VACBPR,[F:ITM]VACITM,VAT) From TRTX3
+[M:SOH4]VAT1(0)=VAT(0)
+[M:SOH4]VAT2(0)=VAT(1)
+[M:SOH4]VAT3(0)=VAT(2)
+[M:SOH4]SAU(0)=WUNITE
+[M:SOH4]QTY(0)=WQUANTITE
+Default Mask [M:SOH4]
+Default Mask [M:SOH3]
+Default Mask [M:SOH2]
+Default Mask [M:SOH1]
+Default Mask [M:SOH0]
+nolign=1
+Call RECH_TARIF(1,[M:SOH4]ITMREF(0),0,[M:SOH4]QTY(0),"SOH",[M:SOH4]GROPRI(0)) From TRTVENTAR
+Call CLCNETPRI([M:SOH4]QTY(0),[M:SOH0]CUR,0) From TRTVENPRI
+WPRIX = [M:SOH4]GROPRI
+End
+
+
+
+
+Subprog C_GROPRI(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL=nolign-1
+Local Integer WREP
+If VALEUR=0
+    WREP=2
+    If !GWEBSERV
+        Call OUINON("Prix nul. Doit-on continuer ?",WREP) From GESECRAN
+    Endif
+    If WREP=1
+        mkstat=2
+    Endif
+Endif
+End
+
+Subprog AM_GROPRI(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL=nolign-1
+[M:ZPS2]GROPRI(WNOL)=VALEUR
+Gosub RECALCUL_PRIXNET
+End
+
+Subprog AM_DISCRGVAL1(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL=nolign-1
+[M:ZPS2]DISCRGVAL1(WNOL)=VALEUR
+Gosub RECALCUL_PRIXNET
+End
+
+Subprog AM_DISCRGVAL2(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL=nolign-1
+[M:ZPS2]DISCRGVAL2(WNOL)=VALEUR
+Gosub RECALCUL_PRIXNET
+End
+
+Subprog AM_DISCRGVAL3(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL=nolign-1
+[M:ZPS2]DISCRGVAL3(WNOL)=VALEUR
+Gosub RECALCUL_PRIXNET
+End
+
+Subprog AM_DISCRGVAL4(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL=nolign-1
+[M:ZPS2]DISCRGVAL4(WNOL)=VALEUR
+Gosub RECALCUL_PRIXNET
+End
+
+Subprog AM_DISCRGVAL5(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL=nolign-1
+[M:ZPS2]DISCRGVAL5(WNOL)=VALEUR
+Gosub RECALCUL_PRIXNET
+End
+
+Subprog AM_DISCRGVAL6(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL=nolign-1
+[M:ZPS2]DISCRGVAL6(WNOL)=VALEUR
+Gosub RECALCUL_PRIXNET
+End
+
+Subprog AM_DISCRGVAL7(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL=nolign-1
+[M:ZPS2]DISCRGVAL7(WNOL)=VALEUR
+Gosub RECALCUL_PRIXNET
+End
+
+Subprog AM_DISCRGVAL8(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL=nolign-1
+[M:ZPS2]DISCRGVAL8(WNOL)=VALEUR
+Gosub RECALCUL_PRIXNET
+End
+
+Subprog AM_DISCRGVAL9(VALEUR)
+Variable Decimal VALEUR
+Local Integer WNOL : WNOL=nolign-1
+[M:ZPS2]DISCRGVAL9(WNOL)=VALEUR
+Gosub RECALCUL_PRIXNET
+End
+
+$RECALCUL_PRIXNET
+Local Decimal MAJREM(0..8), NETPRI
+Local Integer NLIG, I
+NLIG=nolign-1
+For I=1 To 9
+    If evalue("dim([M:ZPS2]DISCRGVAL"+num$(I)+"(NLIG))")>0
+        MAJREM(I-1)=evalue("[M:ZPS2]DISCRGVAL"+num$(I)+"(NLIG)")
+    Endif
+Next
+Call CALNET(1,"",[M:ZPS2]GROPRI(NLIG),MAJREM,[M:ZPS2]QTY(NLIG),NETPRI,[M:ZPS1]CUR) From TRTPRICE
+[M:ZPS2]NETPRI(NLIG)=NETPRI
+Affzo [M:ZPS2]NETPRI(NLIG)
+[M:ZPS2]AMTNOTLIN(NLIG) = arr([M:ZPS2]NETPRI(NLIG)*[M:ZPS2]QTY(NLIG),[F:TCU]CURRND)
+Return
+
+Subprog IB_ZPSDAT
+If([M:ZPS0]ZPSDAT=[0/0/0])Then
+    [M:ZPS0]ZPSDAT=date$
+    Affzo [M:ZPS0]ZPSDAT
+Endif
+End
+
+Subprog IB_ZFCYAREA
+End
+
+
+
+######################################################################################
+## Etiquette ajoutée par le superviseur (écran ZPS1) 11/04/2013 11:17:54 (ADMIN)
+######################################################################################
+Subprog S_BPAADD(VALEUR)
+Variable Char    VALEUR()
+Local Char PARMSK(250)(1..16)
+GPE = 1
+PARMSK(1) = "BPD"
+PARMSK(2) = ""
+PARMSK(3) = num$([M:ZPS0]BPCORD)
+GBPCNUM=[M:ZPS0]BPCORD
+Call S_TAB_CHAR(VALEUR,PARMSK,"SELOBJ","SELOBJ","") From GACTION
+Gosub AFF From GSAISIE
+End
+
+Subprog AM_ZFCYAREA(VALEUR)
+Variable Char    VALEUR()
+#On regarde si la valeur saisie correspond au paramètre utilisateur GZREGION
+If(GZREGION<>"" and VALEUR <>GZREGION)Then
+    Infbox "ATTENTION, la région saisie ne correspond pas à celle qui vous est affectée."
+Endif
+End
+
+Subprog C_BPCORD(VALEUR)
+Variable Char    VALEUR()
+# Contrôle dépassement d'échéance
+Local Integer WDELAIDEFAUT : WDELAIDEFAUT = 0
+Local Integer WCTLSITEDEF : WCTLSITEDEF=1
+Read [F:BPC]BPC0=VALEUR
+If fstat=0
+    If [F:BPC]ZCTLCDE=2
+        Local Integer ZOKCLIENT
+        ZOKCLIENT=2
+        For [F:DUD]DUD4 Where [F:DUD]BPR=VALEUR & [F:DUD]TYP="FAC"
+            Read [F:SIH]SIH0=[F:DUD]NUM
+            If fstat=0
+                If [F:SIH]STA=3
+                    Read [F:FCY]FCY0=[F:SIH]FCY
+                    If fstat=0
+                        WDELAIDEFAUT = [F:FCY]ZDELAIECH
+                        WCTLSITEDEF  = [F:FCY]ZCTLSITE
+                    Else
+                        Raz [F:FCY]
+                    Endif
+                    #On va constituer la liste des sites de la région de la précommande
+                    Local Char WSITEREG(250) : WSITEREG = ""
+                    For [F:FCY]FCY0 Where [F:FCY]ZFCYAREA=[M:ZPS0]ZFCYAREA
+                      If(WSITEREG<>"")Then
+                        WSITEREG = WSITEREG + ";"
+                      Endif
+                      WSITEREG = WSITEREG + [F:FCY]FCY
+                    Next
+                    If(WSITEREG<>"")Then
+                      WSITEREG = ";" + WSITEREG + ";"
+                    Endif
+                    If (WCTLSITEDEF=1 | (WCTLSITEDEF=2 & instr( 1, WSITEREG, ";" + [F:SIH]FCY + ";" )>0)) & [F:DUD]DUDDAT+WDELAIDEFAUT<date$ & [F:DUD]AMTCUR>[F:DUD]PAYCUR+[F:DUD]TMPCUR
+#                    If (WCTLSITEDEF=1 | (WCTLSITEDEF=2 & [F:SIH]FCY=[M:SOH0]SALFCY)) & [F:DUD]DUDDAT+WDELAIDEFAUT<date$ & [F:DUD]AMTCUR>[F:DUD]PAYCUR+[F:DUD]TMPCUR
+                        ZOKCLIENT=1
+                        Break
+                    Endif
+                Endif
+            Endif
+        Next
+        If ZOKCLIENT=1
+            Call MESSAGE("Au moins une facture est en retard de règlement.") From GESECRAN
+            # Mail de S LE BARAZER du 23/11/2012, 15h41
+            # Le message n'est plus bloquant
+            # mkstat=2
+        Endif
+    Endif
+    #On va regarder maintenant si le client à la case à cocher "Client proforma"
+    #si oui, on affiche une message
+    If([F:BPC]ZPROF=2)Then
+      Call MESSAGE("PROFORMA obligatoire.") From GESECRAN
+    Endif
+Endif
+End
+
+
+######################################################################################
+## Etiquette ajoutée par le superviseur (écran ZPS0) 21/01/2015 12:31:01 (ADMIN)
+######################################################################################
+Subprog AM_ZFLGEPALIS(VALEUR)
+Variable Integer VALEUR
+If(VALEUR=2)Then
+    Chgfmt [M:ZPS1]BPAADD With "-K:10X"
+    Chgfmt [M:ZPS1]ZBPAADD With "-K:10X"
+    Chgfmt [M:ZPS1]MDL With "-K:10X"
+    Chgfmt [M:ZPS1]ZMDL With "-K:10X"
+    [M:ZPS1]STOFCY=""
+    Chgfmt [M:ZPS1]STOFCY With "K:10X"
+    Chgfmt [M:ZPS2]QTYREST With "N:9.2#"
+    Chgfmt [M:ZPS2]GROPRI With "-N:9.2#"
+    Chgfmt [M:ZPS2]AMTNOTLIN With "-N:9.2#"
+    Chgfmt [M:ZPS2]QTYCDE With "-N:9.2#"
+    Chgfmt [M:ZPS2]QTYLIV With "N:9.2#"
+    Chgfmt [M:ZPS2]QTYKC With "N:9.2#"
+    Chgfmt [M:ZPS2]QTYOK With "N:9.2#"
+Else
+    Chgfmt [M:ZPS1]BPAADD With "K:10X"
+    Chgfmt [M:ZPS1]ZBPAADD With "K:10X"
+    Chgfmt [M:ZPS1]MDL With "K:10X"
+    Chgfmt [M:ZPS1]ZMDL With "K:10X"
+    Chgfmt [M:ZPS1]STOFCY With "-K:10X"
+    Chgfmt [M:ZPS2]QTYREST With "-N:9.2#"
+    Chgfmt [M:ZPS2]GROPRI With "N:9.2#"
+    Chgfmt [M:ZPS2]AMTNOTLIN With "N:9.2#"
+    Chgfmt [M:ZPS2]QTYCDE With "N:9.2#"
+    Chgfmt [M:ZPS2]QTYLIV With "-N:9.2#"
+    Chgfmt [M:ZPS2]QTYKC With "-N:9.2#"
+    Chgfmt [M:ZPS2]QTYOK With "-N:9.2#"
+Endif
+Affzo [M:ZPS0]
+Affzo [M:ZPS1]
+End
+
+Subprog CL_ZAPPFIL(VALEUR)
+Variable Char    VALEUR()
+Local Char WCRITSUP(250)
+#On va maintenant remplir le tableau des commandes EPALIS liées
+Local Integer WNOL : WNOL = 0
+Effzo [M:ZPS3]15
+[M:ZPS3]NBLIGSOH = 0
+WCRITSUP = "[F:ZSE]ZPSNUM=[M:ZPS0]ZPSNUM and [F:ZSE]ZQTEOK<>[F:ZSE]ZQTYLIV"
+If([M:ZPS3]ZDATDEB<>[0/0/0])Then
+  WCRITSUP = WCRITSUP + " and [F:ZSE]ZDATE>=[M:ZPS3]ZDATDEB"
+Endif
+If([M:ZPS3]ZDATFIN<>[0/0/0])Then
+  WCRITSUP = WCRITSUP + " and [F:ZSE]ZDATE<=[M:ZPS3]ZDATFIN"
+Endif
+If([M:ZPS3]ZFILART<>"")Then
+  WCRITSUP = WCRITSUP + " and [F:ZSE]ZARTPREST=[M:ZPS3]ZFILART"
+Endif
+#For [F:ZSE]ZSE0 Where [F:ZSE]ZPSNUM=[M:ZPS0]ZPSNUM
+For [F:ZSE]ZSE2 Where evalue(WCRITSUP)
+    [M:ZPS3]ZSOHNUM(WNOL) = [F:ZSE]ZSOHNUM
+    [M:ZPS3]ZNUMLIG(WNOL) = [F:ZSE]ZNUMLIG
+    [M:ZPS3]ZARTTRI(WNOL) = [F:ZSE]ZARTTRI
+    [M:ZPS3]ZARTPREST(WNOL) = [F:ZSE]ZARTPREST
+    [M:ZPS3]ZQTY(WNOL) = [F:ZSE]ZQTY
+    [M:ZPS3]ZDATE(WNOL) = [F:ZSE]ZDATE
+    [M:ZPS3]ZTYPPAL(WNOL) = [F:ZSE]ZTYPPAL
+    [M:ZPS3]ZART(WNOL) = [F:ZSE]ZART
+    [M:ZPS3]ZQTEOK(WNOL) = [F:ZSE]ZQTEOK
+    [M:ZPS3]ZQTEKC(WNOL) = [F:ZSE]ZQTEKC
+    [M:ZPS3]ZQTEATRANSF(WNOL) = [F:ZSE]ZQTEATRANSF
+    [M:ZPS3]ZQTYLIV(WNOL) = [F:ZSE]ZQTYLIV
+    [M:ZPS3]ZZSDHNUM(WNOL) = [F:ZSE]ZSDHNUM
+    [M:ZPS3]ZZSDDLIN(WNOL) = [F:ZSE]ZSDDLIN
+    [M:ZPS3]ZDATEACT(WNOL) = [F:ZSE]ZDATEACT
+    [M:ZPS3]ZZFACRELOC(WNOL) = [F:ZSE]ZFACTRELOC
+    WNOL = WNOL + 1
+    [M:ZPS3]NBLIGSOH = [M:ZPS3]NBLIGSOH + 1
+    If(WNOL>=dim([M:ZPS3]ZSOHNUM)-1)Then
+      Infbox "Attention tableau des commandes liées plein."
+      Break
+    Endif
+Next
+#On va maintenant remplir le tableau des livraisons EPALIS liées
+Local Integer WNOL : WNOL = 0
+Effzo [M:ZPS3]20
+[M:ZPS3]NBLIGSDH = 0
+WCRITSUP = "[F:SDD]ZPSNUM=[M:ZPS0]ZPSNUM"
+If([M:ZPS3]ZDATDEB<>[0/0/0])Then
+  WCRITSUP = WCRITSUP + " and [F:SDD]SHIDAT>=[M:ZPS3]ZDATDEB"
+Endif
+If([M:ZPS3]ZDATFIN<>[0/0/0])Then
+  WCRITSUP = WCRITSUP + " and [F:SDD]SHIDAT<=[M:ZPS3]ZDATFIN"
+Endif
+If([M:ZPS3]ZFILART<>"")Then
+  WCRITSUP = WCRITSUP + " and [F:SDD]ITMREF=[M:ZPS3]ZFILART"
+Endif
+#For [F:ZSE]ZSE0 Where [F:ZSE]ZPSNUM=[M:ZPS0]ZPSNUM
+For [F:SDD]ZPS1 Where evalue(WCRITSUP)
+    [M:ZPS3]ZSDHNUM(WNOL) = [F:SDD]SDHNUM
+    [M:ZPS3]ZSDDLIN(WNOL) = [F:SDD]SDDLIN
+    [M:ZPS3]ZITMREFSDD(WNOL) = [F:SDD]ITMREF
+    [M:ZPS3]ZQTYSDH(WNOL) = [F:SDD]QTY
+    [M:ZPS3]ZSHIDAT(WNOL) = [F:SDD]SHIDAT
+    WNOL = WNOL + 1
+    [M:ZPS3]NBLIGSDH = [M:ZPS3]NBLIGSDH + 1
+    If(WNOL>=dim([M:ZPS3]ZSDHNUM)-1)Then
+      Infbox "Attention tableau des livraisons liées plein."
+      Break
+    Endif
+Next
+Affzo [M:ZPS3]
+End
+
+
+Subprog AM_QTYREST(VALEUR)
+Variable Decimal VALEUR
+Local Decimal WQTYREST : WQTYREST = VALEUR
+Local Integer WNOL : WNOL = nolign-1
+
+#  Infbox num$([M:ZPS2]QTYREST(WNOL)) + "-" + num$(WQTYREST)
+  [M:ZPS2]QTY(WNOL) = [M:ZPS2]QTY(WNOL) + (WQTYREST-[M:ZPS2]QTYREST(WNOL))
+  Affzo [M:ZPS2]QTY(WNOL)
+End
+
+Subprog AS_QTY(VALEUR)
+Variable Decimal VALEUR
+If([M:ZPS0]ZFLGEPALIS=2)Then
+  mkstat=2
+Endif
+End
+
+Subprog AS_GROPRI(VALEUR)
+Variable Decimal VALEUR
+If([M:ZPS0]ZFLGEPALIS=2)Then
+  mkstat=2
+Endif
+End
+
+Subprog C_QTYREST(VALEUR)
+Variable Decimal VALEUR
+If(VALEUR<0)Then
+  Infbox "Impossible! la valeur ne peut pas être négative."
+  mkstat=2
+Endif
+End
+

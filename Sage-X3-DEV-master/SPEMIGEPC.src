@@ -1,0 +1,186 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+###########################################################################################################
+# Société              : EPALIA                                                                           #
+# Auteur               : Jérôme BEAUFILS                                                                  #
+# Date de création     : 02/12/2019                                                                       #
+# Date de modification : 02/12/2019                                                                       #
+# Nom du traitement    : SPEMIGEPC                                                                        #
+###########################################################################################################
+# Ce traitement permet de migrer les EPC vers les EPM                                                     #
+# Pour cela, on va utiliser la vue ZMIGEPC qui contient l'ensemble des EPC en cours                       #
+###########################################################################################################
+# Ouverture des tables et des vues de travail
+If clalev([F:ZMEPC])=0  : Local File ZMIGEPC      [F:ZMEPC]  : Endif
+If clalev([F:ZCMC])=0   : Local File ZCOLMULTICHG [F:ZCMC]   : Endif
+If clalev([F:ZMC])=0    : Local File ZCHGMULTICHG [F:ZMC]    : Endif
+If clalev([F:ZRMC])=0   : Local File ZRECMULTICHG [F:ZRMC]   : Endif
+If clalev([F:ZTMC])=0   : Local File ZTRIMULTICHG [F:ZTMC]   : Endif
+If clalev([F:SOQ])=0    : Local File SORDERQ      [F:SOQ]    : Endif
+If clalev([F:SOP])=0    : Local File SORDERP      [F:SOP]    : Endif
+#Déclaration des variables de travail
+Local Integer WERR : WERR = 0
+Local Integer INTERRUPT
+Local Decimal NOMBRE
+Local Char    TEXTE(50)
+Local Integer WNUMLIG
+Local Integer WSTAT
+Local Char    WSEQ(15)
+#On va effectuer les modifications au travers d'une transaction
+Trbegin [F:ZCMC],[F:ZMC],[F:ZRMC],[F:ZTMC]
+
+#----------------------------- ETAPE N°1 ----------------------------
+#On commence par compter le nombre de collecte multi chargeur à créer
+Filter[F:ZMEPC]
+NOMBRE = rowcount([F:ZMEPC])
+#On va parcourir l'ensemble de la vue pour les enregistrements dont le code client est égal au code de regroupement
+TEXTE = "Veuillez patienter..."
+Call OUVRE_BOITE(TEXTE,NOMBRE) From GESECRAN
+WNUMLIG = 1
+For[F:ZMEPC]ZMEPC0
+  #----------------------------------CREATION DE LA COLLECTE MULTI CHARGEUR------------------------------------
+  # On commence par créer l'entête de la collecte
+  Raz[F:ZCMC]
+  # 2 cas possibles :
+  # - cas n° 1 : L'étape de validation de la réception de la MC n'est pas à faire ([F:ZMEPC]QTY_REC=-1 and [F:ZMEPC]QTY_TRI=-1)
+  # - cas n° 2 : L'étape de validation de la réception est à faire
+  #Cas n°1
+  [F:ZCMC]ZCMCNUM         = [F:ZMEPC]ZCODEPI
+  [F:ZCMC]CONTINT         = [F:ZMEPC]ZCODEPI
+  [F:ZCMC]ZDEPNUM         = [F:ZMEPC]ZDEPNUM
+  [F:ZCMC]FCYREC          = [F:ZMEPC]FCY
+  [F:ZCMC]DATEEPM         = [F:ZMEPC]ORDDAT
+  [F:ZCMC]ZCHAUFEPI       = [F:ZMEPC]ZCHAUFEPI
+  [F:ZCMC]ZBPCNUM         = [F:ZMEPC]BPCORD
+  [F:ZCMC]ZCHANTIER       = [F:ZMEPC]CHANTIER
+  [F:ZCMC]DATEENL         = [F:ZMEPC]ZDATENL
+  [F:ZCMC]QTYANN          = [F:ZMEPC]QTY_COL
+  [F:ZCMC]DATECOL         = [F:ZMEPC]ZDATENL
+  If([F:ZMEPC]CHANTIER=2)Then
+    [F:ZCMC]IADRESSE(0)   = [F:ZMEPC]ZADRCHT1
+    [F:ZCMC]IADRESSE(1)   = [F:ZMEPC]ZADRCHT2
+    [F:ZCMC]IADRESSE(2)   = [F:ZMEPC]ZADRCHT3
+    [F:ZCMC]ICITY         = [F:ZMEPC]ZCITYCHT
+    [F:ZCMC]IPOSCOD       = [F:ZMEPC]ZPOSCODCHT
+    [F:ZCMC]IPAYSISO      = [F:ZMEPC]ZPAYSISOCHT
+    [F:ZCMC]IPAYS         = [F:ZMEPC]ZPAYSCHT
+    [F:ZCMC]INOMCHT       = [F:ZMEPC]ZNOMCHT
+    [F:ZCMC]IREFCHT       = [F:ZMEPC]ZREFCHT
+  Endif
+  If(([F:ZMEPC]QTY_REC>0 or [F:ZMEPC]QTY_TRI>0))Then
+    #Cas n°2
+    If([F:ZMEPC]QTY_TRI=-1)Then
+      #Il n'y a pas eu de tri de fait
+      [F:ZCMC]DATERECEP   = [F:ZMEPC]ZDATREC
+      [F:ZCMC]QTYENL      = [F:ZMEPC]QTY_REC
+      [F:ZCMC]DATEVAL     = date$
+      [F:ZCMC]HEUVALRECEP = time$
+      [F:ZCMC]QTYREC      = [F:ZMEPC]QTY_REC
+    Else
+      #Il y a eu un tri de fait
+      [F:ZCMC]DATERECEP   = [F:ZMEPC]ZDATREC
+      [F:ZCMC]QTYENL      = [F:ZMEPC]QTY_TRI
+      [F:ZCMC]DATEVAL     = date$
+      [F:ZCMC]HEUVALRECEP = time$
+      If([F:ZMEPC]QTY_REC>0)Then
+        [F:ZCMC]QTYREC    = [F:ZMEPC]QTY_REC
+      Else
+        [F:ZCMC]QTYREC    = [F:ZMEPC]QTY_TRI
+      Endif
+    Endif
+  Endif
+  Write[F:ZCMC]
+  If(fstat=0)Then
+    #On va maintenant créer la liste des clients chargeur
+    Raz[F:ZMC]
+    [F:ZMC]ZCMCNUM        = [F:ZMEPC]ZCODEPI
+    [F:ZMC]ZCMCLIN        = 1000
+    [F:ZMC]ZCODCHARG      = [F:ZMEPC]BPCORD
+    [F:ZMC]ZCODCLT        = [F:ZMEPC]ZCODCLT
+    [F:ZMC]ZNOMCLT        = [F:ZMEPC]ZNOMCLT
+    If([F:ZMEPC]QTY_REC>0)Then
+      [F:ZMC]QTERECEP     = [F:ZMEPC]QTY_REC
+    Endif
+    [F:ZMC]TRIAFAIRE = 2
+    Write[F:ZMC]
+    If(fstat=0)Then
+      #On va maintenant créer la réception si elle existe
+      Local Integer WCONT : WCONT = 0
+      If([F:ZMEPC]QTY_REC>0 or [F:ZMEPC]QTY_TRI>0)Then
+        Raz[F:ZRMC]
+        [F:ZRMC]ZCMCNUM   = [F:ZMEPC]ZCODEPI
+        [F:ZRMC]ZCMCLIN   = 1000
+        [F:ZRMC]ITMREF    = [F:ZMEPC]ART_REC_GEN
+        If([F:ZMEPC]QTY_REC>0)Then
+          [F:ZRMC]QTY     = [F:ZMEPC]QTY_REC
+        Endif
+        If([F:ZMEPC]QTY_TRI>0)Then
+          [F:ZRMC]QTY     = [F:ZMEPC]QTY_TRI
+        Endif
+        Write[F:ZRMC]
+        If(fstat=0)Then
+          WCONT = 1
+        Else
+          WCONT = 2
+        Endif
+      Endif
+      If(WCONT=1)Then
+        #On va maintenant créer le tri s'il existe
+        If([F:ZMEPC]QTY_TRI>0)Then
+          #S'il y a du tri, alors il va falloir récupérer tous les lignes de tri
+          Local Integer WNUMLIG : WNUMLIG = 1
+          For [F:SOQ]SOQ0 Where [F:SOQ]SOHNUM=[F:ZMEPC]SOHNUM
+            Read[F:SOP]SOP0=[F:SOQ]SOHNUM;[F:SOQ]SOPLIN;[F:SOQ]SOQSEQ
+            If(fstat=0)Then
+              If([F:SOP]ZTYPART=3)Then
+                Raz[F:ZTMC]
+                [F:ZTMC]ZCMCNUM   = [F:ZMEPC]ZCODEPI
+                [F:ZTMC]ZCMCLIN   = WNUMLIG*1000
+                [F:ZTMC]ZCODCHARG = [F:ZMEPC]BPCORD
+                [F:ZTMC]ZCODCLT   = [F:ZMEPC]ZCODCLT
+                [F:ZTMC]ITMREF    = [F:SOP]ITMREF
+                [F:ZTMC]QTEOK     = [F:SOQ]ZQTYOK
+                [F:ZTMC]QTEKC     = [F:SOQ]ZQTYAREP
+                [F:ZTMC]QTEHS     = [F:SOQ]ZQTYHS
+                [F:ZTMC]USR       = [F:SOQ]CREUSR
+                [F:ZTMC]DATEOPE   = [F:SOQ]CREDAT
+                [F:ZTMC]HEUREOPE  = "12:00:00"
+                Write[F:ZTMC]
+                If(fstat<>0)Then
+                  WERR = 4
+                  Break 2
+                Endif
+                WNUMLIG += 1
+              Endif
+            Endif
+          Next
+        Endif
+      Else
+        If(WCONT = 2)Then
+          WERR = 3
+          Break
+        Endif
+      Endif
+    Else
+      WERR = 2
+      Break
+    Endif
+  Else
+    Infbox num$(fstat) + "---" + [F:ZMEPC]ZCODEPI
+    WERR = 1
+    Break
+  Endif
+  #------------------------------------------------------------------------------------------------------------
+  TEXTE = "Traitement de l'enregistrement N°"
+  Call AFF_BOITE(TEXTE+num$(WNUMLIG) + "/" + num$(NOMBRE),WNUMLIG,INTERRUPT) From GESECRAN
+  WNUMLIG += 1
+Next
+Call FERME_BOITE From GESECRAN
+If(WERR=0)Then
+  Commit
+  Call MESSAGE("Traitement terminé avec succès") From GESECRAN
+Else
+  Rollback
+  Call ERREUR("Traitement annulé car il existe des erreurs. [Erreur n°" + num$(WERR) + "]") From GESECRAN
+Endif
+#--------------------------------------------------------------------
+

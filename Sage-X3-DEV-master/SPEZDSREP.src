@@ -1,0 +1,97 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### SPEZDSREP
+##################################################### créé le 23/08/2019
+##################################################### modifié le 23/08/2019
+
+$ACTION
+#infbox ACTION
+Case ACTION
+  When "OUVRE" : Gosub OUVRE
+  When "DEBUT" : Gosub DEBUT
+  When "OK"    : Gosub OK
+Endcase
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           LABELS                                                  #
+#---------------------------------------------------------------------------------------------------#
+
+######################################################################### OUVRE
+$OUVRE
+If clalev([F:ZSREP])=0 : Local File ZSPEREP [ZSREP] : Endif
+Return
+
+######################################################################### DEBUT
+$DEBUT
+[M:ZDSREP]ZARNUM       = PARAM(1)
+[M:ZDSREP]ZCODCHARG    = PARAM(2)
+[M:ZDSREP]ZCODCLTCHARG = PARAM(3)
+Affzo [M:ZDSREP]5
+#On va maintenant récupérer les enregistrements dans la table concernant l'article de prestation
+Effzo [M:ZDSREP]10
+Raz [M:ZDSREP]NBLIG
+For[F:ZSREP]ZSREP0 Where [F:ZSREP]ZARNUM=[M:ZDSREP]ZARNUM and [F:ZSREP]ZCODCHARG=[M:ZDSREP]ZCODCHARG and [F:ZSREP]ZCODCLTCHARG=[M:ZDSREP]ZCODCLTCHARG
+  [M:ZDSREP]ZSITE([M:ZDSREP]NBLIG)   = [F:ZSREP]ZSITE
+  [M:ZDSREP]ZTARIF([M:ZDSREP]NBLIG)  = [F:ZSREP]ZTARIF
+  [M:ZDSREP]ZCLTFOU([M:ZDSREP]NBLIG) = [F:ZSREP]ZCLTFOU
+  [M:ZDSREP]ZQTYMIN([M:ZDSREP]NBLIG) = [F:ZSREP]ZQTYMIN
+  [M:ZDSREP]ZQTYMAX([M:ZDSREP]NBLIG) = [F:ZSREP]ZQTYMAX
+  [M:ZDSREP]NBLIG += 1
+Next
+Affzo [M:ZDSREP]10
+Return
+
+######################################################################### OK
+$OK
+#On va sauvegarder les lignes du tableau
+#L'opération va se faire à l'intérieure d'une transaction
+Local Integer WERR : WERR = 0
+Local Integer WNUMLIG : WNUMLIG = 0
+Trbegin [F:ZSREP]
+#On commence par supprimer toute les lignes de la table concernant l'article de prestation
+Delete [F:ZSREP] Where [F:ZSREP]ZARNUM=[M:ZDSREP]ZARNUM and [F:ZSREP]ZCODCHARG=[M:ZDSREP]ZCODCHARG and [F:ZSREP]ZCODCLTCHARG=[M:ZDSREP]ZCODCLTCHARG
+If(fstat=0)Then
+  #On va maintenant parcourir le tableau pour sauvegarder les lignes
+  For WNUMLIG=0 To [M:ZDSREP]NBLIG-1
+    [F:ZSREP]ZARNUM       = [M:ZDSREP]ZARNUM
+    [F:ZSREP]ZCODCHARG    = [M:ZDSREP]ZCODCHARG
+    [F:ZSREP]ZCODCLTCHARG = [M:ZDSREP]ZCODCLTCHARG
+    [F:ZSREP]ZSITE        = [M:ZDSREP]ZSITE(WNUMLIG)
+    [F:ZSREP]ZTARIF       = [M:ZDSREP]ZTARIF(WNUMLIG)
+    [F:ZSREP]ZCLTFOU      = [M:ZDSREP]ZCLTFOU(WNUMLIG)
+    [F:ZSREP]ZQTYMIN      = [M:ZDSREP]ZQTYMIN(WNUMLIG)
+    [F:ZSREP]ZQTYMAX      = [M:ZDSREP]ZQTYMAX(WNUMLIG)
+    Write[F:ZSREP]
+    If(fstat<>0)Then
+      WERR = 1
+      Break
+    Endif
+  Next
+Else
+  WERR = 1
+Endif
+If(WERR=0)Then
+  Commit
+Else
+  Rollback
+  Call ERREUR("Impossible de sauvegarder les lignes !!") From GESECRAN
+Endif
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           SUBPROGS                                                #
+#---------------------------------------------------------------------------------------------------#
+
+Subprog C_ZSITE(VALEUR)
+Variable Char    VALEUR()
+#On va controler que la valeur du site est bien dans le vue de sélection
+If(VALEUR<>"")Then
+  If clalev([F:ZSFCY])=0 : Local File ZSELFCY [ZSFCY] : Endif
+  Read[F:ZSFCY]ZSFCY0=VALEUR
+  If(fstat<>0)Then
+    mkstat = 2
+    GMESSAGE = "Impossible, ce code site n'existe pas."
+  Endif
+Endif
+End
+

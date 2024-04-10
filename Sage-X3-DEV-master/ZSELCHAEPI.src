@@ -1,0 +1,62 @@
+#<AdxTL>@(#)6.0.0.0 $Revision$
+##################################################### ZSELCHAEPI
+##################################################### créé le 06/01/15
+##################################################### modifié le 06/01/15
+
+###################################################################################### ACTION
+$ACTION
+#Infbox ACTION
+Case ACTION
+ When "SEL_TABLE" : Gosub SEL_TABLE
+ When Default
+Endcase
+Return
+
+###################################################################################### SEL_TABLE
+$SEL_TABLE
+#PARAM(1) est le code du client
+#Infbox "Paramètre n°1 : " + PARAM(1)
+  #Ouverture du fichier des chauffeurs de chargeur
+  If clalev([F:ZCPI])=0 : Local File ZCHAEPI [ZCPI] : Endif
+  #Ouverture du fichier des clients
+  If clalev([F:BPC2])=0 : Local File BPCUSTOMER [BPC2] : Endif
+  Local Integer WTYPCHAUF : WTYPCHAUF = 1
+  Read [F:BPC2]BPC0=PARAM(1)
+  If(fstat=0)Then
+    WTYPCHAUF = [F:BPC2]ZCHCHEPI
+  Else
+    WTYPCHAUF = 3
+  Endif
+  #On va récupérer les chauffeurs du code clients
+  #passés en paramètre
+  Local Char WCODCLT : WCODCLT = PARAM(1)
+  Default File [ZCPI]
+  #On défini le nombre de colonne de la fenêtre de sélection
+  NBCOL = 3
+  #On défini le nom de chaque colonne
+  TIT(1) = "Nom du chauffeur"
+  TIT(2) = "Complément"
+  TIT(3) = "Ville"
+  #On défini les champs à afficher
+  COL(1) = "ZCHAUFEPI"
+  COL(2) = "ZCHAUFEPI2"
+  COL(3) = "CTY"
+  #On indique le titre de la sélection
+  TIT(0) = "Sélection du chauffeur du chargeur " + PARAM(1)
+  #On indique au système de gérer les pages
+  DEFPAG = 1
+  #Critère de sélection
+  CRITERE = "[F:ZCPI]ZCHAUFEPI<>'' and [F:ZCPI]BPCORD='" + WCODCLT + "'"
+  If(WTYPCHAUF=1)Then
+    #On est dans le cas ou l'utilisateur ne peut choisir les chauffeur que dans les collectes
+    CRITERE += " and [F:ZCPI]TYP_CHAUF='Collecte'"
+  Elsif(WTYPCHAUF=3)Then
+    #On est dans le cas ou l'utilisateur ne peut choisir les chauffeur que dans la table des chauffeurs EPALIS
+    CRITERE += " and [F:ZCPI]TYP_CHAUF='Table'"
+  Endif
+  #Trier
+  ORDRE = "ZCHAUFEPI"
+  #Ordre Croissant
+  SENS = 1
+Return
+

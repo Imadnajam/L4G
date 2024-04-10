@@ -1,0 +1,1126 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+################################################### SPEZBTRS
+################################################### 21/12/2018
+
+$ACTION
+#Infbox ACTION
+Case ACTION
+ When "OUVRE"       : Gosub OUVRE
+ When "AFFMASK"     : Gosub AFFMASK
+ When "DEFLIG"      : Gosub DEFLIG
+ When "VERIF_CRE"   : Gosub VERIF_CRE
+ When "INICRE"      : Gosub INICRE
+ When "CREATION"    : Gosub CREATION
+ When "LIENS"       : Gosub LIENS
+ When "VERIF_MOD"   : Gosub VERIF_MOD
+ When "INIMOD"      : Gosub INIMOD
+ When "MODIF"       : Gosub MODIF
+ When "ANNULE"      : Gosub ANNULE
+ When "ABANDON"     : Gosub ABANDON
+ When "FERME"       : Gosub FERME
+ When "RAZCRE"      : Gosub RAZCRE
+ When "RAZDUP"      : Gosub RAZDUP
+ When "APRES_CRE"   : Gosub APRES_CRE
+ When "INICRE_LIG"  : Gosub INICRE_LIG
+ When "INIMOD_LIG"  : Gosub INIMOD_LIG
+ When "APRES_MOD"   : Gosub APRES_MOD
+ When "EXEBOUT"     : Gosub EXEBOUT
+ When "SETBOUT"     : Gosub SETBOUT
+ When "FILGAUCHE"   : Gosub FILGAUCHE
+ When "FIN_PICK"    : Gosub FIN_PICK
+ When "PICKE"       : Gosub PICKE
+ When "DEPICK"      : Gosub DEPICK
+ When "DEB_PICK"    : Gosub DEB_PICK
+ When "TIROIR"      : Gosub TIROIR
+ When "AP_FILGAUCHE": Gosub AP_FILGAUCHE
+ When Default
+Endcase
+Return
+
+################################################### OUVRE
+
+$OUVRE
+If clalev([F:ZBTH])=0 : Local File ZBTRSH [ZBTH] : Endif
+If clalev([F:ZBTD])=0 : Local File ZBTRSD [ZBTD] : Endif
+If clalev([F:ZSQBT])=0: Local File ZSQBT [ZSQBT] : Endif
+If clalev([F:ZQBT])=0 : Local File ZQTYBT [ZQBT] : Endif
+
+If clalev([F:SOH])=0 : Local File SORDER [SOH]   : Endif
+If clalev([F:SOP])=0 : Local File SORDERP [SOP]  : Endif
+If clalev([F:SOQ])=0 : Local File SORDERQ [SOQ]  : Endif
+If clalev([F:ZTE])=0 : Local File ZTEMPEPI [ZTE] : Endif
+If clalev([F:ZNH])=0 : Local File ZNEGHEA [ZNH]  : Endif
+If clalev([F:ZNL])=0 : Local File ZNEGLIG [ZNL]  : Endif
+If clalev([F:POH])=0 : Local File PORDER [POH]   : Endif
+If clalev([F:POP])=0 : Local File PORDERP [POP]  : Endif
+If clalev([F:POQ])=0 : Local File PORDERQ [POQ]  : Endif
+
+Gosub DECLARE From TABLEAUX
+Global Integer WPICK
+Return
+
+################################################### SETBOUT
+
+$SETBOUT
+If([ZBTRS0]ZVALID=2 or GREP<>"")Then
+  Call VIREBOUT(CHAINE,"v") From GOBJET #VALIDATION
+Endif
+Return
+
+############################################ INICRE_LIG
+
+$INICRE_LIG
+[F:ZBTD]ZBTHNUM = [M:ZBTRS0]ZBTHNUM
+Return
+
+############################################ INIMOD_LIG
+
+$INIMOD_LIG
+[F:ZBTD]ZBTHNUM = [M:ZBTRS0]ZBTHNUM
+Return
+
+################################################### RAZDUP
+
+$RAZDUP
+Return
+
+################################################### AFFMASK
+
+$AFFMASK
+Return
+
+################################################### DEFLIG
+
+$DEFLIG
+Default Mask [ZBTRS1]
+Default File [ZBTD]
+CRIT='[F:ZBTD]ZBTHNUM="'+[M:ZBTRS0]ZBTHNUM+'"'
+FICLIG="ZBTRSD"
+ABLIG="ZBTD"
+ZONLIG="ZBTHLIN"
+Return
+
+################################################# RAZCRE
+
+$RAZCRE
+Diszo [M:ZBTRS0]ZBTHNUM
+Return
+
+################################################# VERIF_CRE
+
+$VERIF_CRE
+## Au moins une ligne
+#If [M:ZBTRS1]NBLIG=0
+#    GERR=1
+#    GMESSAGE=mess(61,199,1)
+#    OK=0
+#    Return
+#Endif
+Return
+
+################################################# APRES_CRE
+
+$APRES_CRE
+Gosub SPE_DEVERROUILLE
+Gosub SPE_ALIM_QTEBT
+
+ILIS=val(right$(currbox,8))
+Gosub REMP_LISGAU From GOBJSUB
+
+WPICK = 1
+Gosub RAFRAICHIR_TIRROIR
+Return
+
+################################################# INICRE
+
+$INICRE
+Local Integer WSTAT, WNOL
+Local Char WYPSNUM(15)
+Call NUMERO("ZBTRS",[M:ZBTRS0]ZFCYTRSP,date$,"",WYPSNUM,WSTAT) From SUBANM
+If GOK<0 : Return : Endif
+If WSTAT=0
+    [M:ZBTRS0]ZBTHNUM = WYPSNUM
+    [F:ZBTH]ZBTHNUM = WYPSNUM
+    Affzo [M:ZBTRS0]ZBTHNUM
+Else
+    GERR=1
+    GMESSAGE=mess(60,199,1)
+    GOK=0
+    Return
+Endif
+Return
+
+################################################### CREATION
+
+$CREATION
+  Gosub CREATION From TABLEAUX
+  Actzo [M:ZBTRS0]ZBTHNUM
+  Actzo [M:ZBTRS0]ZFCYTRSP
+Return
+
+################################################### LIENS
+
+$LIENS
+  If([F:ZBTH]ZVALID=2)Then
+    Diszo [M:ZBTRS0]
+    Diszo [M:ZBTRS1]
+  Else
+    Actzo [M:ZBTRS0]
+    Actzo [M:ZBTRS1]
+  Endif
+  If([F:ZBTH]ZVALID=2 and [F:ZBTH]ZTYPTRSP=1)Then
+    Chgfmt [M:ZBTRS0]PTHNUM With "K:20X"
+  Else
+    Chgfmt [M:ZBTRS0]PTHNUM With "-K:20X"
+  Endif
+  Gosub LIENS From TABLEAUX
+  If([M:ZBTRS1]NBLIG>0)Then
+    Diszo [M:ZBTRS0]ZFCYTRSP
+  Else
+    Actzo [M:ZBTRS0]ZFCYTRSP
+  Endif
+  Gosub SPE_ALIM_QTEBT
+Return
+
+################################################### VERIF_MOD
+
+$VERIF_MOD
+## Au moins une ligne
+#If [M:ZBTRS1]NBLIG=0
+#    GERR=1
+#    GMESSAGE=mess(61,199,1)
+#    OK=0
+#    Return
+#Endif
+Return
+
+################################################### INIMOD
+
+$INIMOD
+Return
+
+################################################### MODIF
+
+$MODIF
+Gosub MODIF From TABLEAUX
+Return
+
+################################################### APRES_MOD
+
+$APRES_MOD
+Gosub SPE_DEVERROUILLE
+Gosub SPE_ALIM_QTEBT
+
+ILIS=val(right$(currbox,8))
+Gosub REMP_LISGAU From GOBJSUB
+WPICK = 1
+Gosub RAFRAICHIR_TIRROIR
+Return
+
+################################################### ANNULE
+
+$ANNULE
+Gosub ANNULE From TABLEAUX
+Return
+
+################################################### ABANDON
+
+$ABANDON
+If GREP="C"
+    Effzo [M:ZBTRS0]
+    Effzo [M:ZBTRS1]
+    Actzo [M:ZBTRS0]ZBTHNUM
+Endif
+Gosub SPE_DEVERROUILLE
+Gosub SPE_ALIM_QTEBT
+
+ILIS=val(right$(currbox,8))
+Gosub REMP_LISGAU From GOBJSUB
+WPICK = 1
+Gosub RAFRAICHIR_TIRROIR
+Return
+
+################################################### FERME
+
+$FERME
+Return
+
+################################################### EXEBOUT
+
+$EXEBOUT
+If(BOUT="v")Then
+  If clalev([F:PTH2])=0 : Local File PRECEIPT [F:PTH2] : Endif
+  Local Integer WAPPMOD : WAPPMOD = 1
+  Trbegin [F:PTH2],[F:ZBTH]
+  #L'utilisateur vient de cliquer sur le bouton de validation
+  #On commence par figer la fiche
+  [F:ZBTH]ZVALID=2
+  Rewrite [F:ZBTH]
+  If(fstat=0)Then
+    [M:ZBTRS0]ZVALID=2
+    Affzo [M:ZBTRS0]ZVALID
+    Diszo [M:ZBTRS0]
+    Diszo [M:ZBTRS1]
+  Else
+    WAPPMOD = 0
+    Call ERREUR("Impossible de modifier le bon de transport.") From GESECRAN
+  Endif
+  #On va maintenant regarder si le bon de transport est de type Affrètement
+  If([M:ZBTRS0]ZTYPTRSP=1)Then
+    # dans ce cas, on va générer un bon de réception
+    Gosub SPE_CREATE_REC
+  Endif
+  If(WAPPMOD=1)Then
+    Commit
+  Else
+    Rollback
+    [M:ZBTRS0]ZVALID=1
+    Affzo [M:ZBTRS0]ZVALID
+    Actzo [M:ZBTRS0]
+    Actzo [M:ZBTRS1]
+    Call ERREUR("Des erreurs se sont produites. Arrêt du traitement.") From GESECRAN
+  Endif
+Endif
+Return
+
+################################################### SPE_CREATE_REC
+
+$SPE_CREATE_REC
+  # Définition complète du nom du fichier
+  Local Char ZNOMFIC(250) : ZNOMFIC=GZREPRECBT
+  Local Char INFO(250)
+  Local Integer WERR
+  If right$(GZREPRECBT,len(GZREPRECBT))<>"\"
+      ZNOMFIC += "\"
+  Endif
+  Local Char WFICHIER(250)
+  WFICHIER = ZNOMFIC + "ZREC_BTRS_" + [M:ZBTRS0]ZBTHNUM + "_" + [M:ZBTRS0]ZTRSP + ".TXT"
+  Call ECR_TRACE("Création du fichier d'import réception pour le bon de transport " + [M:ZBTRS0]ZBTHNUM,0) From GESECRAN
+  # Création du fichier
+  Onerrgo PBCREATFICTXT
+  Openo WFICHIER,0
+  Onerrgo
+  If WERR>0
+    Case WERR
+      When 20
+        WAPPMOD = 0
+        INFO = "[7] - Répertoire inexistant. Arrêt du traitement."
+      When 27
+        WAPPMOD = 0
+        INFO = "[8] - Accès impossible (permission refusée) au répertoire. Arrêt du traitement."
+      When 44
+        WAPPMOD = 0
+        INFO = "[9] - Problème de place disque sur le répertoire. Arrêt du traitement."
+      When Default
+        WAPPMOD = 0
+        INFO = "[10] - Problème système rencontré lors de la création du fichier ("+errmes$(WERR)+"). Arrêt du traitement."
+    Endcase
+    Call ERREUR(INFO) From GESECRAN
+    Return
+  Endif
+  adxirs = chr$(13)+chr$(10)
+  adxifs = ";"
+  #On écrit dans le fichier
+  #E,Site de réception,N° de réception,Date de réception,code fournisseur,Code adresse,chaufffeur,N° bon de transport,N° BL fournisseur
+  #L,Code article,quantité,Prix brut,Section ana axe 1,Section ana axe 2
+  Local Char WBPAADD(20)
+  Local Char WAXEANAACH(20)
+  Local Char WZAXEMETEPIA(20) : WZAXEMETEPIA = "P"
+  #On commence par rechercher l'adresse par défaut du transporteur
+  If clalev([F:BPS2])=0 : Local File BPSUPPLIER [F:BPS2] : Endif
+  Read[F:BPS2]BPS0=[M:ZBTRS0]ZTRSP
+  If(fstat=0)Then
+    WBPAADD = [F:BPS2]BPAADD
+#    WZAXEMETEPIA = [F:BPS2]ZAXEMETST
+  Else
+    WAPPMOD = 0
+    Call ERREUR("Impossible de récupérer les informations du transporteur.") From GESECRAN
+    Return
+  Endif
+  #Puis la section de l'axe 1 du site du bon de transport
+  If clalev([F:FCY2])=0 : Local File FACILITY [FCY2] : Endif
+  Read[F:FCY2]FCY0=[M:ZBTRS0]ZFCYTRSP
+  If(fstat=0)Then
+    WAXEANAACH = [FCY2]CCE(0)
+  Else
+    WAPPMOD = 0
+    Call ERREUR("Impossible de récupérer les informations du site.") From GESECRAN
+    Return
+  Endif
+
+  Wrseq "E",[M:ZBTRS0]ZFCYTRSP,"",[M:ZBTRS0]ZDATETRSP,[M:ZBTRS0]ZTRSP,WBPAADD,"00001",[M:ZBTRS0]ZBTHNUM,[M:ZBTRS0]ZBTHNUM
+  Wrseq "L",GZITMBT,1,[M:ZBTRS0]ZCOUTTRSP,WAXEANAACH,WZAXEMETEPIA
+
+  # Fermeture du fichier
+  Openo
+  Local Char WSAVGFLAG(30) : WSAVGFLAG = GFLAG
+  # Import du fichier
+  Gosub OUVRE From GIMPOBJ
+  [M:IMP2]MODIMP="ZPTHAFR"
+  [M:IMP2]TYPEXP=2
+  [M:IMP2]NOMIMP=WFICHIER
+  GSERVEUR=1
+  Gosub EXEC From GIMPOBJ
+  GSERVEUR=0
+  # On va maintenant rechercher la réception pour savoir si tout c'est bien passé
+  Filter [F:PTH2] Where [F:PTH2]ZBTHNUM=[M:ZBTRS0]ZBTHNUM
+  Read [F:PTH2]PTH0 First
+  If fstat
+    INFO = "[1] - Erreur lors de la création de la réception depuis le bon de transport."
+    Call ERREUR(INFO) From GESECRAN
+    WAPPMOD = 0
+    Return
+  Else
+    INFO = "Réception numéro "+[F:PTH2]PTHNUM+" correctement créé."
+    Call MESSAGE(INFO) From GESECRAN
+    #On va mettre à jour le champ indiquant la transaction
+    [F:PTH2]ZTRS='RFG'
+    Rewrite[F:PTH2]
+    If(fstat<>0)Then
+      WAPPMOD = 0
+      Call ERREUR("Impossible de modifier la réception créée.") From GESECRAN
+      Return
+    Endif
+    #La réception a correctement été créée, on va donc renseigner le n° dans le bon de transport
+    [F:ZBTH]PTHNUM = [F:PTH2]PTHNUM
+    Rewrite [F:ZBTH]
+    If(fstat<>0)Then
+      WAPPMOD = 0
+      Call ERREUR("Impossible de modifier le bon de transport.") From GESECRAN
+      Return
+    Endif
+    Gosub LIENS
+    [M:ZBTRS0]PTHNUM=[F:PTH2]PTHNUM
+    Affzo [M:ZBTRS0]PTHNUM
+  Endif
+  Filter [F:PTH2]
+  GFLAG = WSAVGFLAG
+Return
+
+######################################################################### PBCREATFICTXT
+$PBCREATFICTXT
+WERR=errn
+Resume
+
+################################################### FILGAUCHE
+
+$FILGAUCHE
+Global Date WDATEDEB : WDATEDEB = [01/01/2018]
+Local Char WFCY(10) : WFCY = [M:ZBTRS0]ZFCYTRSP
+If(currbox="GAU_CHE1")Then
+  #On est dans le tirroir Sélection collectes EPALIS
+  FILGAUSUP(0) += '[F:SOH]ZTRS="EPI" &[F:SOH]ORDDAT>=WDATEDEB &[F:SOP]ZTYPART=1 &[F:SOH]SALFCY="' + WFCY + '" &([F:SOQ]QTY-val(num$([F:ZSQBT]QTY)))>0'
+Elsif(currbox="GAU_CHE2")Then
+  #On est dans le tirroir Sélection reloc. EPALIS
+  FILGAUSUP(0) += '[F:ZTE]ZACT=2 &[F:ZTE]ZACTOK=2 &[F:ZTE]ZDATACT>=WDATEDEB &[F:ZTE]ZFCY="' + WFCY + '" &([F:ZTE]ZQTY-val(num$([F:ZSQBT2]QTY)))>0'
+Elsif(currbox="GAU_CHE3")Then
+  #On est dans le tirroir Sélection bon de négoce
+  FILGAUSUP(0) += '[F:ZNH]ZNHDAT>=WDATEDEB &[F:ZNH]ZNHFCY="' + WFCY + '" &([F:ZNL]ZNLQTY-val(num$([F:ZSQBT3]QTY)))>0'
+Elsif(currbox="GAU_CHE4")Then
+  #On est dans le tirroir Sélection commandes vente
+  FILGAUSUP(0) += '[F:SOH2]ZTRS="EPA" &[F:SOH2]ORDDAT>=WDATEDEB &[F:SOH2]SALFCY="' + WFCY + '" &([F:SOQ2]QTY-val(num$([F:ZSQBT4]QTY)))>0'
+Elsif(currbox="GAU_CHE5")Then
+  #On est dans le tirroir Sélection commandes achat
+  FILGAUSUP(0) += '([F:POH]ZMEMOTRANS="LOG" | [F:POH]ZMEMOTRANS="DEC") &[F:POH]ORDDAT>=WDATEDEB &[F:POH]POHFCY="' + WFCY + '" &([F:POQ]QTYPUU-val(num$([F:ZSQBT5]QTY)))>0'
+Endif
+Return
+
+################################################### TIROIR
+
+$TIROIR
+Local Integer ILIS,WPICK
+ILIS=val(right$(currbox,8))
+Gosub REMP_LISGAU From GOBJSUB
+WPICK=2
+Gosub RAFRAICHIR_TIRROIR
+Return
+
+
+################################################### TIROIR
+
+$AP_FILGAUCHE
+WPICK=2
+Gosub RAFRAICHIR_TIRROIR
+Return
+
+################################################### DEB_PICK
+
+$DEB_PICK
+Return
+
+################################################### FIN_PICK
+
+$FIN_PICK
+If([M:ZBTRS0]ZVALID=2)Then
+  OK=0
+Endif
+Return
+
+################################################# PICKE
+
+$PICKE
+If([M:ZBTRS0]ZVALID<>2)Then
+  Case currbox
+   When "GAU_CHE1" : Gosub SEL_COL_EPALIS
+   When "GAU_CHE2" : Gosub SEL_RELOC_EPALIS
+   When "GAU_CHE3" : Gosub SEL_BON_NEGOCE
+   When "GAU_CHE4" : Gosub SEL_CDE_VEN
+   When "GAU_CHE5" : Gosub SEL_CDE_ACH
+   When Default
+  Endcase
+Else
+  OK=0
+Endif
+Return
+
+################################################# DEPICK
+
+$DEPICK
+If([M:ZBTRS0]ZVALID<>2)Then
+  Case currbox
+   When "GAU_CHE1" : Gosub DESEL_COL_EPALIS
+   When "GAU_CHE2" : Gosub DESEL_RELOC_EPALIS
+   When "GAU_CHE3" : Gosub DESEL_BON_NEGOCE
+   When "GAU_CHE4" : Gosub DESEL_CDE_VEN
+   When "GAU_CHE5" : Gosub DESEL_CDE_ACH
+   When Default
+  Endcase
+Endif
+Return
+
+#################################################
+#### FONCTIONS ET PROCEDURES SPECIFIQUES
+#################################################
+
+################################################# SPE_DEVERROUILLE
+
+$SPE_DEVERROUILLE
+#On va parcourir l'ensemble des lignes du bon de transport
+#pour dévérouiller tous les symboles
+Local Integer I
+Local Char WABR(3)
+For I=0 To [M:ZBTRS1]NBLIG-1
+  WABR = ""
+  #Si le flag de création est à 0 alors on va dévérouiller le symbole correspondant
+  If([M:ZBTRS1]CREFLG(I)=0)Then
+    If([M:ZBTRS1]ZTYPVCR(I)=1)Then
+      WABR = "SOH"
+    Elsif([M:ZBTRS1]ZTYPVCR(I)=3)Then
+      WABR = "ZNG"
+    Elsif([M:ZBTRS1]ZTYPVCR(I)=4)Then
+      WABR = "SOH"
+    Elsif([M:ZBTRS1]ZTYPVCR(I)=5)Then
+      WABR = "POH"
+    Endif
+    If(WABR<>"")Then
+      SYMBOLE2 = WABR+[M:ZBTRS1]VCRNUM(I)
+      Unlock = SYMBOLE2
+    Endif
+  Endif
+Next
+Return
+
+################################################# SPE_ALIM_QTEBT
+
+$SPE_ALIM_QTEBT
+#On va parcourir l'ensemble des lignes du bon de transport
+If clalev([F:ZSQBT])=0: Local File ZSQBT [ZSQBT] : Endif
+If clalev([F:ZQBT])=0 : Local File ZQTYBT [ZQBT] : Endif
+Local Integer I
+Local Decimal WQTY
+For I=0 To [M:ZBTRS1]NBLIG-1
+  Delete [F:ZSQBT] Where [F:ZSQBT]ZTYPVCR=[M:ZBTRS1]ZTYPVCR(I) & [F:ZSQBT]VCRNUM=[M:ZBTRS1]VCRNUM(I) & [F:ZSQBT]VCRLIN=[M:ZBTRS1]VCRLIN(I) & [F:ZSQBT]ITMREF=[M:ZBTRS1]ITMREF(I)
+  WQTY = 0
+  Read[F:ZQBT]ZQBT0=[M:ZBTRS1]ZTYPVCR(I);[M:ZBTRS1]VCRNUM(I);[M:ZBTRS1]VCRLIN(I);[M:ZBTRS1]ITMREF(I)
+  If(fstat=0)Then
+    WQTY = [F:ZQBT]QTY
+  Endif
+  If(WQTY>0)Then
+    Raz [F:ZSQBT]
+    [F:ZSQBT]ZTYPVCR = [F:ZQBT]ZTYPVCR
+    [F:ZSQBT]VCRNUM = [F:ZQBT]VCRNUM
+    [F:ZSQBT]VCRLIN = [F:ZQBT]VCRLIN
+    [F:ZSQBT]ITMREF = [F:ZQBT]ITMREF
+    [F:ZSQBT]QTY = WQTY
+    Write [F:ZSQBT]
+  Endif
+Next
+Return
+
+################################################# RAFRAICHIR_TIRROIR
+
+$RAFRAICHIR_TIRROIR
+#-----------------------------------------------------------------------#
+# Raffraichissement des listes de picking pour les lignes déjà saisies  #
+#-----------------------------------------------------------------------#
+If sum([M:ZBTRS1]ZBTHLIN) <> 0
+   For I=0 To [M:ZBTRS1]NBLIG-1
+      If [M:ZBTRS1]VCRNUM(I)<>"" & [M:ZBTRS1]CREFLG(I)=0
+        # La ligne est issue d'un picking réalisé au cours de cette transaction
+        Case currbox
+          When "GAU_CHE1" : If([M:ZBTRS1]ZTYPVCR(I)=1)Then
+                              Read [F:SOP]SOP3=[M:ZBTRS1]VCRNUM(I);[M:ZBTRS1]VCRLIN(I)
+                              If    WPICK=1 Gosub DEPICK From GOBJSUB
+                              Elsif WPICK=2 Gosub REPICK From GOBJSUB
+                              Endif
+                            Endif
+          When "GAU_CHE2" : If([M:ZBTRS1]ZTYPVCR(I)=2)Then
+                              Read [F:ZTE]ZTE5=[M:ZBTRS1]VCRNUM(I);[M:ZBTRS1]VCRLIN(I)
+                              If    WPICK=1 Gosub DEPICK From GOBJSUB
+                              Elsif WPICK=2 Gosub REPICK From GOBJSUB
+                              Endif
+                            Endif
+          When "GAU_CHE3" : If([M:ZBTRS1]ZTYPVCR(I)=3)Then
+                              Read [F:ZNL]ZNL0=[M:ZBTRS1]VCRNUM(I);[M:ZBTRS1]VCRLIN(I)
+                              If    WPICK=1 Gosub DEPICK From GOBJSUB
+                              Elsif WPICK=2 Gosub REPICK From GOBJSUB
+                              Endif
+                            Endif
+          When "GAU_CHE4" : If([M:ZBTRS1]ZTYPVCR(I)=4)Then
+                              Read [F:SOP2]SOP3=[M:ZBTRS1]VCRNUM(I);[M:ZBTRS1]VCRLIN(I)
+                              If    WPICK=1 Gosub DEPICK From GOBJSUB
+                              Elsif WPICK=2 Gosub REPICK From GOBJSUB
+                              Endif
+                            Endif
+          When "GAU_CHE5" : If([M:ZBTRS1]ZTYPVCR(I)=5)Then
+                              Read [F:POP]POP0=[M:ZBTRS1]VCRNUM(I);[M:ZBTRS1]VCRLIN(I)
+                              If    WPICK=1 Gosub DEPICK From GOBJSUB
+                              Elsif WPICK=2 Gosub REPICK From GOBJSUB
+                              Endif
+                            Endif
+          When Default
+        Endcase
+      Endif
+   Next I
+Endif
+Return
+
+################################################# SEL_COL_EPALIS
+
+$SEL_COL_EPALIS
+#Selection d'une ligne de collecte EPALIS
+#On vérouille la collecte que l'on vient de picker
+SYMBOLE2 = "SOH"+[F:SOH]SOHNUM
+Lock = SYMBOLE2
+If(fstat<>0)Then
+  # modification en cours sur un autre poste
+  GERR=1 : GMESSAGE=[F:SOH]SOHNUM-":"-mess(10,100,1)
+  OK=1   : Return
+Endif
+[M:ZBTRS1]ZTYPVCR([M:ZBTRS1]NBLIG) = 1
+[M:ZBTRS1]VCRNUM([M:ZBTRS1]NBLIG) = [F:SOH]SOHNUM
+[M:ZBTRS1]VCRLIN([M:ZBTRS1]NBLIG) = [F:SOP]SOPLIN
+[M:ZBTRS1]ITMREF([M:ZBTRS1]NBLIG) = [F:SOP]ITMREF
+[M:ZBTRS1]QTY([M:ZBTRS1]NBLIG) = [F:SOQ]QTY-[F:ZSQBT]QTY
+[M:ZBTRS1]ZORDRE([M:ZBTRS1]NBLIG) = func SPE_GET_NEXT_ORDRE
+[M:ZBTRS1]NBLIG+=1
+nolign=[M:ZBTRS1]NBLIG+1
+mkstat = 0
+zoncou = "NBLIG"
+status = 71
+SAVACT = GACTION : GACTION = "DIVLINNUM"
+Call LINNUM("ZBTHLIN") From TABLEAUX
+GACTION = SAVACT
+Affzo [M:ZBTRS1]
+#WPICK = 2
+#Gosub RAFRAICHIR_TIRROIR
+Return
+
+################################################# DESEL_COL_EPALIS
+
+$DESEL_COL_EPALIS
+#-----------------------------------------------------------------------#
+# Désélection d'une ligne de collecte EPALIS                            #
+#-----------------------------------------------------------------------#
+Raz I,J
+OK = 0
+If [M:ZBTRS1]NBLIG <> 0
+   While OK <> 1
+      I = find([F:SOH]SOHNUM,[M:ZBTRS1]VCRNUM(J..[M:ZBTRS1]NBLIG-1))
+      If !I Break Endif
+      If [M:ZBTRS1]CREFLG(J+I-1)=0 & [F:SOP]SOPLIN=[M:ZBTRS1]VCRLIN(J+I-1)
+         GMODIF = 1
+         NOL    = J+I-1
+         Dela NOL,1,[M:ZBTRS1]NBLIG-1 [M:ZBTRS1]NBLIG
+         [M:ZBTRS1]NBLIG -= 1
+         Raz GMESSAGE
+         OK = 1
+      Else
+         J = J+I
+      Endif
+   Wend
+Endif
+Affzo [M:ZBTRS1]
+Raz GMODIF
+# Si suite à désélection de la ligne, il n'y a plus de ligne sélectionnée
+# sur cette collecte, il faut la débloquer
+Raz I,J
+OK = 2
+If [M:ZBTRS1]NBLIG <> 0
+   While OK <> 1
+      I = find([F:SOH]SOHNUM,[M:ZBTRS1]VCRNUM(J..[M:ZBTRS1]NBLIG-1))
+      If !I Break Endif
+      If [M:ZBTRS1]CREFLG(J+I-1)=0
+         OK = 1
+      Else
+         J = J+I
+      Endif
+   Wend
+Endif
+If OK = 2
+  #Unlock entête de collecte EPALIS
+  SYMBOLE2 = "SOH"+[F:SOH]SOHNUM
+  Unlock = SYMBOLE2
+Endif
+Affzo [M:ZBTRS1]
+#WPICK = 1
+#Gosub RAFRAICHIR_TIRROIR
+Return
+
+################################################# SEL_RELOC_EPALIS
+
+$SEL_RELOC_EPALIS
+[M:ZBTRS1]ZTYPVCR([M:ZBTRS1]NBLIG) = 2
+[M:ZBTRS1]VCRNUM([M:ZBTRS1]NBLIG) = [F:ZTE]ZACTNUM
+[M:ZBTRS1]VCRLIN([M:ZBTRS1]NBLIG) = [F:ZTE]ZNUMLIG
+[M:ZBTRS1]ITMREF([M:ZBTRS1]NBLIG) = [F:ZTE]ZITMREF
+[M:ZBTRS1]QTY([M:ZBTRS1]NBLIG) = [F:ZTE]ZQTY-[F:ZSQBT2]QTY
+[M:ZBTRS1]ZORDRE([M:ZBTRS1]NBLIG) = func SPE_GET_NEXT_ORDRE
+[M:ZBTRS1]NBLIG+=1
+nolign=[M:ZBTRS1]NBLIG+1
+mkstat = 0
+zoncou = "NBLIG"
+status = 71
+SAVACT = GACTION : GACTION = "DIVLINNUM"
+Call LINNUM("ZBTHLIN") From TABLEAUX
+GACTION = SAVACT
+Affzo [M:ZBTRS1]
+#WPICK = 2
+#Gosub RAFRAICHIR_TIRROIR
+Return
+
+################################################# DESEL_RELOC_EPALIS
+
+$DESEL_RELOC_EPALIS
+#-----------------------------------------------------------------------#
+# Désélection d'une ligne de reloc EPALIS                               #
+#-----------------------------------------------------------------------#
+Raz I,J
+OK = 0
+If [M:ZBTRS1]NBLIG <> 0
+   While OK <> 1
+      I = find([F:ZTE]ZACTNUM,[M:ZBTRS1]VCRNUM(J..[M:ZBTRS1]NBLIG-1))
+      If !I Break Endif
+      If [M:ZBTRS1]CREFLG(J+I-1)=0 & [F:ZTE]ZNUMLIG=[M:ZBTRS1]VCRLIN(J+I-1)
+         GMODIF = 1
+         NOL    = J+I-1
+         Dela NOL,1,[M:ZBTRS1]NBLIG-1 [M:ZBTRS1]NBLIG
+         [M:ZBTRS1]NBLIG -= 1
+         Raz GMESSAGE
+         OK = 1
+      Else
+         J = J+I
+      Endif
+   Wend
+Endif
+Affzo [M:ZBTRS1]
+Raz GMODIF
+# Si suite à désélection de la ligne, il n'y a plus de ligne sélectionnée
+# sur cette collecte, il faut la débloquer
+Raz I,J
+OK = 2
+If [M:ZBTRS1]NBLIG <> 0
+   While OK <> 1
+      I = find([F:ZTE]ZACTNUM,[M:ZBTRS1]VCRNUM(J..[M:ZBTRS1]NBLIG-1))
+      If !I Break Endif
+      If [M:ZBTRS1]CREFLG(J+I-1)=0
+         OK = 1
+      Else
+         J = J+I
+      Endif
+   Wend
+Endif
+Affzo [M:ZBTRS1]
+#WPICK = 1
+#Gosub RAFRAICHIR_TIRROIR
+Return
+
+################################################# SEL_BON_NEGOCE
+
+$SEL_BON_NEGOCE
+#Selection d'une ligne de Bon de négoce
+#On vérouille le bon de négoce que l'on vient de picker
+SYMBOLE2 = "ZNH"+[F:ZNH]ZNHNUM
+Lock = SYMBOLE2
+If(fstat<>0)Then
+  # modification en cours sur un autre poste
+  GERR=1 : GMESSAGE=[F:ZNH]ZNHNUM-":"-mess(10,100,1)
+  OK=1   : Return
+Endif
+[M:ZBTRS1]ZTYPVCR([M:ZBTRS1]NBLIG) = 3
+[M:ZBTRS1]VCRNUM([M:ZBTRS1]NBLIG) = [F:ZNH]ZNHNUM
+[M:ZBTRS1]VCRLIN([M:ZBTRS1]NBLIG) = [F:ZNL]ZNLLIN
+[M:ZBTRS1]ITMREF([M:ZBTRS1]NBLIG) = [F:ZNL]ZNLITMREF
+[M:ZBTRS1]QTY([M:ZBTRS1]NBLIG) = [F:ZNL]ZNLQTY-[F:ZSQBT3]QTY
+[M:ZBTRS1]ZORDRE([M:ZBTRS1]NBLIG) = func SPE_GET_NEXT_ORDRE
+[M:ZBTRS1]NBLIG+=1
+nolign=[M:ZBTRS1]NBLIG+1
+mkstat = 0
+zoncou = "NBLIG"
+status = 71
+SAVACT = GACTION : GACTION = "DIVLINNUM"
+Call LINNUM("ZBTHLIN") From TABLEAUX
+GACTION = SAVACT
+Affzo [M:ZBTRS1]
+#WPICK = 2
+#Gosub RAFRAICHIR_TIRROIR
+Return
+
+################################################# DESEL_BON_NEGOCE
+
+$DESEL_BON_NEGOCE
+#-----------------------------------------------------------------------#
+# Désélection d'une ligne d'un bon de négoce                            #
+#-----------------------------------------------------------------------#
+Raz I,J
+OK = 0
+If [M:ZBTRS1]NBLIG <> 0
+   While OK <> 1
+      I = find([F:ZNH]ZNHNUM,[M:ZBTRS1]VCRNUM(J..[M:ZBTRS1]NBLIG-1))
+      If !I Break Endif
+      If [M:ZBTRS1]CREFLG(J+I-1)=0 & [F:ZNL]ZNLLIN=[M:ZBTRS1]VCRLIN(J+I-1)
+         GMODIF = 1
+         NOL    = J+I-1
+         Dela NOL,1,[M:ZBTRS1]NBLIG-1 [M:ZBTRS1]NBLIG
+         [M:ZBTRS1]NBLIG -= 1
+         Raz GMESSAGE
+         OK = 1
+      Else
+         J = J+I
+      Endif
+   Wend
+Endif
+Affzo [M:ZBTRS1]
+Raz GMODIF
+# Si suite à désélection de la ligne, il n'y a plus de ligne sélectionnée
+# sur ce bon de négoce, il faut la débloquer
+Raz I,J
+OK = 2
+If [M:ZBTRS1]NBLIG <> 0
+   While OK <> 1
+      I = find([F:ZNH]ZNHNUM,[M:ZBTRS1]VCRNUM(J..[M:ZBTRS1]NBLIG-1))
+      If !I Break Endif
+      If [M:ZBTRS1]CREFLG(J+I-1)=0
+         OK = 1
+      Else
+         J = J+I
+      Endif
+   Wend
+Endif
+If OK = 2
+  #Unlock entête de collecte EPALIS
+  SYMBOLE2 = "ZNH"+[F:ZNH]ZNHNUM
+  Unlock = SYMBOLE2
+Endif
+Affzo [M:ZBTRS1]
+#WPICK = 1
+#Gosub RAFRAICHIR_TIRROIR
+Return
+
+################################################# SEL_CDE_ACH
+
+$SEL_CDE_ACH
+#Selection d'une ligne de commande d'achat
+#On vérouille la commande d'achat que l'on vient de picker
+SYMBOLE2 = "POH"+[F:POH]POHNUM
+Lock = SYMBOLE2
+If(fstat<>0)Then
+  # modification en cours sur un autre poste
+  GERR=1 : GMESSAGE=[F:POH]POHNUM-":"-mess(10,100,1)
+  OK=1   : Return
+Endif
+[M:ZBTRS1]ZTYPVCR([M:ZBTRS1]NBLIG) = 5
+[M:ZBTRS1]VCRNUM([M:ZBTRS1]NBLIG) = [F:POH]POHNUM
+[M:ZBTRS1]VCRLIN([M:ZBTRS1]NBLIG) = [F:POQ]POPLIN
+[M:ZBTRS1]ITMREF([M:ZBTRS1]NBLIG) = [F:POQ]ITMREF
+[M:ZBTRS1]QTY([M:ZBTRS1]NBLIG) = [F:POQ]QTYPUU-[F:ZSQBT5]QTY
+[M:ZBTRS1]ZORDRE([M:ZBTRS1]NBLIG) = func SPE_GET_NEXT_ORDRE
+[M:ZBTRS1]NBLIG+=1
+nolign=[M:ZBTRS1]NBLIG+1
+mkstat = 0
+zoncou = "NBLIG"
+status = 71
+SAVACT = GACTION : GACTION = "DIVLINNUM"
+Call LINNUM("ZBTHLIN") From TABLEAUX
+GACTION = SAVACT
+Affzo [M:ZBTRS1]
+#WPICK = 2
+#Gosub RAFRAICHIR_TIRROIR
+Return
+
+################################################# DESEL_CDE_ACH
+
+$DESEL_CDE_ACH
+#-----------------------------------------------------------------------#
+# Désélection d'une ligne de commande d'achat                           #
+#-----------------------------------------------------------------------#
+Raz I,J
+OK = 0
+If [M:ZBTRS1]NBLIG <> 0
+   While OK <> 1
+      I = find([F:POH]POHNUM,[M:ZBTRS1]VCRNUM(J..[M:ZBTRS1]NBLIG-1))
+      If !I Break Endif
+      If [M:ZBTRS1]CREFLG(J+I-1)=0 & [F:POQ]POPLIN=[M:ZBTRS1]VCRLIN(J+I-1)
+         GMODIF = 1
+         NOL    = J+I-1
+         Dela NOL,1,[M:ZBTRS1]NBLIG-1 [M:ZBTRS1]NBLIG
+         [M:ZBTRS1]NBLIG -= 1
+         Raz GMESSAGE
+         OK = 1
+      Else
+         J = J+I
+      Endif
+   Wend
+Endif
+Affzo [M:ZBTRS1]
+Raz GMODIF
+# Si suite à désélection de la ligne, il n'y a plus de ligne sélectionnée
+# sur cette commande d'achat, il faut la débloquer
+Raz I,J
+OK = 2
+If [M:ZBTRS1]NBLIG <> 0
+   While OK <> 1
+      I = find([F:POH]POHNUM,[M:ZBTRS1]VCRNUM(J..[M:ZBTRS1]NBLIG-1))
+      If !I Break Endif
+      If [M:ZBTRS1]CREFLG(J+I-1)=0
+         OK = 1
+      Else
+         J = J+I
+      Endif
+   Wend
+Endif
+If OK = 2
+  #Unlock entête de commande d'achat
+  SYMBOLE2 = "POH"+[F:POH]POHNUM
+  Unlock = SYMBOLE2
+Endif
+Affzo [M:ZBTRS1]
+#WPICK = 1
+#Gosub RAFRAICHIR_TIRROIR
+Return
+
+################################################# SEL_CDE_VEN
+
+$SEL_CDE_VEN
+#Selection d'une ligne de commande de vente
+#On vérouille la commande de vente que l'on vient de picker
+SYMBOLE2 = "SOH"+[F:SOH2]SOHNUM
+Lock = SYMBOLE2
+If(fstat<>0)Then
+  # modification en cours sur un autre poste
+  GERR=1 : GMESSAGE=[F:SOH2]SOHNUM-":"-mess(10,100,1)
+  OK=1   : Return
+Endif
+[M:ZBTRS1]ZTYPVCR([M:ZBTRS1]NBLIG) = 4
+[M:ZBTRS1]VCRNUM([M:ZBTRS1]NBLIG) = [F:SOH2]SOHNUM
+[M:ZBTRS1]VCRLIN([M:ZBTRS1]NBLIG) = [F:SOP2]SOPLIN
+[M:ZBTRS1]ITMREF([M:ZBTRS1]NBLIG) = [F:SOP2]ITMREF
+[M:ZBTRS1]QTY([M:ZBTRS1]NBLIG) = [F:SOQ2]QTY-[F:ZSQBT4]QTY
+[M:ZBTRS1]ZORDRE([M:ZBTRS1]NBLIG) = func SPE_GET_NEXT_ORDRE
+[M:ZBTRS1]NBLIG+=1
+nolign=[M:ZBTRS1]NBLIG+1
+mkstat = 0
+zoncou = "NBLIG"
+status = 71
+SAVACT = GACTION : GACTION = "DIVLINNUM"
+Call LINNUM("ZBTHLIN") From TABLEAUX
+GACTION = SAVACT
+Affzo [M:ZBTRS1]
+#WPICK = 2
+#Gosub RAFRAICHIR_TIRROIR
+Return
+
+################################################# DESEL_CDE_VEN
+
+$DESEL_CDE_VEN
+#-----------------------------------------------------------------------#
+# Désélection d'une ligne de commande de vente                          #
+#-----------------------------------------------------------------------#
+Raz I,J
+OK = 0
+If [M:ZBTRS1]NBLIG <> 0
+   While OK <> 1
+      I = find([F:SOH2]SOHNUM,[M:ZBTRS1]VCRNUM(J..[M:ZBTRS1]NBLIG-1))
+      If !I Break Endif
+      If [M:ZBTRS1]CREFLG(J+I-1)=0 & [F:SOP2]SOPLIN=[M:ZBTRS1]VCRLIN(J+I-1)
+         GMODIF = 1
+         NOL    = J+I-1
+         Dela NOL,1,[M:ZBTRS1]NBLIG-1 [M:ZBTRS1]NBLIG
+         [M:ZBTRS1]NBLIG -= 1
+         Raz GMESSAGE
+         OK = 1
+      Else
+         J = J+I
+      Endif
+   Wend
+Endif
+Affzo [M:ZBTRS1]
+Raz GMODIF
+# Si suite à désélection de la ligne, il n'y a plus de ligne sélectionnée
+# sur cette commande de vente, il faut la débloquer
+Raz I,J
+OK = 2
+If [M:ZBTRS1]NBLIG <> 0
+   While OK <> 1
+      I = find([F:SOH2]SOHNUM,[M:ZBTRS1]VCRNUM(J..[M:ZBTRS1]NBLIG-1))
+      If !I Break Endif
+      If [M:ZBTRS1]CREFLG(J+I-1)=0
+         OK = 1
+      Else
+         J = J+I
+      Endif
+   Wend
+Endif
+If OK = 2
+  #Unlock entête de commande de vente
+  SYMBOLE2 = "SOH"+[F:SOH2]SOHNUM
+  Unlock = SYMBOLE2
+Endif
+Affzo [M:ZBTRS1]
+#WPICK = 1
+#Gosub RAFRAICHIR_TIRROIR
+Return
+
+#################################################
+#### ACTIONS CHAMPS
+#################################################
+
+Subprog AS_NBLIG
+If([M:ZBTRS1]NBLIG>0)Then
+  Diszo [M:ZBTRS0]ZFCYTRSP
+Else
+  Actzo [M:ZBTRS0]ZFCYTRSP
+Endif
+End
+
+Subprog C_NBLIG
+Local Integer NOL
+GMODIF=2
+# --> contrôle de suppression d'une ligne
+# ATTENTION, on ne peut pas supprimer une ligne que l'on vient de picker
+If(status = 65 and [M:ZBTRS1]CREFLG(NOL)<>0)Then
+  NOL=nolign-1
+  GMODIF = 1
+  Delete [F:ZSQBT] Where [F:ZSQBT]ZTYPVCR=[M:ZBTRS1]ZTYPVCR(NOL) & [F:ZSQBT]VCRNUM=[M:ZBTRS1]VCRNUM(NOL) & [F:ZSQBT]VCRLIN=[M:ZBTRS1]VCRLIN(NOL) & [F:ZSQBT]ITMREF=[M:ZBTRS1]ITMREF(NOL)
+  Local Decimal WQTY : WQTY = 0
+  Read[F:ZQBT]ZQBT0=[M:ZBTRS1]ZTYPVCR(NOL);[M:ZBTRS1]VCRNUM(NOL);[M:ZBTRS1]VCRLIN(NOL);[M:ZBTRS1]ITMREF(NOL)
+  If(fstat=0)Then
+    WQTY = [F:ZQBT]QTY-[M:ZBTRS1]QTY(NOL)
+  Endif
+  If(WQTY>0)Then
+    Raz [F:ZSQBT]
+    [F:ZSQBT]ZTYPVCR = [F:ZQBT]ZTYPVCR
+    [F:ZSQBT]VCRNUM = [F:ZQBT]VCRNUM
+    [F:ZSQBT]VCRLIN = [F:ZQBT]VCRLIN
+    [F:ZSQBT]QTY = WQTY
+    Write [F:ZSQBT]
+  Endif
+Endif
+# --> contrôle de suppression de plusieurs lignes
+# ATTENTION, on ne peut pas supprimer une ligne que l'on vient de picker
+If((status = 68 | status = 83) and [M:ZBTRS1]CREFLG(NOL)<>0)Then
+  GMODIF = 1
+  For NOL=nolign-1 To nolign1-1
+    Delete [F:ZSQBT] Where [F:ZSQBT]ZTYPVCR=[M:ZBTRS1]ZTYPVCR(NOL) & [F:ZSQBT]VCRNUM=[M:ZBTRS1]VCRNUM(NOL) & [F:ZSQBT]VCRLIN=[M:ZBTRS1]VCRLIN(NOL) & [F:ZSQBT]ITMREF=[M:ZBTRS1]ITMREF(NOL)
+    Local Decimal WQTY : WQTY = 0
+    Read[F:ZQBT]ZQBT0=[M:ZBTRS1]ZTYPVCR(NOL);[M:ZBTRS1]VCRNUM(NOL);[M:ZBTRS1]VCRLIN(NOL);[M:ZBTRS1]ITMREF(NOL)
+    If(fstat=0)Then
+      WQTY = [F:ZQBT]QTY-[M:ZBTRS1]QTY(NOL)
+    Endif
+    If(WQTY>0)Then
+      Raz [F:ZSQBT]
+      [F:ZSQBT]ZTYPVCR = [F:ZQBT]ZTYPVCR
+      [F:ZSQBT]VCRNUM = [F:ZQBT]VCRNUM
+      [F:ZSQBT]VCRLIN = [F:ZQBT]VCRLIN
+      [F:ZSQBT]QTY = WQTY
+      Write [F:ZSQBT]
+      If mkstat : Break : Endif
+    Endif
+  Next NOL
+Endif
+If((status = 68 | status = 83 | status = 65) and [M:ZBTRS1]CREFLG(NOL)=0)Then
+  mkstat=2
+  If(status = 65)Then
+    Call ERREUR("Pour supprimer cette ligne, il faut la désélectionner de la liste gauche.") From GESECRAN
+  Else
+    Call ERREUR("Pour supprimer ces lignes, il faut les désélectionner de la liste gauche.") From GESECRAN
+  Endif
+Endif
+End
+
+Subprog AVANT_NBLIG
+End
+
+Subprog APRES_NBLIG
+
+End
+
+Subprog C_ZTYPFLUX(VALEUR)
+Variable Integer VALEUR
+#-----------------------------------------------------------------------------------------
+#-ATTENTION : Le champ ZTYPFLUX n'existe plus dans l'écran, on garde le code au cas où...-
+#-----------------------------------------------------------------------------------------
+  #On ne peut passer de vente à achat que s'il n'y a aucune ligne du flux vente dans le bon
+  #Inversement, on ne peut passer d'achat à vente que s'il n'y a aucune ligne du flux achat.
+  #Détails des pièces et du type de flux
+  # 1 - Colecte EPALIS    -> Flux Vente
+  # 2 - Reloc EPALIS      -> Flux Vente
+  # 3 - Bons de Négoce    -> Flux Achat / Vente
+  # 4 - Commande de vente -> Flux Vente
+  # 5 - Commande d'achat  -> Flux Achat
+  #Le champ [M:ZBTRS1]ZTYPVCR contient
+  #Values of local menu 6380 - 'Type de pièce bon de transport'
+  #1 - Collecte EPALIS
+  #2 - Relocalisation EPALIS
+  #3 - Bon de négoce
+  #4 - Commande de vente
+  #5 - Commande d'achat
+  Local Integer WMODOK : WMODOK = 1
+  Local Integer WNUMLIG
+  For WNUMLIG=0 To [M:ZBTRS1]NBLIG-1
+    If(VALEUR=1)Then
+      #On passe de Vente à Achat
+      If([M:ZBTRS1]ZTYPVCR(WNUMLIG)=1 or [M:ZBTRS1]ZTYPVCR(WNUMLIG)=2 or [M:ZBTRS1]ZTYPVCR(WNUMLIG)=4)Then
+        WMODOK = 0
+        Break
+      Endif
+    Else
+      #On passe d'Achat à Vente
+      If([M:ZBTRS1]ZTYPVCR(WNUMLIG)=5)Then
+        WMODOK = 0
+        Break
+      Endif
+    Endif
+  Next
+  If(WMODOK=0)Then
+    #On refuse la modification
+    mkstat=2
+    If(VALEUR=1)Then
+      GMESSAGE = "Impossible ! Vous devez au préalable supprimer les lignes issues du flux vente (Collecte EPALIS, Relocalisation EPALIS et Commande de vente)."
+    Else
+      GMESSAGE = "Impossible ! Vous devez au préalable supprimer les lignes issues du flux achat (Commande d'achat)."
+    Endif
+  Endif
+End
+
+Funprog SPE_GET_NEXT_ORDRE()
+Local Integer RESULT : RESULT = 0
+Local Integer WNUMLIG
+For WNUMLIG=0 To [M:ZBTRS1]NBLIG-1
+  If([M:ZBTRS1]ZORDRE(WNUMLIG)>RESULT)Then
+    RESULT = [M:ZBTRS1]ZORDRE(WNUMLIG)
+  Endif
+Next
+RESULT +=1
+End RESULT
+

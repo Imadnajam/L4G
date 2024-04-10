@@ -1,0 +1,312 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$ 
+#################################################### ZREGFACCP
+#################################################### 13/09/2013
+
+$ACTION
+Case ACTION
+ When "OUVRE" : Gosub OUVRIR
+ When "DEBUT" : Gosub DEBUT
+ When "OK"    : Gosub CREATREG
+ When "FIN"   : Gosub FIN
+Endcase
+Return
+
+#################################################### OUVRIR
+
+$OUVRIR
+Global Char GZSAVFLAG(10)
+
+GZSAVFLAG = GFLAG
+# If GBANDEF=""
+#     Call ERREUR("Banque par défaut non renseignée.") From GESECRAN
+#     End
+# Endif
+# If GCSHDEF=""
+#     Call ERREUR("Caisse par défaut non renseignée.") From GESECRAN
+#     End
+# Endif
+If GZTRSCHQ=""
+    Call ERREUR("Transaction règlement chèque non renseignée.") From GESECRAN
+    FIN=1
+    Return
+Endif
+If GZTRSESP=""
+    Call ERREUR("Transaction règlement espèce non renseignée.") From GESECRAN
+    FIN=1
+    Return
+Endif
+If GZTRSMAN=""
+    Call ERREUR("Transaction règlement mandat non renseignée.") From GESECRAN
+    FIN=1
+    Return
+Endif
+If GZCHREGFC=""
+    Call ERREUR("Chemin pour le fichier de règlement non renseigné.") From GESECRAN
+    FIN=1
+    Return
+Endif
+
+Local Decimal BALFAC
+Local Integer OK, WDUDLIG, WFIN
+Local Char ZENT(255), ZLIG(255), ZLIG2(255), ZLIG3(255), ZNOMFICHIER(255)
+If clalev([F:DUD])=0 : Local File GACCDUDATE [DUD] : Endif
+If clalev([F:TPY])=0 : Local File TABPAYTYP  [TPY] : Endif
+If clalev([F:TPT])=0 : Local File TABPAYTERM [TPT] : Endif
+If clalev([F:GAC])=0 : Local File GACCOUNT   [GAC] : Endif
+If clalev([F:AOE])=0 : Local File AOBJEXT    [AOE] : Endif
+If clalev([F:BPS])=0 : Local File BPSUPPLIER [BPS] : Endif
+If clalev([F:FCY])=0 : Local File FACILITY   [FCY] : Endif
+If clalev([F:ZUC])=0 : Local File ZUSRCPT : Endif
+
+Read [TPY]TPY0=GZTRSCHQ
+If fstat>0
+    Call ERREUR("Transaction règlement chèque inexistante.") From GESECRAN
+    FIN=1
+    Return
+Endif
+Read [TPY]TPY0=GZTRSESP
+If fstat>0
+    Call ERREUR("Transaction règlement espèce inexistante.") From GESECRAN
+    FIN=1
+    Return
+Endif
+Read [TPY]TPY0=GZTRSMAN
+If fstat>0
+    Call ERREUR("Transaction règlement mandat inexistant.") From GESECRAN
+    FIN=1
+    Return
+Endif
+Read [F:AOE]AOE0="ZREGFCP"
+If fstat>0
+    Call ERREUR("Modèle import du règlement inexistant.") From GESECRAN
+    FIN=1
+    Return
+Endif
+ZNOMFICHIER=GZCHREGFC+"REGFCP"+GUSER+".TXT"
+Call EFFACE(ZNOMFICHIER,OK) From ORDSYS
+
+# Recherche de la 1ère échéance non réglée de la facture
+BALFAC=0:WDUDLIG=0
+Filter [DUD] Where TYP=[M:PIH0]GTE & NUM=[M:PIH0]NUM & LIG=1
+For [DUD]
+    If WDUDLIG = 0
+        WDUDLIG=[F:DUD]DUDLIG
+    Endif
+    BALFAC=[F:DUD]AMTCUR-[F:DUD]PAYCUR-[F:DUD]TMPCUR
+    If BALFAC > 0
+        Break
+    Endif
+Next
+Filter [DUD]
+If WDUDLIG=0
+    Return
+Endif
+Return
+
+#################################################### DEBUT
+
+$DEBUT
+# Sauvegarde du n° échéance à régler
+WDUDLIG=[F:DUD]DUDLIG
+
+Read [TPT]TPT0=[M:PIH1]PTE;"FRA";1
+
+Read [F:ZUC]ZUC0=GUSER;[F:PIH]ZCPTFCY
+If fstat
+    Call ERREUR("Erreur de lecture du site comptoir de votre profil.") From GESECRAN
+    FIN=1
+    Return
+Endif
+Raz [M:ZPIP]
+[M:ZPIP]BANK = [F:ZUC]ZUCBAN
+[M:ZPIP]CASH = [F:ZUC]ZUCCAI
+[M:ZPIP]INVNUM=[M:PIH0]NUM
+If [F:TPT]PAM="ESP"
+    If [F:ZUC]ZUCCAI=""
+#        Call ERREUR("Pas de caisse paramétrée pour les règlements comptoir de ce site.") From GESECRAN
+#        FIN=1
+#        Return
+        If [F:ZUC]ZUCBAN=""
+            Call ERREUR("Pas de banque paramétrée pour les règlements comptoir de ce site.") From GESECRAN
+            FIN=1
+            Return
+        Else
+            [M:ZPIP]PAYMOD=1
+            Read [F:TPY]TPY0=GZTRSCHQ
+            Actzo [M:ZPIP]CHQNUM
+        Endif
+    Else
+        [M:ZPIP]PAYMOD=2
+        Read [F:TPY]TPY0=GZTRSESP
+        Grizo [M:ZPIP]CHQNUM
+    Endif
+Elsif [F:TPT]PAM="CHQ"
+    If [F:ZUC]ZUCBAN=""
+        Call ERREUR("Pas de banque paramétrée pour les règlements comptoir de ce site.") From GESECRAN
+        FIN=1
+        Return
+    Else
+        [M:ZPIP]PAYMOD=1
+        Read [F:TPY]TPY0=GZTRSCHQ
+        Actzo [M:ZPIP]CHQNUM
+    Endif
+Elsif [F:TPT]PAM="MAN"
+    If [F:ZUC]ZUCMAN=""
+        Call ERREUR("Pas de banque paramétrée pour les règlements comptoir de ce site.") From GESECRAN
+        FIN=1
+        Return
+    Else
+        [M:ZPIP]BANK = [F:ZUC]ZUCMAN
+        [M:ZPIP]PAYMOD=3
+        Read [F:TPY]TPY0=GZTRSMAN
+        Actzo [M:ZPIP]CHQNUM
+    Endif
+Endif
+If([F:ZUC]ZUCBAN<>"" & [F:ZUC]ZUCCAI="" & [F:ZUC]ZUCMAN="")|([F:ZUC]ZUCBAN="" & [F:ZUC]ZUCCAI<>"" & [F:ZUC]ZUCMAN="")|([F:ZUC]ZUCBAN="" & [F:ZUC]ZUCCAI="" & [F:ZUC]ZUCMAN<>"")
+    Grizo [M:ZPIP]PAYMOD
+Endif
+[M:ZPIP]RATTYP=[F:TPY]RATTYP
+
+# Initialisation de la devise de la facture et du montant à régler
+[M:ZPIP]CURINV=[M:PIH1]CUR
+[M:ZPIP]AMTINV=BALFAC
+[M:ZPIP]FCY=[M:PIH0]FCY
+# Init. de la devise du règlement et du montant à régler
+[M:ZPIP]CUR=[M:PIH1]CUR
+# Init. du montant à régler dans la devise du règlement et dans la devise du document
+[M:ZPIP]AMOUNT=BALFAC
+# Init de la date
+[M:ZPIP]DATPAY=date$
+
+Grizo [M:ZPIP]INVNUM, BANK, CASH
+
+Affzo [M:ZPIP]1-99
+Return
+
+#################################################### CREATREG
+
+$CREATREG
+WFIN=0
+# Vérif si code banque ou code caisse renseigné selon mode de règlement
+If ([M:ZPIP]PAYMOD=1 & [M:ZPIP]BANK="") | ([M:ZPIP]PAYMOD=2 & [M:ZPIP]CASH="") | ([M:ZPIP]PAYMOD=3 & [M:ZPIP]BANK="")
+    Call ERREUR(mess(216,192,1)) From GESECRAN
+    WFIN=1
+Endif
+# Si n°cheque est obligatoire, il faut l'avoir renseigné
+If ([M:ZPIP]PAYMOD=1 & [M:ZPIP]CHQNUM="" & [F:TPY]DACCHQNUM=1) | ([M:ZPIP]PAYMOD=3 & [M:ZPIP]MANNUM="" & [F:TPY]DACCHQNUM=1)
+    Call ERREUR(mess(217,192,1)) From GESECRAN
+    WFIN=1
+Endif
+# Placement dans GACCOUNT sur le collectif du fournisseur
+Read [F:GAC]GAC1="FRA";[M:PIH0]BPRSAC
+If fstat<>0
+    Call ERREUR("Erreur de recherche du collectif fournisseur.") From GESECRAN
+    WFIN=1
+Endif
+
+# Arrêt si anomalie
+If WFIN
+    Gosub DEBUT
+    Affzo [M:ZPIP]1-99
+    Return
+Endif
+
+ZENT="'P';'';'"
+If [M:ZPIP]PAYMOD=1
+    ZENT += GZTRSCHQ+"'"
+Elsif [M:ZPIP]PAYMOD=2
+    ZENT += GZTRSESP+"'"
+Elsif [M:ZPIP]PAYMOD=3
+    ZENT += GZTRSMAN+"'"
+Endif
+ZENT += ";'"+[M:PIH1]BPRPAY+"';'"+[F:GAC]ACC+"';"
+If [M:ZPIP]PAYMOD=1
+    ZENT += "'CHQ';'"
+Elsif [M:ZPIP]PAYMOD=2
+    ZENT += "'ESP';'"
+Elsif [M:ZPIP]PAYMOD=3
+    ZENT += "'MAN';'"
+Endif
+ZENT += [M:PIH0]FCY+"';'"
+If [M:ZPIP]PAYMOD=1
+    ZENT += [M:ZPIP]BANK+"';"
+Elsif [M:ZPIP]PAYMOD=2
+    ZENT += [M:ZPIP]CASH+"';"
+Elsif [M:ZPIP]PAYMOD=3
+    ZENT += [M:ZPIP]BANK+"';"
+Endif
+
+#Modification JBS du 19/11/2018 pour ajouter éventuellement des frais de gestion
+Local Decimal ZFRAISGEST : ZFRAISGEST = 0
+Local Decimal ZMNTFACTMINI : ZMNTFACTMINI = 999999
+Local Char WAXE1(5)
+Local Char WAXE2(5)
+Local Char WSEC1(30)
+Local Char WSEC2(30)
+Read[F:BPS]BPS0 = [M:PIH0]BPR
+If(fstat=0)Then
+#  If [M:ZPIP]PAYMOD=1
+#      ZFRAISGEST = [F:BPS]ZFGCHQ
+#  Elsif [M:ZPIP]PAYMOD=2
+#      ZFRAISGEST = [F:BPS]ZFGESP
+#  Elsif [M:ZPIP]PAYMOD=3
+#      ZFRAISGEST = [F:BPS]ZFGMAN
+#  Endif
+  ZMNTFACTMINI = [F:BPS]ZMINIFAC
+  WAXE1 = [F:BPS]DIE(0)
+  WAXE2 = [F:BPS]DIE(1)
+  WSEC1 = [F:BPS]CCE(0)
+  WSEC2 = [F:BPS]CCE(1)
+Endif
+#-----MODIFICATION JBS du 18/03/2019 suite demande SLB-----
+If [M:ZPIP]PAYMOD=1
+    ZFRAISGEST = [M:PIH0]ZFGCHQ
+Elsif [M:ZPIP]PAYMOD=2
+    ZFRAISGEST = [M:PIH0]ZFGESP
+Elsif [M:ZPIP]PAYMOD=3
+    ZFRAISGEST = [M:PIH0]ZFGMAN
+Endif
+#-----------------------------------------------------------
+ZENT += "1;'"+[M:ZPIP]CUR+"';"+vireblc(num$([M:ZPIP]AMOUNT-ZFRAISGEST),0)+";"+format$("D:YYYYMMDD",[M:ZPIP]DATPAY)+";"+format$("D:YYYYMMDD",[F:DUD]DUDDAT)+";'"+[M:ZPIP]CHQNUM+"'"
+ZLIG="'D';'DEC';'';'';'FCP';'"+[M:PIH0]NUM+"';'"+[M:PIH1]CUR+"';"+vireblc(num$([M:ZPIP]AMOUNT-ZFRAISGEST),0)
+#If([M:ZPIP]AMOUNT>=ZMNTFACTMINI and ZFRAISGEST>0)Then
+If(ZFRAISGEST>0)Then
+  #On est dans le cas où on va ajouter des frais de gestion lié au mode de paiement
+  #ZLIG2="'D';'" + GZDCFGC  + "';'';'';'';'"+[M:PIH0]NUM+"';'"+[M:PIH1]CUR+"';"+vireblc(num$(ZFRAISGEST),0)
+  ZLIG2="'D';'" + GZDCFGC  + "';'';'';'FCP';'"+[M:PIH0]NUM+"';'"+[M:PIH1]CUR+"';"+vireblc(num$(ZFRAISGEST),0)
+  ZLIG3="'A';'" + WAXE1  + "';'" + WSEC1  + "';'" + WAXE2  + "';'" + WSEC2  + "';"+vireblc(num$(ZFRAISGEST),0)
+Endif
+
+# Ouverture et écriture dans le fichier
+Openo ZNOMFICHIER
+adxifs='' : adxirs=chr$(10)
+Wrseq ZENT
+Wrseq ZLIG
+If(ZLIG2<>"")Then
+  Wrseq ZLIG2
+  Wrseq ZLIG3
+Endif
+Openo
+Sleep 20
+
+# Import
+Call OUVRE_TRACE("Import") From LECFIC
+Gosub OUVRE From GIMPOBJ
+[M:IMP2]MODIMP="ZREGFCP"
+[M:IMP2]NOMIMP=ZNOMFICHIER
+GSERVEUR=1
+Gosub EXEC From GIMPOBJ
+Call FERME_TRACE From LECFIC
+Call LEC_TRACE From LECFIC
+GSERVEUR=0
+
+
+Return
+
+#################################################### FIN
+
+$FIN
+GFLAG = GZSAVFLAG
+Kill GZSAVFLAG
+Return
+

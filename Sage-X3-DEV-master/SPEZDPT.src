@@ -1,0 +1,95 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### SPEZDPT
+##################################################### créé le 17/07/2019
+##################################################### modifié le 17/07/2019
+
+$ACTION
+#infbox ACTION
+Case ACTION
+  When "OUVRE" : Gosub OUVRE
+  When "DEBUT" : Gosub DEBUT
+  When "OK"    : Gosub OK
+Endcase
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           LABELS                                                  #
+#---------------------------------------------------------------------------------------------------#
+
+######################################################################### OUVRE
+$OUVRE
+If clalev([F:ZDPT])=0 : Local File ZPRESTTRA [ZDPT] : Endif
+Return
+
+######################################################################### DEBUT
+$DEBUT
+[M:ZDPT]ZARNUM       = PARAM(1)
+[M:ZDPT]ZCODCHARG    = PARAM(2)
+[M:ZDPT]ZCODCLTCHARG = PARAM(3)
+Affzo [M:ZDPT]5
+#On va maintenant récupérer les enregistrements dans la table concernant l'article de prestation
+Effzo [M:ZDPT]10
+Raz [M:ZDPT]NBLIG
+For[F:ZDPT]ZDPT0 Where [F:ZDPT]ZARNUM=[M:ZDPT]ZARNUM and [F:ZDPT]ZCODCHARG=[M:ZDPT]ZCODCHARG and [F:ZDPT]ZCODCLTCHARG=[M:ZDPT]ZCODCLTCHARG
+  [M:ZDPT]ZITMREFORI([M:ZDPT]NBLIG)  = [F:ZDPT]ZITMREFORI
+  [M:ZDPT]ZCOEFFTRANS([M:ZDPT]NBLIG) = [F:ZDPT]ZCOEFFTRANS
+  [M:ZDPT]ZCOEFFFAC([M:ZDPT]NBLIG)   = [F:ZDPT]ZCOEFFFAC
+  [M:ZDPT]ZTARIF([M:ZDPT]NBLIG)      = [F:ZDPT]ZTARIF
+  [M:ZDPT]NBLIG += 1
+Next
+Affzo [M:ZDPT]10
+Return
+
+######################################################################### OK
+$OK
+#On va sauvegarder les lignes du tableau
+#L'opération va se faire à l'intérieure d'une transaction
+Local Integer WERR : WERR = 0
+Local Integer WNUMLIG : WNUMLIG = 0
+Trbegin [F:ZDPT]
+#On commence par supprimer toute les lignes de la table concernant l'article de prestation
+Delete [F:ZDPT] Where [F:ZDPT]ZARNUM=[M:ZDPT]ZARNUM and [F:ZDPT]ZCODCHARG=[M:ZDPT]ZCODCHARG and [F:ZDPT]ZCODCLTCHARG=[M:ZDPT]ZCODCLTCHARG
+If(fstat=0)Then
+  #On va maintenant parcourir le tableau pour sauvegarder les lignes
+  For WNUMLIG=0 To [M:ZDPT]NBLIG-1
+    [F:ZDPT]ZARNUM       = [M:ZDPT]ZARNUM
+    [F:ZDPT]ZCODCHARG    = [M:ZDPT]ZCODCHARG
+    [F:ZDPT]ZCODCLTCHARG = [M:ZDPT]ZCODCLTCHARG
+    [F:ZDPT]ZITMREFORI   = [M:ZDPT]ZITMREFORI(WNUMLIG)
+    [F:ZDPT]ZCOEFFTRANS  = [M:ZDPT]ZCOEFFTRANS(WNUMLIG)
+    [F:ZDPT]ZCOEFFFAC    = [M:ZDPT]ZCOEFFFAC(WNUMLIG)
+    [F:ZDPT]ZTARIF       = [M:ZDPT]ZTARIF(WNUMLIG)
+    Write[F:ZDPT]
+    If(fstat<>0)Then
+      WERR = 1
+      Break
+    Endif
+  Next
+Else
+  WERR = 1
+Endif
+If(WERR=0)Then
+  Commit
+Else
+  Rollback
+  Call ERREUR("Impossible de sauvegarder les lignes !!") From GESECRAN
+Endif
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           SUBPROGS                                                #
+#---------------------------------------------------------------------------------------------------#
+
+Subprog C_ZITMREFORI(VALEUR)
+Variable Char    VALEUR()
+#On va controler que la valeur du code article de tri est bien dans le vue de sélection
+If(VALEUR<>"")Then
+  If clalev([F:ZSART])=0 : Local File ZSELARTTRI [ZSART] : Endif
+  Read[F:ZSART]ZSART=[M:ZDPT]ZCODCHARG;VALEUR
+  If(fstat<>0)Then
+    mkstat = 2
+    GMESSAGE = "Impossible, ce code article n'existe pas pour ce chargeur."
+  Endif
+Endif
+End
+

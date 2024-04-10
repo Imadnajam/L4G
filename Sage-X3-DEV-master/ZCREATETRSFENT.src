@@ -1,0 +1,46 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$ 
+#ZCREATETRSFENT
+Call SPE_CREATE_CTRSF()
+End
+
+Subprog SPE_CREATE_CTRSF()
+If clalev([F:ZTE2])=0 : Local File ZTEMPEPI   [F:ZTE2] : Endif
+If clalev([F:ZET])=0  : Local File ZEPITRSFES [F:ZET]  : Endif
+Local Char OLDZACTNUM(30) : OLDZACTNUM = ""
+Local Char NEWZACTNUM(30) : NEWZACTNUM = ""
+Local Char WZACTNUM(30)   : WZACTNUM   = ""
+
+#Pour tous les enregistrements de la vue ZEPITRSFES, il va falloir créer un enregistrement dans la table ZTEMPEPI
+For[F:ZET]ZET0
+  Raz [F:ZTE2]
+  NEWZACTNUM = [F:ZET]ZACTNUM
+  [F:ZTE2]=[F:ZET]
+  [F:ZTE2]ZACT=13 #On décide que le n° de l'action miroir d'une action de transfert sera 13
+  [F:ZTE2]ZREFERENCE = [F:ZET]ZACTNUM
+  [F:ZTE2]ZACTOK = 2
+  If(NEWZACTNUM<>OLDZACTNUM)Then
+    WZACTNUM = [F:ZET]ZACTNUM + "C"  #func SPE_GET_COMPT_ACT([F:ZET]ZFCYREC)
+    OLDZACTNUM = NEWZACTNUM
+  Endif
+  [F:ZTE2]ZACTNUM = WZACTNUM
+  [F:ZTE2]ZFCY = [F:ZET]ZFCYREC
+  If([F:ZTE2]ZACTNUM<>"")Then
+    Write [F:ZTE2]
+  Endif
+Next
+End
+
+Funprog SPE_GET_COMPT_ACT(WFCY)
+  Value Char WFCY
+  Local Char RESULT(17)
+  Local Integer WSTAT
+  Local Char WZACTNUM(15)
+  Call NUMERO("ZACT",WFCY,date$,"",WZACTNUM,WSTAT) From SUBANM
+  If WSTAT=0
+      RESULT = WZACTNUM
+  Else
+      GMESSAGE=mess(60,199,1)
+      RESULT=""
+  Endif
+End RESULT
+

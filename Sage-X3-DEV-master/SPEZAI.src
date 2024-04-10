@@ -1,0 +1,621 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+################################################### SPEZAI
+################################################### 22/01/2016
+
+$ACTION
+Case ACTION
+  When "OUVRE"       : Gosub OUVRE
+  When "LIENS"       : Gosub LIENS
+  When "EXEBOUT"     : Gosub EXEBOUT
+  When "SETBOUT"     : Gosub SETBOUT
+  When "APRES_MODIF" : Gosub APRES_MODIF  #<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS
+  When "STYLE"       : Gosub STYLE        #<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS
+  When "APRES_MOD"   : Gosub APRES_MOD    #<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS
+  When "RAZCRE"      : Gosub RAZCREDUP    #<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS
+  When "RAZDUP"      : Gosub RAZCREDUP    #<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS
+  When "APRES_CRE"   : Gosub APRES_CRE
+  When Default
+Endcase
+Return
+
+################################################# OUVRE
+$OUVRE
+If clalev([F:ZT2])=0   : Local File ZARTTRICC     [F:ZT2]   : Endif
+If clalev([F:ZR2])=0   : Local File ZARTPRESTCC   [F:ZR2]   : Endif
+If clalev([F:BPA])=0   : Local File BPADDRESS     [F:BPA]   : Endif
+If clalev([F:ZDPO])=0  : Local File ZDEPOT        [F:ZDPO]  : Endif
+If clalev([F:ZAI])=0   : Local File ZADREPI       [F:ZAI]   : Endif
+If clalev([F:ZAI2])=0  : Local File ZADREPI       [F:ZAI2]  : Endif
+If clalev([F:ZAPDV])=0 : Local File ZAFFPDV       [F:ZAPDV] : Endif
+If clalev([F:ZAPD])=0  : Local File ZAFFPD        [F:ZAPD]  : Endif
+Global Integer GNBLIGZT2  : GNBLIGZT2 = -1
+Global Integer GNBLIGZR2  : GNBLIGZR2 = -1
+#<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS-----
+Global Char GTABPRIM(30) : GTABPRIM = "ZADREPI" # Définition de la table primaire
+#Nous allons définir un mask que nous allons alimenter au fur et à mesure de la modification
+#des champs dont la modification doit être répercuté en temps réel dans EPALIS
+If clalev([M:ZZSE1])=0 : Local Mask ZZSE1        [M:ZZSE1] : Endif
+If clalev([F:ZZSE])=0  : Local File ZONESSYNCEPI [F:ZZSE]  : Endif
+#-------------------------------------------------------------------------------------------->
+Return
+
+$RAZCREDUP
+  [M:ZAI0]ZIDEPI = 0
+  Affzo [M:ZAI0]ZIDEPI
+Return
+
+$STYLE
+#<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS-----
+#L'appel à cette fonction permet de colorer les zones qui vont être
+#mise à jour en temps réel avec le site web EPALIS
+#Cette procédure prend 3 paramètres :
+# 1 - Le nom de la table
+# 2 - Le nom de la fenêtre
+# 3 - Le nom d'un style de présentation
+If(!GWEBSERV)Then
+  Call SPE_SET_ZONE_TR(GTABPRIM,"OZAI","MTOLINKD") From ZWSEPALISC #Table, nom de la fenêtre, Style de présentation
+Endif
+#-------------------------------------------------------------------------------------------->
+Return
+
+################################################# APRES_MODIF
+$APRES_MODIF
+#Après chaque modification d'un champ, on remet le champ ZASYNCHRO à 2
+If([M:ZAI0]ZASYNCHRO<>2 and !GWEBSERV)Then
+  [M:ZAI0]ZASYNCHRO = 2
+  Affzo [M:ZAI0]ZASYNCHRO
+Endif
+#<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS-----
+If(!GWEBSERV)Then
+  Call SPE_SET_JSON(GTABPRIM,COUZON,num$(CZ),[M:ZAI0]ZIDEPI,2) From ZWSEPALISC #Table, nom de la zone, valeur de la zone, ZIDEPI de la table, Type 1:Création, 2:Modification, 3:Suppression
+Endif
+#-------------------------------------------------------------------------------------------->
+Return
+
+$APRES_MOD
+#<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS-----
+#Infbox func ZWSEPALISC.SPE_GET_JSON()
+#On va commencer par regarder s'il faut déclencher la mise à jour de l'entité dans EPALIS web
+If(!GWEBSERV)Then
+  If([M:ZZSE1]NBLIG>0)Then
+    #La valeur de certains champs en modification temps réel a été modifié, on va donc faire appel au WS
+    Local Integer WRET
+    Local Clbfile WRCORPS(0)
+    Local Char WSPARAM1(50) : WSPARAM1 = [M:ZZSE1]ZRESTNAME(0)
+#    Infbox "WSPARAM1=" + WSPARAM1
+    Local Char WSPARAM2(10) : WSPARAM2 = [M:ZZSE1]ZMETHODREST(0)
+#    Infbox "WSPARAM2=" + WSPARAM2
+    Local Char WSPARAM3(250) : WSPARAM3 = func ZWSEPALISC.SPE_REPLACE_CHAR([M:ZZSE1]ZURLREST(0),"[ZIDEPI]",num$([M:ZAI0]ZIDEPI))
+#    Infbox "WSPARAM3=" + WSPARAM3
+    Local Clbfile WSPARAM4(0) : WSPARAM4 = func ZWSEPALISC.SPE_GET_JSON()
+#    Infbox "WSPARAM4=" + WSPARAM4
+    Call SPE_WS_REST(WSPARAM1,WSPARAM2,WSPARAM3,WSPARAM4,"",WRET,WRCORPS) From ZWSEPALISC
+    If(WRET<>200)Then
+      Call ERREUR("Impossible de mettre à jour l'enregistrement sur le site Web EPALIS : [Erreur n°" + num$(WRET) + "]") From GESECRAN
+    Else
+      Call MESSAGE("Modification effectuées avec succès sur le site web EPALIS.") From GESECRAN
+      Infbox WRCORPS
+    Endif
+  Endif
+Endif
+#-------------------------------------------------------------------------------------------->
+Call SPE_SAVE_AFF_PDD()
+Return
+
+$APRES_CRE
+#Dans le cas où la création se fait sur EPALIS, donc via Web service, il faut aller
+#récupérer les enregistrements affectation point de dépose pour les stocker dans Sage X3
+Local Integer WNUMLIG
+Local Integer WRET
+Local Clbfile WRCORPS(0)
+Local Char WPDID(30)
+If(GWEBSERV)Then
+  #On est dans le cas d'une création d'un chantier par web service.
+  #Nous allons donc parcourir l'ensemble des lignes du tableau des affectation point de dépose
+  For WNUMLIG=0 To [M:ZAI5]NBLIG-1
+    Call SPE_WS_REST(GZWSREST, "GET","/x3/affectation_point_depose_client_chargeur/" + [M:ZAI0]BPCNUM + "~" + [M:ZAI0]ZCODCLT + "/" + [M:ZAI5]AZCOLLNUM(WNUMLIG),"{}","",WRET,WRCORPS) From ZWSEPALISC
+    If(WRET>=300)Then
+      #Impossible de récupérer les informations ou l'enregistrement n'existe pas
+      #Infbox "Impossible de récupérer l'enregistrement"
+    Else
+      WPDID = func ZWSEPALISC.SPE_GET_VALUE_JSON(WRCORPS,"point_depose_id_x3")
+      If(toupper(WPDID)<>"NULL")Then
+        #On est dans le cas où il y a de l'information a traiter
+        #on va donc commencer par regarder si l'enregistrement n'existe pas déjà
+        Read[F:ZAPD]ZAPD0=1;[M:ZAI0]BPCNUM + "~" + [M:ZAI0]ZCODCLT;[M:ZAI5]AZCOLLNUM(WNUMLIG)
+        If(fstat=0)Then
+          #L'enregistrement existe, on va donc le modifier
+          [F:ZAPD]ZIDEPI        = val(func ZWSEPALISC.SPE_GET_VALUE_JSON(WRCORPS,"affectation_point_depose_id"))
+          [F:ZAPD]ZFCY          = WPDID
+          [F:ZAPD]ZFCYCOLLMAN   = 1
+          If(toupper(func ZWSEPALISC.SPE_GET_VALUE_JSON(WRCORPS,"forced"))="TRUE")Then
+            [F:ZAPD]ZFCYCOLLMAN = 2
+          Endif
+          Rewrite[F:ZAPD]
+        Else
+          #L'enregistrement n'existe pas, on va donc le créer
+          Raz[F:ZAPD]
+          [F:ZAPD]ZTYPE         = 2
+          [F:ZAPD]ZCODE         = [M:ZAI0]BPCNUM + "~" + [M:ZAI0]ZCODCLT
+          [F:ZAPD]ZCOLLNUM      = [M:ZAI5]AZCOLLNUM(WNUMLIG)
+          [F:ZAPD]ZIDEPI        = val(func ZWSEPALISC.SPE_GET_VALUE_JSON(WRCORPS,"affectation_point_depose_id"))
+          [F:ZAPD]ZFCY          = WPDID
+          [F:ZAPD]ZFCYCOLLMAN   = 1
+          If(toupper(func ZWSEPALISC.SPE_GET_VALUE_JSON(WRCORPS,"forced"))="TRUE")Then
+            [F:ZAPD]ZFCYCOLLMAN = 2
+          Endif
+          Write[F:ZAPD]
+        Endif
+      Endif
+    Endif
+  Next
+Endif
+Return
+
+################################################# SETBOUT
+$SETBOUT
+If(GREP<>"")Then
+  Call VIREBOUT(CHAINE,"1") From GOBJET #Création fiche dépôt
+Endif
+Return
+
+################################################# EXEBOUT
+$EXEBOUT
+Local Integer WERR : WERR = 0
+Local Integer WNUMLIG
+Local Integer WSTAT
+Local Char    WSEQ(15)
+Local Char    WSAVDEP(30)
+If(BOUT="1")Then
+  #L'utilisateur vient de cliquer sur le bouton pour créer/affecter un nouveau dépôt au client chargeur
+  #On va effectuer le traitement au sein d'une transaction
+  #L'objectif ici est de créer un nouveau dépôt avec les informations du client chargeur
+  #Un fois wue le dépôt est créé, on l'affecte au client chargeur sur lequel on se trouve
+  #On supprime l'ancien dépôt s'il n'a plus de client chargeur attaché à lui
+  Local Integer WREP
+  Call OUINON("Vous allez créer et affecter un nouveau dépôt à ce client chargeur. Etes vous sûr(e) de vouloir continuer ?",WREP) From GESECRAN
+  If(WREP=2)Then
+    Trbegin [F:ZDPO],[F:ZAI2]
+    Read[F:ZAI2]ZAI0=[F:ZAI]BPCNUM;[F:ZAI]ZCODCLT
+    If(fstat=0)Then
+      WSAVDEP = [M:ZAI0]ZDEPOTCLT
+      Call NUMERO("ZDEP","",date$,"",WSEQ,WSTAT) From SUBANM
+      If(WSTAT=0)Then
+        Raz[F:ZDPO]
+        [F:ZDPO] = [F:ZAI2]
+        [F:ZDPO]ZDEPNUM = WSEQ
+        [F:ZDPO]ZDEPNAM = [F:ZAI2]ZNOMCLT
+        Write[F:ZDPO]
+        If(fstat=0)Then
+          #On va maintenant renseigner le code du dépôt que l'on vient de créer
+          [F:ZAI2]ZDEPOTCLT = WSEQ
+          [F:ZAI2]ZASYNCHRO = 2
+          Rewrite[F:ZAI2]
+          If(fstat=0)Then
+            #On va maintenant regarder s'il existe encore des clients chargeurs sur l'ancien code dépôt
+            If(WSAVDEP<>"")Then
+              Local Integer WSUPPDEP : WSUPPDEP = 0
+              For[F:ZAI2]ZAI0 Where [F:ZAI2]ZDEPOTCLT=WSAVDEP
+                WSUPPDEP = 1
+                Break
+              Next
+              If(WSUPPDEP=0)Then
+                #On peut supprimer l'ancien dépôt car il ne contient plus de clients chargeur
+                Delete [F:ZDPO] Where [F:ZDPO]ZDEPNUM=WSAVDEP
+                If(fstat=0)Then
+                  Call ERREURT("L'ancien dépôt " + WSAVDEP + " a été supprimé car il ne possédait plus de client chargeur.",0) From GESECRAN
+                Else
+                  WERR = 1
+                Endif
+              Endif
+            Endif
+          Else
+            WERR = 2
+          Endif
+        Else
+          WERR = 3
+        Endif
+      Else
+        WERR = 4
+      Endif
+    Else
+      WERR = 5
+    Endif
+    If(WERR=0)Then
+      Commit
+#      [M:ZAI0]ZDEPOTCLT = WSEQ
+#      Affzo [M:ZAI0]ZDEPOTCLT
+      Gosub RELIT From GOBJSUB
+      Call MESSAGE("Traitement terminé avec succès") From GESECRAN
+    Else
+      Rollback
+      Call ERREUR("Traitement annulé car il existe des erreurs. [Erreur n°" + num$(WERR) + "]") From GESECRAN
+    Endif
+  Endif
+Endif
+Return
+
+################################################# LIENS
+$LIENS
+#Local Integer WRET
+#Local Clbfile WRCORPS(0)
+#Local Char WSPARAM1(50) : WSPARAM1 = GZWSREST
+#Local Char WSPARAM2(10) : WSPARAM2 = "GET"
+#Local Char WSPARAM3(250) : WSPARAM3 = "/chargeurs?id_x3[]=037154&id_x3[]=038075&page=1"
+#Local Clbfile WSPARAM4(0) : WSPARAM4 = "{}"
+#Call SPE_WS_REST(WSPARAM1,WSPARAM2,WSPARAM3,WSPARAM4,"hydra.totalItems",WRET,WRCORPS) From ZWSEPALISC
+#Infbox "WRET=" + num$(WRET)
+#Infbox WRCORPS
+#Infbox func ZWSEPALISC.SPE_GET_VALUE_JSON('{"collecteur_id":3,"client_chargeur_id":36031,"affectation_point_depose_id":null}',"affectation_point_depose_id")
+#<-----INFORMATIONS INDISPENSABLES POUR LA SYNCHRONISATION EN TEMPS REEL DES INFORMATIONS-----
+#On va effacer le mask permettant la sauvegarde des informations à synchroniser en temps réel
+Effzo[M:ZZSE1]10
+[M:ZZSE1]NBLIG = 0
+#Infbox "ID EPALIS : " + num$([M:ZAI0]ZIDEPI)
+If(!GWEBSERV)Then
+  If([M:ZAI0]ZIDEPI=0)Then
+    Local Integer WRET
+    Local Clbfile WRCORPS(0)
+    Call SPE_WS_REST(GZWSREST, "GET","/x3/client_chargeur/" + [M:ZAI0]BPCNUM + "-" + [M:ZAI0]ZCODCLT,"{}","id",WRET,WRCORPS) From ZWSEPALISC
+    If(WRET<>200)Then
+      Call ERREUR("Problème de récupération de l'ID EPALIS via le web service : [Erreur n°" + num$(WRET) + "]") From GESECRAN
+    Else
+      If(val(WRCORPS)>0)Then
+        [F:ZAI]ZIDEPI = val(WRCORPS)
+        [M:ZAI0]ZIDEPI = val(WRCORPS) : Affzo [M:ZAI0]ZIDEPI
+        Rewrite[F:ZAI]
+        If(fstat=0)Then
+          Gosub RELIT From GOBJSUB
+        Else
+          Call ERREUR("Pb lors de la sauvegarde de l'enregistrement.") From GESECRAN
+        Endif
+      Endif
+    Endif
+  Endif
+Endif
+#-------------------------------------------------------------------------------------------->
+Raz [M:ZAI3]NBLIGZT2
+[M:ZAI3]NBLIGZT2= 0
+Effzo [M:ZAI3]5
+Affzo [M:ZAI3]NBLIGZT2
+Raz [M:ZAI3]NBLIGZR2
+[M:ZAI3]NBLIGZR2= 0
+Effzo [M:ZAI3]10
+Affzo [M:ZAI3]NBLIGZR2
+GNBLIGZT2 = -1
+[M:ZAI3]ZNBLIGZT2 = GNBLIGZT2
+GNBLIGZR2 = -1
+[M:ZAI3]ZNBLIGZR2 = GNBLIGZR2
+  Local Integer I : I =0
+  For [F:ZT2]ZT21 Where [F:ZT2]ZCODCHARG=[M:ZAI0]BPCNUM and [F:ZT2]ZCODCLTCHARG=[M:ZAI0]ZCODCLT
+    [M:ZAI3]ZT2CODARTCLT(I) = [F:ZT2]CODARTCLT
+    [M:ZAI3]ZT2ITMEN(I)     = [F:ZT2]ITMEN
+    [M:ZAI3]ZT2TRIBPCNUM(I) = [F:ZT2]BPCNUM
+    [M:ZAI3]ZT2TRIITMREF(I) = [F:ZT2]ITMREF
+    [M:ZAI3]ZT2ZAPNUM(I)    = [F:ZT2]ZAPNUM
+    [M:ZAI3]ZT2ZATNUM(I)    = [F:ZT2]ZATNUM
+    [M:ZAI3]ZT2ZCOEFTRAN(I) = [F:ZT2]ZCOEFTRANS
+    [M:ZAI3]ZT2ZITMCAT(I)   = [F:ZT2]ZITMCAT
+    [M:ZAI3]ZT2ZNONSTOCK(I) = mod([F:ZT2]ZNONSTOCK,2)+1
+    [M:ZAI3]ZT2CODACLOLD(I) = [F:ZT2]CODARTCLTOLD
+    [M:ZAI3]ZT2ZVISIBLE(I)  = [F:ZT2]ZVISIBLE
+    [M:ZAI3]ZT2ZGESTOK(I)   = [F:ZT2]ZGESTOK
+    [M:ZAI3]ZT2ZGESTKC(I)   = [F:ZT2]ZGESTKC
+    [M:ZAI3]ZT2ZGESTHS(I)   = [F:ZT2]ZGESTHS
+    [M:ZAI3]ZT2ZCODCHARG(I) = [F:ZT2]ZCODCHARGSTO
+    I += 1
+  Next
+  [M:ZAI3]NBLIGZT2 = I
+  Affzo [M:ZAI3]5
+#On va maintenant mettre à jour l'affectation des points de dépose par collecteurs
+Effzo [M:ZAI5]
+[M:ZAI5]NBLIG = 0 : Affzo [M:ZAI5]NBLIG
+If([M:ZAI0]BPCNUM<>"" and [M:ZAI0]ZCODCLT<>"")Then
+  For[F:ZAPDV]ZAPDV Where [F:ZAPDV]ZTYPE=1 and [F:ZAPDV]ZCODE=[M:ZAI0]BPCNUM + "~" +  [M:ZAI0]ZCODCLT
+    [M:ZAI5]AZCOLLNUM([M:ZAI5]NBLIG)     = [F:ZAPDV]ZCOLLNUM
+    [M:ZAI5]AZFCY([M:ZAI5]NBLIG)         = [F:ZAPDV]ZFCY
+    [M:ZAI5]AZFCYCOLLMAN([M:ZAI5]NBLIG)  = [F:ZAPDV]ZFCYCOLLMAN
+    [M:ZAI5]AZIDEPI([M:ZAI5]NBLIG)       = [F:ZAPDV]ZIDEPI
+    [M:ZAI5]NBLIG += 1
+  Next
+  Affzo [M:ZAI5]
+Endif
+Return
+
+Subprog SPE_SAVE_AFF_PDD()
+Local Integer WERROR : WERROR = 0
+Local Integer WNUMLIG : WNUMLIG = 0
+Local Integer WRET
+Local Clbfile WRCORPS(0)
+Local Char WSPARAM1(50)
+Local Char WSPARAM2(10)
+Local Char WSPARAM3(250)
+Local Clbfile WSPARAM4(0)
+Local Char WMETHODE(10) : WMETHODE = "PUT"
+Local Char WCOLLID(30)
+Local Char WCLTID(30)
+Local Char WDEPID(30)
+Local Char WAPDID(30)
+Local Char WAFFMAN(10)
+If(!GWEBSERV)Then
+  #On va faire l'opération au sein d'une transaction
+  Trbegin [F:ZAPD]
+  #On va parcourir l'ensemble du tableau
+  For WNUMLIG=0 To [M:ZAI5]NBLIG-1
+    If([M:ZAI5]AUPDFLG(WNUMLIG)=2)Then
+      Read[F:ZAPD]ZAPD0=1;[M:ZAI0]BPCNUM + "~" +  [M:ZAI0]ZCODCLT;[M:ZAI5]AZCOLLNUM(WNUMLIG)
+      If(fstat=0)Then
+        If(([M:ZAI5]AZFCY(WNUMLIG)<>"" and [M:ZAI5]AZFCY(WNUMLIG)<>[F:ZAPD]ZFCY) or ([M:ZAI5]AZFCYCOLLMAN(WNUMLIG)<>[F:ZAPD]ZFCYCOLLMAN))Then
+          #On va modifier l'enregistrement
+          [F:ZAPD]ZFCY         = [M:ZAI5]AZFCY(WNUMLIG)
+          [F:ZAPD]ZFCYCOLLMAN  = [M:ZAI5]AZFCYCOLLMAN(WNUMLIG)
+        Elsif([M:ZAI5]AZFCY(WNUMLIG)="")Then
+          #On va supprimer l'enregistrement
+          Delete
+          WMETHODE = "DELETE"
+        Endif
+      Else
+        #L'enregistrement n'existe pas
+        If([M:ZAI5]AZFCY(WNUMLIG)<>"")Then
+          #Il faut créer l'enregistrement
+          Raz[F:ZAPD]
+          [F:ZAPD]ZTYPE        = 1
+          [F:ZAPD]ZCODE        = [M:ZAI0]BPCNUM + "~" +  [M:ZAI0]ZCODCLT
+          [F:ZAPD]ZCOLLNUM     = [M:ZAI5]AZCOLLNUM(WNUMLIG)
+          [F:ZAPD]ZFCY         = [M:ZAI5]AZFCY(WNUMLIG)
+          [F:ZAPD]ZFCYCOLLMAN  = [M:ZAI5]AZFCYCOLLMAN(WNUMLIG)
+        Endif
+      Endif
+      #----------------------------------------------------------------------------------------------------------------------
+      Call TEMPON("Communication avec l'application EPALIS en cours...") From GESECRAN
+      #On va maintenant mettre à jour EPALIS
+      #A ce stade nous allons récupérer l'ID :
+      # 1 - Du point de collecte
+      # 2 - Du point de dépose
+      # 3 - Du collecteur
+      #L'enregistrement existe
+      WSPARAM1 = GZWSREST
+      WSPARAM2 = "GET"
+      WSPARAM3 = "/x3/affectation_point_depose_client_chargeur/" + [M:ZAI0]BPCNUM + "~" + [M:ZAI0]ZCODCLT + "/" + [M:ZAI5]AZCOLLNUM(WNUMLIG)
+      WSPARAM4 = "{}"
+      Call SPE_WS_REST(WSPARAM1,WSPARAM2,WSPARAM3,WSPARAM4,"",WRET,WRCORPS) From ZWSEPALISC
+      If(WRET>=300)Then
+        WERROR = 3
+      Else
+        If(func ZWSEPALISC.SPE_GET_VALUE_JSON(WRCORPS,"affectation_point_depose_id")="null")Then
+          If(WMETHODE<>"DELETE")Then
+            WMETHODE = "POST"
+          Endif
+        Else
+          WAPDID = func ZWSEPALISC.SPE_GET_VALUE_JSON(WRCORPS,"affectation_point_depose_id")
+          [F:ZAPD]ZIDEPI = val(WAPDID)
+        Endif
+        #On va maintenant récupérer l'ID du client chargeur
+        WCLTID = num$([M:ZAI0]ZIDEPI)
+        If(WCLTID="0")Then
+          WCLTID = func ZWSEPALISC.SPE_GET_VALUE_JSON(WRCORPS,"client_chargeur_id")
+        Endif
+        WCLTID = "/api/client_chargeurs/" + WCLTID
+        #On va également récupérer l'ID du collecteur
+        WCOLLID = "/api/collecteurs/" + func ZWSEPALISC.SPE_GET_VALUE_JSON(WRCORPS,"collecteur_id")
+        #On va maintenant récupérer l'ID du dépôt
+        WSPARAM3 = "/x3/point_depose/" + [M:ZAI5]AZFCY(WNUMLIG)
+        Call SPE_WS_REST(WSPARAM1,WSPARAM2,WSPARAM3,WSPARAM4,"id",WRET,WRCORPS) From ZWSEPALISC
+        If(WRET>=300)Then
+          WERROR = 4
+        Else
+          WDEPID = "/api/point_deposes/" + WRCORPS
+        Endif
+        #On a maintenant toutes les informations pour soit mettre à jour ou soit créer, soit supprimer l'enregistrement dans EPALIS
+      Endif
+      If(WMETHODE="POST")Then
+        #Il faut créer l'enregistrement
+        WSPARAM1 = GZWSREST
+#        Infbox WSPARAM1
+        WSPARAM2 = WMETHODE
+#        Infbox WSPARAM2
+        WSPARAM3 = "/affectation_point_deposes"
+#        Infbox WSPARAM3
+        WSPARAM4 = "{"
+        WSPARAM4 += '"point_depose": "' + WDEPID + '",'
+        WSPARAM4 += '"collecteur": "' + WCOLLID + '",'
+        WAFFMAN = "false"
+        If([M:ZAI5]AZFCYCOLLMAN(WNUMLIG)=2)Then
+          WAFFMAN = "true"
+        Endif
+        WSPARAM4 += '"forced": ' + WAFFMAN + ','
+        WSPARAM4 += '"client_chargeur": "' + WCLTID + '"'
+        WSPARAM4 += "}"
+#        Infbox WSPARAM4
+        Call SPE_WS_REST(WSPARAM1,WSPARAM2,WSPARAM3,WSPARAM4,"",WRET,WRCORPS) From ZWSEPALISC
+        If(WRET>=300)Then
+          WERROR = 5
+#          Infbox num$(WRET) + "---" + WRCORPS
+        Elsif(WRET=201)Then
+          #La création a réussi, on va récupérer l'ID
+          [F:ZAPD]ZIDEPI = val(func ZWSEPALISC.SPE_GET_VALUE_JSON(WRCORPS,"id"))
+          Write[F:ZAPD]
+          If(fstat<>0)Then
+            WERROR = 2
+            Break
+          Endif
+        Endif
+      Elsif(WMETHODE="PUT")Then
+        #Il faut mettre à jour l'enregistrement
+        WSPARAM1 = GZWSREST
+        WSPARAM2 = WMETHODE
+        WSPARAM3 = "/affectation_point_deposes/" + WAPDID
+        WAFFMAN = "false"
+        If([M:ZAI5]AZFCYCOLLMAN(WNUMLIG)=2)Then
+          WAFFMAN = "true"
+        Endif
+        WSPARAM4 = '{"point_depose":"' + WDEPID + '","forced":' + WAFFMAN + '}'
+        Call SPE_WS_REST(WSPARAM1,WSPARAM2,WSPARAM3,WSPARAM4,"",WRET,WRCORPS) From ZWSEPALISC
+        If(WRET>=300)Then
+          WERROR = 6
+        Else
+          #La modification a réussi, on va donc sauvegarder l'enregistrement X3
+          Rewrite[F:ZAPD]
+          If(fstat<>0)Then
+            WERROR = 1
+            Break
+          Endif
+        Endif
+      Elsif(WMETHODE="DELETE")Then
+        #Il faut supprimer l'enregistrement
+        WSPARAM1 = GZWSREST
+        WSPARAM2 = WMETHODE
+        WSPARAM3 = "/affectation_point_deposes/" + WAPDID
+        WSPARAM4 = "{}"
+        Call SPE_WS_REST(WSPARAM1,WSPARAM2,WSPARAM3,WSPARAM4,"",WRET,WRCORPS) From ZWSEPALISC
+        If(WRET>=300)Then
+          WERROR = 7
+        Endif
+      Endif
+      Call TEMPOFF From GESECRAN
+      #----------------------------------------------------------------------------------------------------------------------
+  Endif
+  Next WNUMLIG
+  If(WERROR=0)Then
+    Commit
+    #On va maintenant mettre à jour l'affectation des points de dépose par collecteurs
+    Effzo [M:ZAI5]
+    [M:ZAI5]NBLIG = 0 : Affzo [M:ZAI5]NBLIG
+    If([M:ZAI0]BPCNUM<>"" and [M:ZAI0]ZCODCLT<>"")Then
+      For[F:ZAPDV]ZAPDV Where [F:ZAPDV]ZTYPE=1 and [F:ZAPDV]ZCODE=[M:ZAI0]BPCNUM + "~" +  [M:ZAI0]ZCODCLT
+        [M:ZAI5]AZCOLLNUM([M:ZAI5]NBLIG)     = [F:ZAPDV]ZCOLLNUM
+        [M:ZAI5]AZFCY([M:ZAI5]NBLIG)         = [F:ZAPDV]ZFCY
+        [M:ZAI5]AZFCYCOLLMAN([M:ZAI5]NBLIG)  = [F:ZAPDV]ZFCYCOLLMAN
+        [M:ZAI5]AZIDEPI([M:ZAI5]NBLIG)       = [F:ZAPDV]ZIDEPI
+        [M:ZAI5]NBLIG += 1
+      Next
+      Affzo [M:ZAI5]
+    Endif
+  Else
+    Rollback
+    Call ERREUR("Impossible de sauvegarder les affectations des points de dépose par collecteur. [Erreur :°" + num$(WERROR) + "]") From GESECRAN
+  Endif
+Endif
+End
+
+################################################# Actions champs
+Subprog IB_ZINVCOLL
+End
+
+Subprog IB_ZRGTCODCOM
+End
+
+Subprog IB_ZMLUNDI
+End
+
+Subprog IB_ZMMARDI
+End
+
+Subprog IB_ZHAMMIN
+End
+
+Subprog IB_ZHAMMAX
+End
+
+Subprog IB_ZDELAICOL
+End
+
+######################################################################################
+## Etiquette ajoutée par le superviseur (écran ZAI3) 07/03/2017 09:23:42 (MICRO)
+######################################################################################
+Subprog AS_NBLIGZT2
+  If(nolign-1<=[M:ZAI3]NBLIGZT2-1)Then
+    GNBLIGZT2 = nolign-1
+    [M:ZAI3]ZNBLIGZT2 = GNBLIGZT2
+    Affzo [M:ZAI3]ZNBLIGZT2
+    Chgstl [M:ZAI3]NBLIGZT2 With ""
+    Chgstl [M:ZAI3]NBLIGZT2(GNBLIGZT2) With "GDD2G"
+    #Lorsque l'on selectionne une ligne du tableau des article de tri, on met à jour le tableau des article de prestation
+    Raz [M:ZAI3]NBLIGZR2
+    Effzo [M:ZAI3]10
+    [M:ZAI3]NBLIGZR2 = 0
+    Affzo [M:ZAI3]NBLIGZR2
+    GNBLIGZR2=-1
+    [M:ZAI3]ZNBLIGZR2 = GNBLIGZR2
+    Affzo [M:ZAI3]ZNBLIGZR2
+    Local Integer INCOMPTEUR : INCOMPTEUR = 0
+    For[F:ZR2]ZR23 Where [F:ZR2]ZATNUM=[M:ZAI3]ZT2ZATNUM(GNBLIGZT2) and [F:ZR2]ZCODCHARG=[M:ZAI0]BPCNUM and [F:ZR2]ZCODCLTCHARG=[M:ZAI0]ZCODCLT
+        [M:ZAI3]ZR2ZARNUM(INCOMPTEUR)    = [F:ZR2]ZARNUM
+        [M:ZAI3]ZR2ZATNUM(INCOMPTEUR)    = [F:ZR2]ZATNUM
+        [M:ZAI3]ZR2ZTYPPAL(INCOMPTEUR)   = [F:ZR2]ZTYPPAL
+        [M:ZAI3]ZR2PRESTITMR(INCOMPTEUR) = [F:ZR2]ITMREF
+        [M:ZAI3]ZR2ZTYPARTEP(INCOMPTEUR) = [F:ZR2]ZTYPARTEPI
+        [M:ZAI3]ZR2ZTYPPRIX(INCOMPTEUR)  = [F:ZR2]ZTYPPRIX
+        [M:ZAI3]ZR2ZPRIX(INCOMPTEUR)     = [F:ZR2]ZPRIX
+        [M:ZAI3]ZR2ZCOEFFAC(INCOMPTEUR)  = [F:ZR2]ZCOEFFAC
+        [M:ZAI3]ZR2ZTYPPREST(INCOMPTEUR) = [F:ZR2]ZTYPPREST
+        [M:ZAI3]ZR2ARTREF(INCOMPTEUR)    = [F:ZR2]ARTREF
+        [M:ZAI3]ZR2ZTSTTRSP(INCOMPTEUR)  = [F:ZR2]ZTSTTRSP
+        [M:ZAI3]ZR2ZSITE(INCOMPTEUR)     = [F:ZR2]ZSITE
+        [M:ZAI3]ZR2ZPAYSCOLL(INCOMPTEUR) = [F:ZR2]ZPAYS
+        #<---------MODIFICATION JBS DU 21-08-2019----------
+        # Commentaire : Ajout de nouveaux champs
+        [M:ZAI3]ZR2ZTYPTRSP(INCOMPTEUR)  = [F:ZR2]ZTYPTRSP
+        [M:ZAI3]ZR2ZTYPFLUX(INCOMPTEUR)  = [F:ZR2]ZTYPFLUX
+        [M:ZAI3]ZR2ZTYPTRT(INCOMPTEUR)   = [F:ZR2]ZTYPTRT
+        [M:ZAI3]ZR2ZACTDEC(INCOMPTEUR)   = [F:ZR2]ZACTDEC
+        [M:ZAI3]ZR2ZDELEG(INCOMPTEUR)    = [F:ZR2]ZDELEG
+        #------------------------------------------------->
+        INCOMPTEUR = INCOMPTEUR + 1
+    Next
+    [M:ZAI3]NBLIGZR2 = INCOMPTEUR
+    Affzo [M:ZAI3]10
+  Endif
+End
+
+Subprog C_NBLIGZT2
+End
+
+Subprog APRES_NBLIGZT2
+End
+
+Subprog AS_NBLIGZR2
+  If(nolign-1<=[M:ZAI3]NBLIGZR2-1)Then
+    GNBLIGZR2 = nolign-1
+    [M:ZAI3]ZNBLIGZR2 = GNBLIGZR2
+    Affzo [M:ZAI3]ZNBLIGZR2
+    Chgstl [M:ZAI3]NBLIGZR2 With ""
+    Chgstl [M:ZAI3]NBLIGZR2(GNBLIGZR2) With "GDD2G"
+  Endif
+End
+
+Subprog C_NBLIGZR2
+End
+
+Subprog APRES_NBLIGZR2
+End
+
+Subprog IB_ZDEPOTCLT
+End
+
+Subprog C_ZVENADR(VALEUR)
+Variable Char    VALEUR()
+If(VALEUR<>"")Then
+  Read [F:BPA]BPA0=1;[M:ZAI0]BPCNUM;VALEUR
+  If fstat
+      GMESSAGE="Adresse inconnue."
+      mkstat=2
+      End
+  Endif
+Endif
+End
+
+Subprog AM_AZFCY(VALEUR)
+Variable Char    VALEUR()
+Local Integer WNOL : WNOL = nolign-1
+[M:ZAI5]AUPDFLG(WNOL) = 2
+Affzo [M:ZAI5]AUPDFLG(WNOL)
+End
+
+Subprog AM_AZFCYCOLLMAN(VALEUR)
+Variable Integer VALEUR
+Local Integer WNOL : WNOL = nolign-1
+[M:ZAI5]AUPDFLG(WNOL) = 2
+Affzo [M:ZAI5]AUPDFLG(WNOL)
+End
+

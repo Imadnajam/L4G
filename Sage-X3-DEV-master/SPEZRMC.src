@@ -1,0 +1,407 @@
+#<AdxTL>@(#)0.0.0.0 $Revision$
+##################################################### SPEZRMC
+##################################################### créé le 10/09/2019
+##################################################### modifié le 10/09/2019
+
+$ACTION
+#Infbox ACTION
+Case ACTION
+  When "OUVRE" : Gosub OUVRE
+  When "DEBUT" : Gosub DEBUT
+  When "OK"    : Gosub OK
+  When "FIN"   : Gosub FIN
+Endcase
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           LABELS                                                  #
+#---------------------------------------------------------------------------------------------------#
+
+######################################################################### OUVRE
+$OUVRE
+If clalev([F:ZRMC])=0   : Local File ZRECMULTICHG [ZRMC]     : Endif
+If clalev([F:ZPRC])=0   : Local File ZPALREC      [ZPRC]     : Endif
+If clalev([F:ZARE])=0   : Local File ZARTRECEP      [ZARE]     : Endif
+If clalev([M:ZRMC10])=0 : Local Mask ZRMC0        [M:ZRMC10] : Endif
+#----------------------------------------------------------------------------------------------------------------------
+#On va définir ici le nombre d'articles de réception maximum au dela duquel la zone de recherche d'article sera visible
+Global Integer WMAXLIG : WMAXLIG = 10
+#----------------------------------------------------------------------------------------------------------------------
+Return
+
+######################################################################### DEBUT
+$DEBUT
+#Infbox PARAM(1) + "---" + PARAM(2) + "---" + PARAM(3)
+[M:ZRMC0]ZCMCNUM   = PARAM(1)
+[M:ZRMC0]ZCMCLIN   = val(PARAM(2))
+[M:ZRMC0]QTERECEP  = val(PARAM(3))
+[M:ZRMC0]ZCODCHARG = PARAM(4)
+[M:ZRMC0]ZNOL      = val(PARAM(5))
+[M:ZRMC0]TRIAFAIRE = val(PARAM(6))
+[M:ZRMC0]ZINFO2 = "Les articles de prestation ne sont pas comptabiliés dans le stock d'emballages."
+Effzo [M:ZRMC0]20
+Raz [M:ZRMC0]NBLIG
+Effzo [M:ZRMC0]15
+Raz [M:ZRMC0]NBLIGR
+Effzo [M:ZRMC0]25
+Raz [M:ZRMC0]NBLIGP
+Local Integer WENREXIST : WENREXIST = 0
+Local Integer WNUMLIG : WNUMLIG = 0
+If([M:ZCMC0]DATESOLDE<>[0/0/0])Then
+  FIN = 1
+  Return
+Endif
+#Si la ligne du chargeur est en tri systématique, on sort de suite de la fenêtre
+#On va commencer par regarder s'il existe des enregistrements liés aux chargeur et au client chargeur
+#Pour cela, il suffit de parcourir l'écran [M:ZRMC10]
+For WNUMLIG=0 To [M:ZRMC10]NBLIG-1
+  If([M:ZRMC10]YZCMCLIN(WNUMLIG)=[M:ZRMC0]ZCMCLIN)Then
+    WENREXIST = 1
+    [M:ZRMC0]YZCMCNUM([M:ZRMC0]NBLIG) = [M:ZRMC10]YZCMCNUM(WNUMLIG)
+    [M:ZRMC0]YZCMCLIN([M:ZRMC0]NBLIG) = [M:ZRMC10]YZCMCLIN(WNUMLIG)
+    [M:ZRMC0]ITMREF([M:ZRMC0]NBLIG)   = [M:ZRMC10]ITMREF(WNUMLIG)
+    [M:ZRMC0]QTY([M:ZRMC0]NBLIG)      = [M:ZRMC10]QTY(WNUMLIG)
+    [M:ZRMC0]NBLIG += 1
+  Endif
+Next WNUMLIG
+#If([M:ZRMC0]TRIAFAIRE<>2)Then
+  If(WENREXIST=0)Then
+    #Il n'existe pas d'enregistrements dans la table ZRECMULTICHG
+    #On va donc regarder s'il existe des enregistrements dans la vue ZPALREC (ZPRC)
+    If([M:ZRMC0]TRIAFAIRE<>2)Then
+      For [F:ZPRC]ZPRC0 Where [F:ZPRC]CODCHARG=[M:ZRMC0]ZCODCHARG
+        WENREXIST = 1
+        [M:ZRMC0]YZCMCNUM([M:ZRMC0]NBLIG) = [M:ZRMC0]ZCMCNUM
+        [M:ZRMC0]YZCMCLIN([M:ZRMC0]NBLIG) = [M:ZRMC0]ZCMCLIN
+        [M:ZRMC0]ITMREF([M:ZRMC0]NBLIG)   = [F:ZPRC]CODPALREC
+        [M:ZRMC0]QTY([M:ZRMC0]NBLIG)      = 0
+        [M:ZRMC0]NBLIG += 1
+#        [M:ZRMC0]RZCMCNUM([M:ZRMC0]NBLIGR)= [M:ZRMC0]ZCMCNUM
+#        [M:ZRMC0]RZCMCLIN([M:ZRMC0]NBLIGR)= [M:ZRMC0]ZCMCLIN
+#        [M:ZRMC0]RITMREF([M:ZRMC0]NBLIGR) = [F:ZPRC]CODPALREC
+#        [M:ZRMC0]RQTY([M:ZRMC0]NBLIGR)    = 0
+#        [M:ZRMC0]NBLIGR += 1
+      Next
+    Else
+      For [F:ZARE]ZARE0 Where [F:ZARE]ZCODCHARG=[M:ZRMC0]ZCODCHARG and [F:ZARE]ZARTGEN=2
+        WENREXIST = 1
+        [M:ZRMC0]YZCMCNUM([M:ZRMC0]NBLIG) = [M:ZRMC0]ZCMCNUM
+        [M:ZRMC0]YZCMCLIN([M:ZRMC0]NBLIG) = [M:ZRMC0]ZCMCLIN
+        [M:ZRMC0]ITMREF([M:ZRMC0]NBLIG)   = [F:ZARE]ITMREF
+        [M:ZRMC0]QTY([M:ZRMC0]NBLIG)      = 0
+        [M:ZRMC0]NBLIG += 1
+#        [M:ZRMC0]RZCMCNUM([M:ZRMC0]NBLIGR)= [M:ZRMC0]ZCMCNUM
+#        [M:ZRMC0]RZCMCLIN([M:ZRMC0]NBLIGR)= [M:ZRMC0]ZCMCLIN
+#        [M:ZRMC0]RITMREF([M:ZRMC0]NBLIGR) = [F:ZPRC]CODPALREC
+#        [M:ZRMC0]RQTY([M:ZRMC0]NBLIGR)    = 0
+#        [M:ZRMC0]NBLIGR += 1
+      Next
+    Endif
+    If(WENREXIST=0)Then
+      #Le chargeur n'a pas de palette de réception détails, c'est à dire visible dont le champ ZARTATRIER<>""
+      #On sort
+      FIN = 1
+    Else
+      #Le chargeur possède au moins un article de réception
+      #On va regarder, s'il n'en possède qu'un, on va directement alimenter la zone et saauvegarder
+      If([M:ZRMC0]NBLIG=1)Then
+        [M:ZRMC0]QTY(0) = [M:ZRMC0]QTERECEP
+        Affzo [M:ZRMC0]QTY(0)
+        Gosub OK
+        FIN = 1
+      Endif
+    Endif
+  Else
+    #On est dans le cas où il existe des lignes dans la table ZRECMULTICHG
+    #S'il n'y a qu'une seule ligne, on va compléter automatique la ligne et refermer la fenêtre
+    If([M:ZRMC0]NBLIG=1)Then
+      [M:ZRMC0]QTY(0) = [M:ZRMC0]QTERECEP
+      Affzo [M:ZRMC0]QTY(0)
+      Gosub OK
+#      FIN = 1
+    Endif
+  Endif
+
+  Affzo [M:ZRMC0]
+If(FIN<>1)Then
+  If clalev([F:ZIE2])=0 : Local File ZEPALIS [ZIE2] : Endif
+#  For WNUMLIG=0 To [M:ZRMC0]NBLIG-1
+#    #On va cumuler les quantités pour les articles de réception qui sont géré en stock
+#    Chgstl [M:ZRMC0]NBLIG(WNUMLIG) With ""
+#    For[F:ZIE2]ZIE3 Where [F:ZIE2]CODE_CHARGEU=[M:ZRMC0]ZCODCHARG and [F:ZIE2]ART_PRETRI=[M:ZRMC0]ITMREF(WNUMLIG)
+#      If([F:ZIE2]ZGESTSTOCK<>2)Then
+#        Chgstl [M:ZRMC0]NBLIG(WNUMLIG) With "GDD3G"
+#        Break
+#      Endif
+#    Next
+#  Next
+#  For WNUMLIG=0 To [M:ZRMC0]NBLIGR-1
+#    #On va cumuler les quantités pour les articles de réception qui sont géré en stock
+#    Chgstl [M:ZRMC0]NBLIGR(WNUMLIG) With ""
+#    For[F:ZIE2]ZIE3 Where [F:ZIE2]CODE_CHARGEU=[M:ZRMC0]ZCODCHARG and [F:ZIE2]ART_PRETRI=[M:ZRMC0]RITMREF(WNUMLIG)
+#      If([F:ZIE2]ZGESTSTOCK<>2)Then
+#        Chgstl [M:ZRMC0]NBLIGR(WNUMLIG) With "GDD3G"
+#        Break
+#      Endif
+#    Next
+#  Next
+  Effzo[M:ZRMC0]ITMREFREC
+  Call SPE_MAJ_EMB([M:ZRMC0]ITMREFREC)
+  #On va maintenant regarder le nombre de ligne
+  #Si le chargeur à plus de 3 articles de réception possibles alors on affiche
+  #le champ de recherche des articles sinon on le masque
+  If([M:ZRMC0]NBLIGR>WMAXLIG)Then
+    Chgfmt [M:ZRMC0]ITMREFREC With "K:30X"
+    Chgfmt [M:ZRMC0]BTSEARCH With "K:30X"
+  Else
+    Chgfmt [M:ZRMC0]ITMREFREC With "-K:30X"
+    Chgfmt [M:ZRMC0]BTSEARCH With "-K:30X"
+  Endif
+Endif
+Return
+
+######################################################################### OK
+$OK
+#On commence par controler que la somme des quantité est bien égale à la quantité réceptionnée
+Local Integer WNUMLIG
+Local Integer WNUMLIGR
+Local Integer WNUMLIGP
+Local Decimal WQTYTOT : WQTYTOT = 0
+Local Decimal WQTYTOTPREST : WQTYTOTPREST = 0
+Local Integer WERR : WERR = 0
+Local Integer WARTGERE : WARTGERE = 0
+If clalev([F:ZIE2])=0 : Local File ZEPALIS [ZIE2] : Endif
+If([M:ZCMC0]DATEVAL=[0/0/0] and [M:ZCMC0]SEMAREC<>3)Then
+  #--------------------------------------
+  For WNUMLIGR=0 To [M:ZRMC0]NBLIGR-1
+    #On va parcourir le tableau des articles pour mettre la quantité à jour
+    For WNUMLIG=0 To [M:ZRMC0]NBLIG-1
+      If([M:ZRMC0]ITMREF(WNUMLIG)=[M:ZRMC0]RITMREF(WNUMLIGR))Then
+        [M:ZRMC0]QTY(WNUMLIG)=[M:ZRMC0]RQTY(WNUMLIGR)
+        Affzo [M:ZRMC0]QTY(WNUMLIG)
+        Break
+      Endif
+    Next WNUMLIG
+  Next WNUMLIGR
+  For WNUMLIGP=0 To [M:ZRMC0]NBLIGP-1
+    #On va parcourir le tableau des articles de prestation pour mettre la quantité à jour
+    For WNUMLIG=0 To [M:ZRMC0]NBLIG-1
+      If([M:ZRMC0]ITMREF(WNUMLIG)=[M:ZRMC0]PITMREF(WNUMLIGP))Then
+        [M:ZRMC0]QTY(WNUMLIG)=[M:ZRMC0]PQTY(WNUMLIGP)
+        Affzo [M:ZRMC0]QTY(WNUMLIG)
+        Break
+      Endif
+    Next WNUMLIG
+  Next WNUMLIGP
+  Affzo[M:ZRMC0]20
+  #--------------------------------------
+  For WNUMLIG=0 To [M:ZRMC0]NBLIG-1
+    #On va cumuler les quantités pour les articles de réception qui sont géré en stock
+    WARTGERE = 0
+    For[F:ZIE2]ZIE3 Where [F:ZIE2]CODE_CHARGEU=[M:ZRMC0]ZCODCHARG and [F:ZIE2]ART_PRETRI=[M:ZRMC0]ITMREF(WNUMLIG)
+      If([F:ZIE2]ZGESTSTOCK=2)Then
+        WARTGERE = 1
+      Endif
+    Next
+    If(WARTGERE=1)Then
+      WQTYTOT += [M:ZRMC0]QTY(WNUMLIG)
+    Else
+      WQTYTOTPREST += [M:ZRMC0]QTY(WNUMLIG)
+    Endif
+  Next WNUMLIG
+  If(WQTYTOT=[M:ZRMC0]QTERECEP and WQTYTOTPREST<=[M:ZRMC0]QTERECEP)Then
+    #L'enregistrement des modifications consiste à alimenter la mask [M:ZRMC10]
+    #On commence par retirer du mask, tous les enregistrements liés à la multi-chargeur sur laquelle on se trouve
+    #ainsi que sur la ligne du chargeur sur lequel on se trouve
+    For WNUMLIG=0 To [M:ZRMC10]NBLIG-1
+      If([M:ZRMC10]YZCMCNUM(WNUMLIG)=[M:ZRMC0]ZCMCNUM and [M:ZRMC10]YZCMCLIN(WNUMLIG)=[M:ZRMC0]ZCMCLIN)Then
+        #On est sur une ligne q'il faut supprimer
+        Dela WNUMLIG,1 [M:ZRMC10]NBLIG
+        [M:ZRMC10]NBLIG -= 1
+        WNUMLIG -= 1
+      Endif
+    Next WNUMLIG
+    #On alimente ensuite le mask [M:ZRMC10] des nouvelles valeurs
+    For WNUMLIG=0 To [M:ZRMC0]NBLIG-1
+      [M:ZRMC10]YZCMCNUM([M:ZRMC10]NBLIG) = [M:ZRMC0]YZCMCNUM(WNUMLIG)
+      [M:ZRMC10]YZCMCLIN([M:ZRMC10]NBLIG) = [M:ZRMC0]YZCMCLIN(WNUMLIG)
+      [M:ZRMC10]ITMREF([M:ZRMC10]NBLIG)   = [M:ZRMC0]ITMREF(WNUMLIG)
+      [M:ZRMC10]QTY([M:ZRMC10]NBLIG)      = [M:ZRMC0]QTY(WNUMLIG)
+      [M:ZRMC10]NBLIG += 1
+    Next WNUMLIG
+    #On va mettre à jour le sémaphore de réception
+    [M:ZCMC0]SEMAREC = 2
+    Affzo [M:ZCMC0]SEMAREC
+    mkstat=4
+  Else
+    If(WQTYTOT<>[M:ZRMC0]QTERECEP)Then
+      #La quantité saisie n'est pas égale à la quantité réceptionnée
+      #On l'indique à l'utilisateur et on reste sur la fenêtre
+      Call ERREUR("Impossible ! Le total des quantités saisies n'est pas égale à la quantité réceptionnée.") From GESECRAN
+    Else
+      Call ERREUR("Impossible ! Le total des quantités des articles de prestation ne peut pas être supérieur à la quantité réceptionnée.") From GESECRAN
+    Endif
+    FIN = 0
+  Endif
+Endif
+Return
+
+######################################################################### FIN
+$FIN
+Local Integer WNUMLIG
+Local Decimal WQTYTOT : WQTYTOT = 0
+Local Integer WARTGERE : WARTGERE = 0
+Local Integer WMESSCONF : WMESSCONF = 0
+If clalev([F:ZIE2])=0 : Local File ZEPALIS [ZIE2] : Endif
+If([M:ZCMC0]DATEVAL=[0/0/0] and [M:ZCMC0]SEMAREC<>3 and [M:ZCMC0]DATESOLDE=[0/0/0])Then
+  For WNUMLIG=0 To [M:ZRMC0]NBLIG-1
+    #On va cumuler les quantités pour les articles de réception qui sont géré en stock
+    WARTGERE = 0
+    For[F:ZIE2]ZIE3 Where [F:ZIE2]CODE_CHARGEU=[M:ZRMC0]ZCODCHARG and [F:ZIE2]ART_PRETRI=[M:ZRMC0]ITMREF(WNUMLIG)
+      If([F:ZIE2]ZGESTSTOCK=2)Then
+        WARTGERE = 1
+      Endif
+    Next
+    If(WARTGERE=1)Then
+      WQTYTOT += [M:ZRMC0]QTY(WNUMLIG)
+    Endif
+  Next WNUMLIG
+#  If(WQTYTOT<>[M:ZRMC0]QTERECEP and [M:ZRMC0]TRIAFAIRE<>2)Then
+  If(WQTYTOT<>[M:ZRMC0]QTERECEP)Then
+    Call ERREUR("Attention !, Vous quittez sans remplir les données, vous allez perdre la quantité réceptionnée que vous avez renseigné.") From GESECRAN
+    WMESSCONF = 1
+    [M:ZCMC2]QTERECEP([M:ZRMC0]ZNOL) = 0
+    VALEUR = [M:ZCMC2]QTERECEP([M:ZRMC0]ZNOL)
+    Affzo [M:ZCMC2]QTERECEP([M:ZRMC0]ZNOL)
+    [M:ZCMC2]DIFFTRI([M:ZRMC0]ZNOL) = 0
+    Affzo [M:ZCMC2]DIFFTRI([M:ZRMC0]ZNOL)
+  Endif
+  If(WMESSCONF=0)Then
+    #On va mettre à jour le champ Qté réceptionnée QTYREC
+    Local Integer WNUMLIG
+    [M:ZCMC2]QTYREC = 0
+    For WNUMLIG=0 To [M:ZCMC2]NBLIGCHG-1
+      [M:ZCMC2]QTYREC += [M:ZCMC2]QTERECEP(WNUMLIG)
+    Next
+    [M:ZCMC2]QTYREC += VALEUR
+    Affzo [M:ZCMC2]QTYREC
+  Endif
+Endif
+Return
+
+#---------------------------------------------------------------------------------------------------#
+#                                           SUBPROGS                                                #
+#---------------------------------------------------------------------------------------------------#
+
+Subprog AS_QTY(VALEUR)
+Variable Decimal VALEUR
+#Si la réception de la collecte multi-chargeur est validée alors on ne peut plus rien saisir
+If([M:ZCMC0]DATEVAL<>[0/0/0] or [M:ZCMC0]SEMAREC=3)Then
+  mkstat=2
+Endif
+End
+
+Subprog C_QTY(VALEUR)
+Variable Decimal VALEUR
+If(VALEUR<0)Then
+  mkstat = 2
+  GMESSAGE = "La valeur sasie doit être inférieure à 0."
+Endif
+End
+
+Subprog AS_RQTY(VALEUR)
+Variable Decimal VALEUR
+#Si la réception de la collecte multi-chargeur est validée alors on ne peut plus rien saisir
+If([M:ZCMC0]DATEVAL<>[0/0/0] or [M:ZCMC0]SEMAREC=3)Then
+  mkstat=2
+Endif
+End
+
+Subprog C_RQTY(VALEUR)
+Variable Decimal VALEUR
+If(VALEUR<0)Then
+  mkstat = 2
+  GMESSAGE = "La valeur sasie doit être inférieure à 0."
+Endif
+End
+
+Subprog CL_BTSEARCH(VALEUR)
+Variable Char    VALEUR()
+  Call SPE_MAJ_EMB([M:ZRMC0]ITMREFREC)
+End
+
+Subprog SPE_MAJ_EMB(WEMB)
+Value Char WEMB
+#Avant toute chose, on va parcourir le tableau issu de la recherche pour mettre à jour le tableau des articles
+Local Integer WNUMLIG
+Local Integer WNUMLIGR
+Local Integer WNUMLIGP
+For WNUMLIGR=0 To [M:ZRMC0]NBLIGR-1
+  #On va parcourir le tableau des articles pour mettre la quantité à jour
+  For WNUMLIG=0 To [M:ZRMC0]NBLIG-1
+    If([M:ZRMC0]ITMREF(WNUMLIG)=[M:ZRMC0]RITMREF(WNUMLIGR))Then
+      [M:ZRMC0]QTY(WNUMLIG)=[M:ZRMC0]RQTY(WNUMLIGR)
+      Affzo [M:ZRMC0]QTY(WNUMLIG)
+      Break
+    Endif
+  Next WNUMLIG
+Next WNUMLIGR
+For WNUMLIGP=0 To [M:ZRMC0]NBLIGP-1
+  #On va parcourir le tableau des articles de prestation pour mettre la quantité à jour
+  For WNUMLIG=0 To [M:ZRMC0]NBLIG-1
+    If([M:ZRMC0]ITMREF(WNUMLIG)=[M:ZRMC0]PITMREF(WNUMLIGP))Then
+      [M:ZRMC0]QTY(WNUMLIG)=[M:ZRMC0]PQTY(WNUMLIGP)
+      Affzo [M:ZRMC0]QTY(WNUMLIG)
+      Break
+    Endif
+  Next WNUMLIG
+Next WNUMLIGR
+#Ensuite, on vide le tableau issu de la recherche précendente
+Effzo [M:ZRMC0]15
+Raz [M:ZRMC0]NBLIGR
+Effzo [M:ZRMC0]25
+Raz [M:ZRMC0]NBLIGP
+#On va maintenant reparcourir le tableau global pour ne récupérer que les lignes qui correspondent à la recherche
+Local Integer WPREST
+For WNUMLIG=0 To [M:ZRMC0]NBLIG-1
+  WPREST = 0
+  For[F:ZIE2]ZIE3 Where [F:ZIE2]CODE_CHARGEU=[M:ZRMC0]ZCODCHARG and [F:ZIE2]ART_PRETRI=[M:ZRMC0]ITMREF(WNUMLIG)
+    If([F:ZIE2]ZGESTSTOCK<>2)Then
+        [M:ZRMC0]PZCMCNUM([M:ZRMC0]NBLIGP)= [M:ZRMC0]ZCMCNUM
+        [M:ZRMC0]PZCMCLIN([M:ZRMC0]NBLIGP)= [M:ZRMC0]ZCMCLIN
+        [M:ZRMC0]PITMREF([M:ZRMC0]NBLIGP) = [M:ZRMC0]ITMREF(WNUMLIG)
+        [M:ZRMC0]PQTY([M:ZRMC0]NBLIGP)    = [M:ZRMC0]QTY(WNUMLIG)
+        #Chgstl [M:ZRMC0]NBLIGP([M:ZRMC0]NBLIGP) With "GDD3G"
+        [M:ZRMC0]NBLIGP += 1
+        WPREST = 1
+    Endif
+  Next
+  If(WPREST=0)Then
+    If(instr(1,[M:ZRMC0]ITMREF(WNUMLIG),WEMB)>0 or WEMB="")Then
+      [M:ZRMC0]RZCMCNUM([M:ZRMC0]NBLIGR)= [M:ZRMC0]ZCMCNUM
+      [M:ZRMC0]RZCMCLIN([M:ZRMC0]NBLIGR)= [M:ZRMC0]ZCMCLIN
+      [M:ZRMC0]RITMREF([M:ZRMC0]NBLIGR) = [M:ZRMC0]ITMREF(WNUMLIG)
+      [M:ZRMC0]RQTY([M:ZRMC0]NBLIGR)    = [M:ZRMC0]QTY(WNUMLIG)
+      [M:ZRMC0]NBLIGR += 1
+    Endif
+  Endif
+Next WNUMLIG
+Affzo[M:ZRMC0]15
+Affzo[M:ZRMC0]25
+##On colorie les articles de prestation
+#For WNUMLIG=0 To [M:ZRMC0]NBLIGR-1
+#  #On va cumuler les quantités pour les articles de réception qui sont géré en stock
+#  Chgstl [M:ZRMC0]NBLIGR(WNUMLIG) With ""
+#  For[F:ZIE2]ZIE3 Where [F:ZIE2]CODE_CHARGEU=[M:ZRMC0]ZCODCHARG and [F:ZIE2]ART_PRETRI=[M:ZRMC0]RITMREF(WNUMLIG)
+#    If([F:ZIE2]ZGESTSTOCK<>2)Then
+#      Chgstl [M:ZRMC0]NBLIGR(WNUMLIG) With "GDD3G"
+#      Break
+#    Endif
+#  Next
+#Next
+End
+
+Subprog AM_ITMREFREC(VALEUR)
+Variable Char    VALEUR()
+Call SPE_MAJ_EMB(VALEUR)
+End
