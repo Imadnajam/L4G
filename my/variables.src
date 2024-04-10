@@ -1,0 +1,39 @@
+ # declaration des variables
+
+local Integer age
+Local Char NO
+Global Char CIN
+Local Char  prenom
+Local Date dated
+Local Date datef
+Local Char Genre
+
+#Declaration des variables a dimension (tableux)
+Local  Integer YLNB2(10)
+YLNB2(0)=1 : YLNB2(1)=33 : YLNB2(2)=6 :
+
+
+
+
+# reinitilise un variable
+Raz age, NOM, CIN , prenom,dated,datef
+
+
+#Declaration table
+Local  File Employe [F:Emp]
+
+#check if the abr(Emp) is open or no
+if clalev([F:Emp])=0 then 
+Local  File Employe [F:Emp]
+Endif
+
+# or we can write it as follows 
+If !clalev([F:Emp]): Local  File Employe [F:Emp] : Endif
+
+#Declaration Mask (ecran)
+
+if clalev([M:ECRAN0])=0 then 
+Local  Mask Employe [M:YKHD0]
+Endif
+#OR
+If !clalev([M:Emp0]): Local  Mask Employe [M:Emp0] : Endif
